@@ -52,6 +52,10 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# Python
+*.pyc
+__pycache__/
+
 # Temp files
 *.swp
 *.tmp
