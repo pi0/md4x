@@ -158,12 +158,87 @@ pub fn build(b: *std.Build) void {
     const wasm_step = b.step("wasm", "Build WASM library");
     wasm_step.dependOn(&wasm_log.step);
 
-    // --- NAPI shared library ---
+    // --- NAPI shared libraries ---
 
     const napi_include = b.option([]const u8, "napi-include", "Path to node-api-headers include directory") orelse "node_modules/node-api-headers/include";
+    const napi_def = b.option([]const u8, "napi-def", "Path to node_api.def file (for Windows targets)") orelse "node_modules/node-api-headers/def/node_api.def";
 
+    const napi_c_flags = c_flags ++ &[_][]const u8{"-DNODE_GYP_MODULE_NAME=md4x"};
+    const napi_parser_flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"};
+
+    const NapiTarget = struct {
+        name: []const u8,
+        cpu_arch: std.Target.Cpu.Arch,
+        os_tag: std.Target.Os.Tag,
+        abi: std.Target.Abi,
+        output_name: []const u8,
+        dlltool_machine: ?[]const u8,
+    };
+
+    const napi_targets = [_]NapiTarget{
+        .{ .name = "linux-x64", .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu, .output_name = "md4x.linux-x64.node", .dlltool_machine = null },
+        .{ .name = "linux-arm64", .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu, .output_name = "md4x.linux-arm64.node", .dlltool_machine = null },
+        .{ .name = "darwin-x64", .cpu_arch = .x86_64, .os_tag = .macos, .abi = .none, .output_name = "md4x.darwin-x64.node", .dlltool_machine = null },
+        .{ .name = "darwin-arm64", .cpu_arch = .aarch64, .os_tag = .macos, .abi = .none, .output_name = "md4x.darwin-arm64.node", .dlltool_machine = null },
+        .{ .name = "win32-x64", .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu, .output_name = "md4x.win32-x64.node", .dlltool_machine = "i386:x86-64" },
+        .{ .name = "win32-arm64", .cpu_arch = .aarch64, .os_tag = .windows, .abi = .gnu, .output_name = "md4x.win32-arm64.node", .dlltool_machine = "arm64" },
+    };
+
+    // Cross-platform NAPI targets
+    const napi_all_step = b.step("napi-all", "Build NAPI addon for all platforms");
+
+    inline for (napi_targets) |nt| {
+        const cross_target = b.resolveTargetQuery(.{
+            .cpu_arch = nt.cpu_arch,
+            .os_tag = nt.os_tag,
+            .abi = nt.abi,
+        });
+
+        const napi_lib = b.addLibrary(.{
+            .linkage = .dynamic,
+            .name = "md4x",
+            .root_module = b.createModule(.{
+                .target = cross_target,
+                .optimize = optimize,
+                .link_libc = true,
+                .strip = strip,
+            }),
+        });
+        napi_lib.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
+        napi_lib.addCSourceFiles(.{
+            .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
+            .flags = napi_c_flags,
+        });
+        napi_lib.addIncludePath(b.path("src"));
+        napi_lib.addIncludePath(.{ .cwd_relative = napi_include });
+
+        if (nt.dlltool_machine) |machine| {
+            // Windows: generate import library from .def file using zig dlltool
+            const dlltool = b.addSystemCommand(&.{
+                "zig", "dlltool",
+                "-d",  napi_def,
+                "-m",  machine,
+                "-D",  "node.exe",
+                "-l",
+            });
+            const implib = dlltool.addOutputFileArg("node_api.lib");
+            napi_lib.addObjectFile(implib);
+        } else {
+            napi_lib.linker_allow_shlib_undefined = true;
+        }
+
+        const cross_install = b.addInstallArtifact(napi_lib, .{
+            .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
+            .dest_sub_path = nt.output_name,
+        });
+
+        const cross_step = b.step("napi-" ++ nt.name, "Build NAPI addon for " ++ nt.name);
+        cross_step.dependOn(&cross_install.step);
+        napi_all_step.dependOn(&cross_install.step);
+    }
+
+    // Host-platform NAPI (for development)
     {
-        const include_path = napi_include;
         const md4x_napi = b.addLibrary(.{
             .linkage = .dynamic,
             .name = "md4x",
@@ -174,25 +249,22 @@ pub fn build(b: *std.Build) void {
                 .strip = strip,
             }),
         });
-        md4x_napi.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
+        md4x_napi.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
         md4x_napi.addCSourceFiles(.{
             .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
-            .flags = c_flags ++ &[_][]const u8{"-DNODE_GYP_MODULE_NAME=md4x"},
+            .flags = napi_c_flags,
         });
         md4x_napi.addIncludePath(b.path("src"));
-        md4x_napi.addIncludePath(.{ .cwd_relative = include_path });
+        md4x_napi.addIncludePath(.{ .cwd_relative = napi_include });
         md4x_napi.linker_allow_shlib_undefined = true;
 
         const napi_install = b.addInstallArtifact(md4x_napi, .{
             .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
             .dest_sub_path = "md4x.node",
         });
-        const napi_log = b.addSystemCommand(&.{ "echo", "Built NAPI -> packages/md4x/build/md4x.node" });
-        napi_log.step.dependOn(&napi_install.step);
-        const napi_step = b.step("napi", "Build Node.js NAPI addon");
-        napi_step.dependOn(&napi_log.step);
+        const napi_step = b.step("napi", "Build Node.js NAPI addon (host platform)");
+        napi_step.dependOn(&napi_install.step);
 
-        // Make default install also build WASM and NAPI
         b.getInstallStep().dependOn(wasm_step);
         b.getInstallStep().dependOn(napi_step);
     }

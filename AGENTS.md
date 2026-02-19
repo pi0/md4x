@@ -97,7 +97,8 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
-- **md4x.node** — Node.js NAPI addon (`zig build napi -Dnapi-include=...`, output: `packages/md4x/build/md4x.node`)
+- **md4x.node** — Node.js NAPI addon (`zig build napi`, output: `packages/md4x/build/md4x.node`)
+- **md4x.{platform}-{arch}.node** — Cross-compiled NAPI addons (`zig build napi-all`, 6 targets)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
 
@@ -137,10 +138,34 @@ const html = renderToHtml('# Hello'); // sync after init
 
 ```sh
 bunx nypm add node-api-headers
-zig build napi -Dnapi-include=node_modules/node-api-headers/include
+zig build napi -Dnapi-include=node_modules/node-api-headers/include   # host platform only
+zig build napi-all -Dnapi-include=node_modules/node-api-headers/include  # all 6 platforms
 ```
 
-Builds a native `.node` shared library (output: `zig-out/lib/md4x.node`).
+Individual platform targets:
+
+```sh
+zig build napi-linux-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-linux-arm64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-darwin-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-darwin-arm64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-win32-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-win32-arm64 -Dnapi-include=node_modules/node-api-headers/include
+```
+
+`zig build napi` outputs `packages/md4x/build/md4x.node` (host platform, for development).
+`zig build napi-all` outputs platform-specific binaries to `packages/md4x/build/`:
+
+| Output file | Platform |
+|---|---|
+| `md4x.linux-x64.node` | Linux x86_64 |
+| `md4x.linux-arm64.node` | Linux aarch64 |
+| `md4x.darwin-x64.node` | macOS x86_64 |
+| `md4x.darwin-arm64.node` | macOS Apple Silicon |
+| `md4x.win32-x64.node` | Windows x86_64 |
+| `md4x.win32-arm64.node` | Windows ARM64 |
+
+Windows targets use `zig dlltool` to generate import libraries from `node_modules/node-api-headers/def/node_api.def`. The `-Dnapi-def` build option can override the `.def` path.
 
 **Exported functions (C-level, raw strings):**
 
@@ -159,6 +184,8 @@ const html = renderToHtml('# Hello');
 ```
 
 The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). The C binding returns raw strings; the JS wrapper (`lib/napi.mjs`) parses JSON output from `renderToJson` into a `ContainerNode` object.
+
+The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node` with a fallback to `md4x.node` for development builds.
 
 ### JS Package Exports
 
