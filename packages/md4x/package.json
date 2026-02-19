@@ -23,9 +23,13 @@
     "lib"
   ],
   "devDependencies": {
+    "@milkdown/crepe": "^7.18.0",
+    "ansi-html": "^0.0.9",
     "markdown-it": "^14.1.1",
     "md4w": "^0.2.7",
     "mitata": "^1.0.34",
+    "shiki": "^3.22.0",
+    "vite": "^6.3.5",
     "vitest": "^4.0.18"
   }
 }

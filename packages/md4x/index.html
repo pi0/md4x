@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>md4x playground</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 8px 16px; background: #1a1a2e; color: #eee; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 16px; font-weight: 600; }
+  .gh-link { color: #aaa; display: flex; transition: color 0.15s; margin-left: auto; }
+  .gh-link:hover { color: #fff; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #editor, .output-panel { flex: 1; min-width: 0; }
+  #editor { border-right: 1px solid #ddd; overflow: auto; }
+  .output-panel { display: flex; flex-direction: column; }
+  #output { flex: 1; overflow: auto; font-size: 14px; line-height: 1.6; }
+  #output.mode-html { padding: 16px; font-family: serif; }
+  #output.mode-raw pre.shiki, #output.mode-json pre.shiki { margin: 0; padding: 16px; font-size: 13px; height: 100%; overflow: auto; }
+  #output.mode-ansi { padding: 16px; font-family: monospace; white-space: pre-wrap; background: #000; color: #eee; }
+  .output-header { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid #ddd; gap: 12px; }
+  .output-header select { padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>md4x</h1>
+  <a href="https://github.com/pi0/md4x" target="_blank" class="gh-link" title="GitHub">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+  </a>
+</header>
+<main>
+  <div id="editor"></div>
+  <div class="output-panel">
+    <div class="output-header">
+      <select id="mode">
+        <option value="html">HTML (rendered)</option>
+        <option value="raw">HTML (source)</option>
+        <option value="json">JSON AST</option>
+        <option value="ansi">ANSI</option>
+      </select>
+    </div>
+    <div id="output"></div>
+  </div>
+</main>
+<script type="module">
+  import { Crepe } from '@milkdown/crepe';
+  import '@milkdown/crepe/theme/common/style.css';
+  import '@milkdown/crepe/theme/frame.css';
+  import { initWasm, renderToHtml, renderToJson, renderToAnsi } from './lib/wasm.mjs';
+  import ansiHTML from 'ansi-html';
+  import { createHighlighter } from 'shiki';
+
+  const output = document.getElementById('output');
+  const modeEl = document.getElementById('mode');
+
+  const defaultMd = `# Hello md4x
+
+This is a **live** _playground_ for the md4x parser.
+
+## Features
+
+- [x] CommonMark
+- [ ] Tables
+- [ ] ~~Strikethrough~~
+
+| Column A | Column B |
+|----------|----------|
+| foo      | bar      |
+
+> Blockquote with \`inline code\`
+
+\`\`\`js
+console.log("hello");
+\`\`\`
+
+Visit https://github.com for more.
+
+$E = mc^2$`;
+
+  // Restore state from URL hash
+  let initialMd = defaultMd;
+  const hash = location.hash.slice(1);
+  if (hash) {
+    const params = new URLSearchParams(hash);
+    const m = params.get('m');
+    const c = params.get('c');
+    if (m) modeEl.value = m;
+    if (c) initialMd = atob(c);
+  }
+
+  // Init WASM and Milkdown in parallel
+  const crepe = new Crepe({
+    root: '#editor',
+    defaultValue: initialMd,
+  });
+
+  const highlighter = await createHighlighter({
+    themes: ['vitesse-light'],
+    langs: ['html', 'json'],
+  });
+
+  await Promise.all([
+    initWasm(),
+    crepe.create(),
+  ]);
+
+  let currentMd = initialMd;
+
+  function updateHash() {
+    const params = new URLSearchParams();
+    if (modeEl.value !== 'html') params.set('m', modeEl.value);
+    if (currentMd !== defaultMd) params.set('c', btoa(currentMd));
+    history.replaceState(null, '', params.size ? `#${params}` : location.pathname);
+  }
+
+  function render() {
+    const md = currentMd;
+    const m = modeEl.value;
+    output.className = `mode-${m}`;
+    try {
+      if (m === 'html') {
+        output.innerHTML = renderToHtml(md);
+      } else if (m === 'raw') {
+        output.innerHTML = highlighter.codeToHtml(renderToHtml(md), { lang: 'html', theme: 'vitesse-light' });
+      } else if (m === 'json') {
+        output.innerHTML = highlighter.codeToHtml(JSON.stringify(renderToJson(md), null, 2), { lang: 'json', theme: 'vitesse-light' });
+      } else if (m === 'ansi') {
+        const ansi = renderToAnsi(md)
+          .replace(/\033\]8;[^\033]*\033\\/g, '')
+          .replace(/\033\[([\d;]+)m/g, (_, codes) =>
+            codes.split(';').map(c => `\x1b[${c}m`).join('')
+          );
+        output.innerHTML = ansiHTML(ansi);
+      }
+    } catch (e) {
+      output.textContent = `Error: ${e.message}`;
+    }
+    updateHash();
+  }
+
+  crepe.on((listener) => {
+    listener.markdownUpdated((_ctx, md) => {
+      currentMd = md;
+      render();
+    });
+  });
+
+  modeEl.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>
