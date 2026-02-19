@@ -9,7 +9,7 @@ Replaced CMake with Zig build system. Build with `zig build` (defaults to `Relea
 
 ### CLI renamed from `md2html` to `md4x`
 
-The CLI tool has been renamed from `md2html` to `md4x` and moved from `md2html/` to `cli/`. It now supports a `--format` (`-t`) flag to select the output format (`html`, `text`, `json`, `ansi`). HTML remains the default.
+The CLI tool has been renamed from `md2html` to `md4x` and moved from `md2html/` to `src/cli/`. It now supports a `--format` (`-t`) flag to select the output format (`html`, `text`, `json`, `ansi`). HTML remains the default.
 
 ### JSON AST renderer (`libmd4x-json`)
 

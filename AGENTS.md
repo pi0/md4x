@@ -26,11 +26,11 @@ src/
   md4x-ansi.h          # ANSI renderer public API
   md4x-wasm.c          # WASM exports (alloc/free + renderer wrappers)
   md4x-napi.c          # Node.js NAPI addon (module registration + renderer wrappers)
-cli/
-  md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
-  cmdline.c            # Command-line parser (from c-reusables)
-  cmdline.h            # Command-line parser API
-  md4x.1               # Man page
+  cli/
+    md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
+    cmdline.c            # Command-line parser (from c-reusables)
+    cmdline.h            # Command-line parser API
+    md4x.1               # Man page
 packages/md4x/           # npm package
   package.json           # Package manifest (name: md4x)
   README.md              # Package README

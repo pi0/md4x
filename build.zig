@@ -100,7 +100,7 @@ pub fn build(b: *std.Build) void {
             .strip = strip,
         }),
     });
-    exe.addCSourceFiles(.{ .files = &.{ "cli/md4x-cli.c", "cli/cmdline.c" }, .flags = c_flags });
+    exe.addCSourceFiles(.{ .files = &.{ "src/cli/md4x-cli.c", "src/cli/cmdline.c" }, .flags = c_flags });
     exe.addIncludePath(b.path("src"));
     exe.linkLibrary(md4x_html);
     exe.linkLibrary(md4x_json);
