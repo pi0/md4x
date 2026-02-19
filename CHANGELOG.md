@@ -3,6 +3,12 @@
 
 ## Next
 
+### Inline attributes (`MD_FLAG_ATTRIBUTES`)
+
+Added `{...}` attribute syntax on native inline elements: `**bold**{.class}`, `*italic*{#id}`, `` `code`{.lang} ``, `~~del~~{.class}`, `_underline_{.class}`, `[Link](url){target="_blank"}`, `![img](src){.responsive}`. The `[text]{.class}` syntax (brackets not followed by `(url)`) creates a generic `<span>`.
+
+New parser types: `MD_SPAN_SPAN` (for `[text]{attrs}`), `MD_SPAN_ATTRS_DETAIL` (for em/strong/code/del/u with attrs), `MD_SPAN_SPAN_DETAIL`. Extended `MD_SPAN_A_DETAIL` and `MD_SPAN_IMG_DETAIL` with `raw_attrs`/`raw_attrs_size` fields. New flag: `MD_FLAG_ATTRIBUTES` (`0x40000`), included in `MD_DIALECT_ALL`.
+
 ### `renderToJson` returns raw string, new `parseAST` function
 
 **Breaking:** `renderToJson` now returns the raw JSON string instead of a parsed `ComarkTree` object. A new `parseAST` function is added that calls `renderToJson` and parses the result into a `ComarkTree` object (equivalent to the previous `renderToJson` behavior).

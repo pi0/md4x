@@ -265,7 +265,7 @@ python3 test/pathological-tests.py -p zig-out/bin/md4x
 
 Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4x` and compares normalized output.
 
-Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `spec-components.txt`, `regressions.txt`, `coverage.txt`
+Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `spec-components.txt`, `spec-attributes.txt`, `regressions.txt`, `coverage.txt`
 
 ## Parser API (`md4x.h`)
 
@@ -368,17 +368,18 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 
 | Type | HTML | Detail struct |
 |---|---|---|
-| `MD_SPAN_EM` | `<em>` | — |
-| `MD_SPAN_STRONG` | `<strong>` | — |
+| `MD_SPAN_EM` | `<em>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_STRONG` | `<strong>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
 | `MD_SPAN_A` | `<a>` | `MD_SPAN_A_DETAIL` |
 | `MD_SPAN_IMG` | `<img>` | `MD_SPAN_IMG_DETAIL` |
-| `MD_SPAN_CODE` | `<code>` | — |
-| `MD_SPAN_DEL` | `<del>` | — |
+| `MD_SPAN_CODE` | `<code>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_DEL` | `<del>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
 | `MD_SPAN_LATEXMATH` | _(inline math)_ | — |
 | `MD_SPAN_LATEXMATH_DISPLAY` | _(display math)_ | — |
 | `MD_SPAN_WIKILINK` | _(wiki link)_ | `MD_SPAN_WIKILINK_DETAIL` |
-| `MD_SPAN_U` | `<u>` | — |
+| `MD_SPAN_U` | `<u>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
 | `MD_SPAN_COMPONENT` | _(dynamic tag)_ | `MD_SPAN_COMPONENT_DETAIL` |
+| `MD_SPAN_SPAN` | `<span>` | `MD_SPAN_SPAN_DETAIL` |
 
 ### Text Types (`MD_TEXTTYPE`)
 
@@ -433,16 +434,31 @@ typedef struct MD_BLOCK_TD_DETAIL {
     MD_ALIGN align;     /* MD_ALIGN_DEFAULT, _LEFT, _CENTER, or _RIGHT */
 } MD_BLOCK_TD_DETAIL;
 
+typedef struct MD_SPAN_ATTRS_DETAIL {
+    const MD_CHAR* raw_attrs;       /* Raw attrs from trailing {...}, or NULL. Not null-terminated */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs */
+} MD_SPAN_ATTRS_DETAIL;
+
+/* Note: fields up to raw_attrs_size are binary-compatible with MD_SPAN_IMG_DETAIL. */
 typedef struct MD_SPAN_A_DETAIL {
     MD_ATTRIBUTE href;
     MD_ATTRIBUTE title;
-    int is_autolink;    /* Non-zero if autolink */
+    const MD_CHAR* raw_attrs;       /* Raw attrs from trailing {...}, or NULL */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs */
+    int is_autolink;                /* Non-zero if autolink */
 } MD_SPAN_A_DETAIL;
 
 typedef struct MD_SPAN_IMG_DETAIL {
     MD_ATTRIBUTE src;
     MD_ATTRIBUTE title;
+    const MD_CHAR* raw_attrs;       /* Raw attrs from trailing {...}, or NULL */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs */
 } MD_SPAN_IMG_DETAIL;
+
+typedef struct MD_SPAN_SPAN_DETAIL {
+    const MD_CHAR* raw_attrs;       /* Raw attrs string from {...}. Not null-terminated */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs */
+} MD_SPAN_SPAN_DETAIL;
 
 typedef struct MD_SPAN_WIKILINK_DETAIL {
     MD_ATTRIBUTE target;
@@ -497,6 +513,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 | `MD_FLAG_HARD_SOFT_BREAKS` | `0x8000` | Force all soft breaks to act as hard breaks |
 | `MD_FLAG_FRONTMATTER` | `0x10000` | Enable frontmatter extension |
 | `MD_FLAG_COMPONENTS` | `0x20000` | Enable components (inline `:name[content]{props}` and block `::name{props}...::`) |
+| `MD_FLAG_ATTRIBUTES` | `0x40000` | Enable `{...}` attributes on inline elements and `[text]{.class}` spans |
 
 **Compound flags:**
 
@@ -504,7 +521,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 - `MD_FLAG_NOHTML` = no HTML blocks + no HTML spans
 - `MD_DIALECT_COMMONMARK` = `0` (strict CommonMark)
 - `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists
-- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter + components)
+- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter + components + attributes)
 
 ## HTML Renderer API (`md4x-html.h`)
 
@@ -760,6 +777,37 @@ Constraints:
 Implementation: Block components use the container mechanism (`MD_CONTAINER` with `ch = ':'`). Component info (name/props source offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field.
 
 HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
+
+### Extension: Inline Attributes (`MD_FLAG_ATTRIBUTES`)
+
+Attributes can be added to inline elements using `{...}` syntax immediately after the closing delimiter:
+
+```
+**bold**{.highlight}       → <strong class="highlight">bold</strong>
+*italic*{#myid}            → <em id="myid">italic</em>
+`code`{.lang}              → <code class="lang">code</code>
+~~del~~{.red}              → <del class="red">del</del>
+_underline_{.accent}       → <u class="accent">underline</u>
+[Link](url){target="_blank"} → <a href="url" target="_blank">Link</a>
+![img](pic.png){.responsive} → <img src="pic.png" alt="img" class="responsive">
+```
+
+The `[text]{.class}` syntax (brackets NOT followed by `(url)`) creates a generic `<span>`:
+
+```
+[text]{.class}             → <span class="class">text</span>
+[**bold** text]{.styled}   → <span class="styled"><strong>bold</strong> text</span>
+```
+
+Property syntax is shared with components: `{key="value" bool #id .class}`. Multiple `.class` values are merged. Empty `{}` is a no-op.
+
+Constraints:
+- `{...}` must immediately follow the closing delimiter (no space)
+- Only applies to resolved inline elements (not plain text — `hello{.class}` is literal)
+- Spans with `MD_FLAG_ATTRIBUTES`: em/strong/code/del/u pass `MD_SPAN_ATTRS_DETAIL*` (or `NULL` without attrs), links/images extend their detail structs with `raw_attrs`/`raw_attrs_size`
+- `MD_SPAN_SPAN` is emitted for `[text]{attrs}` with `MD_SPAN_SPAN_DETAIL`
+
+HTML renderer: attributes rendered on opening tags. JSON renderer: attrs merged into node props. ANSI renderer: transparent (ignores attrs).
 
 ## Code Generation Scripts
 

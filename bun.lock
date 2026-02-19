@@ -12,7 +12,7 @@
     },
     "packages/md4x": {
       "name": "md4x",
-      "version": "0.0.1",
+      "version": "0.0.4",
       "devDependencies": {
         "@milkdown/crepe": "^7.18.0",
         "ansi-html": "^0.0.9",

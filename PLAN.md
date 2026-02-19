@@ -121,35 +121,40 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
 
 ### Phase 5: Attributes on Native Elements
 
-- [ ] **5.1** Implement attribute parsing for inline elements in parser
+- [x] **5.1** Implement attribute parsing for inline elements in parser
   - After `**bold**`, `*italic*`, `[link](url)`, `![img](src)`, `` `code` `` — check for `{...}`
   - Parse attributes using shared prop parser
   - Extend `MD_SPAN_*_DETAIL` structs or add generic attribute field
+  - Added `MD_FLAG_ATTRIBUTES` (`0x40000`), `MD_SPAN_SPAN`, `MD_SPAN_ATTRS_DETAIL`, `MD_SPAN_SPAN_DETAIL`
+  - Extended `MD_SPAN_A_DETAIL` and `MD_SPAN_IMG_DETAIL` with `raw_attrs`/`raw_attrs_size`
+  - `md_resolve_attrs()` pass in `md_analyze_inlines()` detects `{...}` after resolved closers
+  - `[text]{.class}` handled in `md_resolve_links()` via `'S'` mark flag
 
-- [ ] **5.2** Handle inline element attributes in JSON renderer
+- [x] **5.2** Handle inline element attributes in JSON renderer
   - Merge parsed attributes into element props
+  - `MD_SPAN_SPAN` → `"span"` tag
 
-- [ ] **5.3** Implement span attribute syntax: `[text]{.class}`
+- [x] **5.3** Implement span attribute syntax: `[text]{.class}`
   - When `[text]` is not followed by `(url)` but by `{attrs}`, treat as styled span
   - Emit as `["span", {attrs}, "text"]` in JSON
 
-- [ ] **5.4** Add test cases for native element attributes
-  - `test/spec-attributes.txt`
-  - JS test cases
+- [x] **5.4** Add test cases for native element attributes
+  - `test/spec-attributes.txt` — 22 test cases
+  - JS test cases in `_suite.mjs` — 20 new tests (HTML + AST)
 
 ### Phase 6: ANSI Renderer Updates
 
-- [ ] **6.1** Handle new block/span types in ANSI renderer
-  - Components → render as styled blocks/spans
-  - Attributes → ignore or apply terminal-compatible attributes
+- [x] **6.1** Handle new block/span types in ANSI renderer
+  - Components → render as styled blocks/spans (done in Phase 3)
+  - Attributes → `MD_SPAN_SPAN` handled transparently (done in Phase 5)
 
 ### Phase 7: Integration & Cleanup
 
-- [ ] **7.1** Update `MD_DIALECT_ALL` to include all new flags
-- [ ] **7.2** Update WASM exports if needed
-- [ ] **7.3** Update NAPI bindings if needed
-- [ ] **7.4** Run full test suite and fix regressions
-- [ ] **7.5** Update `AGENTS.md` with new types, flags, and API docs
+- [x] **7.1** Update `MD_DIALECT_ALL` to include all new flags
+- [x] **7.2** Update WASM exports if needed
+- [x] **7.3** Update NAPI bindings if needed
+- [x] **7.4** Run full test suite and fix regressions
+- [x] **7.5** Update `AGENTS.md` with new types, flags, and API docs
 - [ ] **7.6** Update `CHANGELOG.md`
 
 ---

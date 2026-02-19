@@ -400,6 +400,143 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
   });
 
+  describe("inline attributes", () => {
+    it("renders strong with class HTML", async () => {
+      const html = await renderToHtml("**bold**{.highlight}");
+      expect(html).toContain('<strong class="highlight">bold</strong>');
+    });
+
+    it("renders emphasis with id HTML", async () => {
+      const html = await renderToHtml("*italic*{#myid}");
+      expect(html).toContain('<em id="myid">italic</em>');
+    });
+
+    it("renders code span with class HTML", async () => {
+      const html = await renderToHtml("`code`{.lang}");
+      expect(html).toContain('<code class="lang">code</code>');
+    });
+
+    it("renders link with target HTML", async () => {
+      const html = await renderToHtml('[Link](https://example.com){target="_blank"}');
+      expect(html).toContain('target="_blank"');
+      expect(html).toContain('<a href="https://example.com"');
+    });
+
+    it("renders image with class HTML", async () => {
+      const html = await renderToHtml("![alt](img.png){.responsive}");
+      expect(html).toContain('<img src="img.png" alt="alt" class="responsive">');
+    });
+
+    it("renders span syntax HTML", async () => {
+      const html = await renderToHtml("[text]{.class}");
+      expect(html).toContain('<span class="class">text</span>');
+    });
+
+    it("renders span with mixed attrs HTML", async () => {
+      const html = await renderToHtml('[text]{#myid .cls key="val"}');
+      expect(html).toContain('id="myid"');
+      expect(html).toContain('class="cls"');
+      expect(html).toContain('key="val"');
+      expect(html).toContain("<span");
+    });
+
+    it("parses strong with attrs AST", async () => {
+      const ast = await parseAST("**bold**{.highlight}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1].class).toBe("highlight");
+      expect(strong[2]).toBe("bold");
+    });
+
+    it("parses emphasis with attrs AST", async () => {
+      const ast = await parseAST("*italic*{#myid}");
+      const p = ast.value[0];
+      const em = p[2];
+      expect(em[0]).toBe("em");
+      expect(em[1].id).toBe("myid");
+      expect(em[2]).toBe("italic");
+    });
+
+    it("parses code span with attrs AST", async () => {
+      const ast = await parseAST("`code`{.lang}");
+      const p = ast.value[0];
+      const code = p[2];
+      expect(code[0]).toBe("code");
+      expect(code[1].class).toBe("lang");
+      expect(code[2]).toBe("code");
+    });
+
+    it("parses link with attrs AST", async () => {
+      const ast = await parseAST('[Link](https://example.com){target="_blank"}');
+      const p = ast.value[0];
+      const a = p[2];
+      expect(a[0]).toBe("a");
+      expect(a[1].href).toBe("https://example.com");
+      expect(a[1].target).toBe("_blank");
+      expect(a[2]).toBe("Link");
+    });
+
+    it("parses image with attrs AST", async () => {
+      const ast = await parseAST("![alt](img.png){.responsive}");
+      const p = ast.value[0];
+      const img = p[2];
+      expect(img[0]).toBe("img");
+      expect(img[1].src).toBe("img.png");
+      expect(img[1].class).toBe("responsive");
+    });
+
+    it("parses span syntax AST", async () => {
+      const ast = await parseAST("[text]{.class}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("class");
+      expect(span[2]).toBe("text");
+    });
+
+    it("parses span with multiple classes AST", async () => {
+      const ast = await parseAST("[text]{.foo .bar .baz}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("foo bar baz");
+    });
+
+    it("span with inline markdown AST", async () => {
+      const ast = await parseAST("[**bold** text]{.styled}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("styled");
+      expect(span[2][0]).toBe("strong");
+      expect(span[2][2]).toBe("bold");
+      expect(span[3]).toBe(" text");
+    });
+
+    it("element without attrs has no extra props", async () => {
+      const ast = await parseAST("**bold**");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]).toEqual({});
+    });
+
+    it("empty attrs have no effect AST", async () => {
+      const ast = await parseAST("**bold**{}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]).toEqual({});
+    });
+
+    it("plain text followed by braces is not attrs", async () => {
+      const html = await renderToHtml("hello{.class}");
+      expect(html).toContain("hello{.class}");
+      expect(html).not.toContain("<span");
+    });
+  });
+
   describe("renderToAnsi", () => {
     it("renders heading with ansi codes", async () => {
       expect(await renderToAnsi("# Hello")).toContain("Hello");

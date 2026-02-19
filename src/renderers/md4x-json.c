@@ -79,6 +79,11 @@ struct JSON_NODE {
 
     /* Non-zero if the tag is heap-allocated (dynamic component tag). */
     int tag_is_dynamic;
+
+    /* Raw inline attributes string from trailing {attrs}, or NULL.
+     * Heap-allocated copy. Used for em, strong, code, del, u, a, img, span. */
+    char* raw_attrs;
+    MD_SIZE raw_attrs_size;
 };
 
 typedef struct {
@@ -151,6 +156,9 @@ json_node_free(JSON_NODE* node)
             free((char*)node->tag);
         }
     }
+
+    if(node->raw_attrs)
+        free(node->raw_attrs);
 
     free(node);
 }
@@ -409,6 +417,7 @@ json_enter_span(MD_SPANTYPE type, void* detail, void* userdata)
             case MD_SPAN_LATEXMATH_DISPLAY: tag = "math-display"; break;
             case MD_SPAN_WIKILINK:          tag = "wikilink"; break;
             case MD_SPAN_U:                 tag = "u"; break;
+            case MD_SPAN_SPAN:              tag = "span"; break;
             default:                        tag = "unknown"; break;
         }
 
@@ -420,18 +429,65 @@ json_enter_span(MD_SPANTYPE type, void* detail, void* userdata)
                 const MD_SPAN_A_DETAIL* d = (const MD_SPAN_A_DETAIL*) detail;
                 node->detail.a.href = json_attr_to_str(&d->href);
                 node->detail.a.title = json_attr_to_str(&d->title);
+                if(d->raw_attrs != NULL && d->raw_attrs_size > 0) {
+                    node->raw_attrs = (char*) malloc(d->raw_attrs_size + 1);
+                    if(node->raw_attrs != NULL) {
+                        memcpy(node->raw_attrs, d->raw_attrs, d->raw_attrs_size);
+                        node->raw_attrs[d->raw_attrs_size] = '\0';
+                        node->raw_attrs_size = d->raw_attrs_size;
+                    }
+                }
                 break;
             }
             case MD_SPAN_IMG: {
                 const MD_SPAN_IMG_DETAIL* d = (const MD_SPAN_IMG_DETAIL*) detail;
                 node->detail.img.src = json_attr_to_str(&d->src);
                 node->detail.img.title = json_attr_to_str(&d->title);
+                if(d->raw_attrs != NULL && d->raw_attrs_size > 0) {
+                    node->raw_attrs = (char*) malloc(d->raw_attrs_size + 1);
+                    if(node->raw_attrs != NULL) {
+                        memcpy(node->raw_attrs, d->raw_attrs, d->raw_attrs_size);
+                        node->raw_attrs[d->raw_attrs_size] = '\0';
+                        node->raw_attrs_size = d->raw_attrs_size;
+                    }
+                }
                 ctx->image_nesting = 1;
                 break;
             }
             case MD_SPAN_WIKILINK: {
                 const MD_SPAN_WIKILINK_DETAIL* d = (const MD_SPAN_WIKILINK_DETAIL*) detail;
                 node->detail.wikilink.target = json_attr_to_str(&d->target);
+                break;
+            }
+            case MD_SPAN_SPAN: {
+                const MD_SPAN_SPAN_DETAIL* d = (const MD_SPAN_SPAN_DETAIL*) detail;
+                if(d != NULL && d->raw_attrs != NULL && d->raw_attrs_size > 0) {
+                    node->raw_attrs = (char*) malloc(d->raw_attrs_size + 1);
+                    if(node->raw_attrs != NULL) {
+                        memcpy(node->raw_attrs, d->raw_attrs, d->raw_attrs_size);
+                        node->raw_attrs[d->raw_attrs_size] = '\0';
+                        node->raw_attrs_size = d->raw_attrs_size;
+                    }
+                }
+                break;
+            }
+            case MD_SPAN_EM:
+            case MD_SPAN_STRONG:
+            case MD_SPAN_CODE:
+            case MD_SPAN_DEL:
+            case MD_SPAN_U: {
+                /* These spans may have trailing {attrs} via MD_SPAN_ATTRS_DETAIL. */
+                if(detail != NULL) {
+                    const MD_SPAN_ATTRS_DETAIL* d = (const MD_SPAN_ATTRS_DETAIL*) detail;
+                    if(d->raw_attrs != NULL && d->raw_attrs_size > 0) {
+                        node->raw_attrs = (char*) malloc(d->raw_attrs_size + 1);
+                        if(node->raw_attrs != NULL) {
+                            memcpy(node->raw_attrs, d->raw_attrs, d->raw_attrs_size);
+                            node->raw_attrs[d->raw_attrs_size] = '\0';
+                            node->raw_attrs_size = d->raw_attrs_size;
+                        }
+                    }
+                }
                 break;
             }
             default:
@@ -827,6 +883,18 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
         if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {
             has_prop = json_write_component_props(w, node->detail.component.raw_props,
                                                   node->detail.component.raw_props_size);
+        }
+    }
+
+    /* Merge inline attributes from trailing {attrs} syntax. */
+    if(node->raw_attrs != NULL && node->raw_attrs_size > 0) {
+        /* Pre-parse to check if there are any props to write. */
+        MD_PARSED_PROPS check;
+        md_parse_props(node->raw_attrs, node->raw_attrs_size, &check);
+        if(check.n_props > 0 || check.id != NULL || check.class_len > 0) {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_component_props(w, node->raw_attrs, node->raw_attrs_size);
+            has_prop = 1;
         }
     }
 

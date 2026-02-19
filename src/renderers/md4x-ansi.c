@@ -526,6 +526,7 @@ enter_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH_DISPLAY: render_ansi(r, ANSI_COLOR_YELLOW); break;
         case MD_SPAN_WIKILINK:          render_ansi(r, ANSI_LINK); break;
         case MD_SPAN_COMPONENT:         render_ansi(r, ANSI_COLOR_CYAN); break;
+        case MD_SPAN_SPAN:              break;  /* Transparent: no special styling */
     }
 
     return 0;
@@ -572,6 +573,7 @@ leave_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH_DISPLAY: render_ansi(r, ANSI_COLOR_DEFAULT); break;
         case MD_SPAN_WIKILINK:          render_ansi(r, ANSI_RESET); break;
         case MD_SPAN_COMPONENT:         render_ansi(r, ANSI_COLOR_DEFAULT); break;
+        case MD_SPAN_SPAN:              break;  /* Transparent: no special styling */
     }
 
     return 0;
