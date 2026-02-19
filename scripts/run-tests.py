@@ -9,7 +9,7 @@ import sys
 argv0_dir = os.path.dirname(sys.argv[0])
 project_dir = os.path.abspath(os.path.join(argv0_dir, ".."))
 test_dir = os.path.join(project_dir, "test")
-program = os.path.abspath(os.path.join("md2html", "md2html"))
+program = os.path.abspath(os.path.join("cli", "md4c"))
 
 if __name__ == "__main__":
     err_count = 0

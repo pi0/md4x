@@ -33,7 +33,17 @@
 
 
 
+/* Output format. */
+typedef enum {
+    FORMAT_HTML,
+    FORMAT_TEXT,
+    FORMAT_JSON
+} OutputFormat;
+
+static const char* format_name[] = { "html", "text", "json" };
+
 /* Global options. */
+static OutputFormat output_format = FORMAT_HTML;
 static unsigned parser_flags = 0;
 #ifndef MD4C_USE_ASCII
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG | MD_HTML_FLAG_SKIP_UTF8_BOM;
@@ -166,12 +176,21 @@ process_file(const char* in_path, FILE* in, FILE* out)
         memset(buf_in.data + buf_in.size, 0, 2 * sizeof(unsigned));
     }
 
-    /* Parse the document. This shall call our callbacks provided via the
-     * md_renderer_t structure. */
+    /* Parse and render the document. */
     t0 = clock();
 
-    ret = md_html(buf_in.data, (MD_SIZE)buf_in.size, process_output,
-                (void*) &buf_out, p_flags, r_flags);
+    switch(output_format) {
+        case FORMAT_HTML:
+            ret = md_html(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out, p_flags, r_flags);
+            break;
+        case FORMAT_TEXT:
+        case FORMAT_JSON:
+            fprintf(stderr, "Format '%s' is not yet implemented.\n",
+                    format_name[output_format]);
+            ret = -1;
+            break;
+    }
 
     t1 = clock();
     if(ret != 0) {
@@ -180,7 +199,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
     }
 
     /* Write down the document in the HTML format. */
-    if(want_fullhtml) {
+    if(want_fullhtml && output_format == FORMAT_HTML) {
         if(want_xhtml) {
             fprintf(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
             fprintf(out, "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
@@ -192,7 +211,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
         }
         fprintf(out, "<head>\n");
         fprintf(out, "<title>%s</title>\n", html_title ? html_title : "");
-        fprintf(out, "<meta name=\"generator\" content=\"md2html\"%s>\n", want_xhtml ? " /" : "");
+        fprintf(out, "<meta name=\"generator\" content=\"md4c\"%s>\n", want_xhtml ? " /" : "");
 #if !defined MD4C_USE_ASCII && !defined MD4C_USE_UTF16
         fprintf(out, "<meta charset=\"UTF-8\"%s>\n", want_xhtml ? " /" : "");
 #endif
@@ -205,7 +224,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
 
     fwrite(buf_out.data, 1, buf_out.size, out);
 
-    if(want_fullhtml) {
+    if(want_fullhtml && output_format == FORMAT_HTML) {
         fprintf(out, "</body>\n");
         fprintf(out, "</html>\n");
     }
@@ -238,6 +257,8 @@ static const CMDLINE_OPTION cmdline_options[] = {
     { 's', "stat",                          's', 0 },
     { 'h', "help",                          'h', 0 },
     { 'v', "version",                       'v', 0 },
+
+    { 't', "format",                        '3', CMDLINE_OPTFLAG_REQUIREDARG },
 
     {  0,  "html-title",                    '1', CMDLINE_OPTFLAG_REQUIREDARG },
     {  0,  "html-css",                      '2', CMDLINE_OPTFLAG_REQUIREDARG },
@@ -276,13 +297,12 @@ static void
 usage(void)
 {
     printf(
-        "Usage: md2html [OPTION]... [FILE]\n"
-        "Convert input FILE (or standard input) in Markdown format to HTML.\n"
+        "Usage: md4c [OPTION]... [FILE]\n"
+        "Convert input FILE (or standard input) in Markdown format.\n"
         "\n"
         "General options:\n"
         "  -o  --output=FILE    Output file (default is standard output)\n"
-        "  -f, --full-html      Generate full HTML document, including header\n"
-        "  -x, --xhtml          Generate XHTML instead of HTML\n"
+        "  -t, --format=FORMAT  Output format: html (default), text, json\n"
         "  -s, --stat           Measure time of input parsing\n"
         "  -h, --help           Display this help and exit\n"
         "  -v, --version        Display version and exit\n"
@@ -325,7 +345,9 @@ usage(void)
         "      --fno-indented-code\n"
         "                       Disable indented code blocks\n"
         "\n"
-        "HTML generator options:\n"
+        "HTML output options:\n"
+        "  -f, --full-html      Generate full HTML document, including header\n"
+        "  -x, --xhtml          Generate XHTML instead of HTML\n"
         "      --fverbatim-entities\n"
         "                       Do not translate entities\n"
         "      --html-title=TITLE Sets the title of the document\n"
@@ -365,6 +387,20 @@ cmdline_callback(int opt, char const* value, void* data)
         case 'r':   want_replay_fuzz = 1; break;
         case 'h':   usage(); exit(0); break;
         case 'v':   version(); exit(0); break;
+
+        case '3':
+            if(strcmp(value, "html") == 0)
+                output_format = FORMAT_HTML;
+            else if(strcmp(value, "text") == 0)
+                output_format = FORMAT_TEXT;
+            else if(strcmp(value, "json") == 0)
+                output_format = FORMAT_JSON;
+            else {
+                fprintf(stderr, "Unknown format: %s\n", value);
+                fprintf(stderr, "Supported formats: html, text, json\n");
+                exit(1);
+            }
+            break;
 
         case '1':   html_title = value; break;
         case '2':   css_path = value; break;

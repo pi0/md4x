@@ -1,14 +1,14 @@
-.TH MD2HTML 1 "June 2019" "" "General Commands Manual"
+.TH MD4C 1 "February 2026" "" "General Commands Manual"
 .nh
 .ad l
 .
 .SH NAME
 .
-md2html \- convert Markdown to HTML
+md4c \- convert Markdown to various output formats
 .
 .SH SYNOPSIS
 .
-.B md2html
+.B md4c
 .RI [ OPTION ]...\&
 .RI [ FILE ]
 .
@@ -21,8 +21,8 @@ md2html \- convert Markdown to HTML
 Write output to \fIOUTFILE\fR instead of \fBstdout\fR(3)
 .
 .TP
-.BR -f ", " --full-html
-Generate full HTML document, including header
+.BR -t ", " --format= \fIFORMAT\fR
+Output format: \fBhtml\fR (default), \fBtext\fR, \fBjson\fR
 .
 .TP
 .BR -s ", " --stat
@@ -54,10 +54,6 @@ Note: dialect options are equivalent to some combination of flags below.
 .TP
 .B --fcollapse-whitespace
 Collapse non-trivial whitespace
-.
-.TP
-.B --fverbatim-entities
-Do not translate entities
 .
 .TP
 .B --fpermissive-atx-headers
@@ -109,6 +105,28 @@ Enable strikethrough spans
 .TP
 .B --ftasklists
 Enable task lists
+.
+.SS HTML output options:
+.
+.TP
+.BR -f ", " --full-html
+Generate full HTML document, including header
+.
+.TP
+.BR -x ", " --xhtml
+Generate XHTML instead of HTML
+.
+.TP
+.B --fverbatim-entities
+Do not translate entities
+.
+.TP
+.B --html-title= \fITITLE\fR
+Sets the title of the document (with \fB--full-html\fR)
+.
+.TP
+.B --html-css= \fIURL\fR
+Add a CSS link (with \fB--full-html\fR)
 .
 .SH SEE ALSO
 .

@@ -23,13 +23,12 @@ src/
   md4c.pc.in           # pkg-config for libmd4c
   md4c-html.pc.in      # pkg-config for libmd4c-html
   CMakeLists.txt       # Builds libmd4c + libmd4c-html
-md2html/
-  md2html.c            # CLI utility
-  md2html.h            # (stub)
+cli/
+  md4c-cli.c           # CLI utility (multi-format: html, text, json)
   cmdline.c            # Command-line parser (from c-reusables)
   cmdline.h            # Command-line parser API
-  md2html.1            # Man page
-  CMakeLists.txt       # Builds md2html executable
+  md4c.1               # Man page
+  CMakeLists.txt       # Builds md4c executable
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
   spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
@@ -66,11 +65,11 @@ make
 Produces two libraries and one executable:
 - **libmd4c** — Parser library (compiled with `-DMD4C_USE_UTF8`)
 - **libmd4c-html** — HTML renderer (links against libmd4c)
-- **md2html** — CLI utility
+- **md4c** — CLI utility (supports `--format=html|text|json`)
 
 CMake options:
 - `BUILD_SHARED_LIBS=ON|OFF` — Shared (default Linux) vs static (default Windows)
-- `BUILD_MD2HTML_EXECUTABLE=ON|OFF` — Whether to build the CLI (default ON)
+- `BUILD_MD4C_CLI=ON|OFF` — Whether to build the CLI (default ON, `BUILD_MD2HTML_EXECUTABLE` is a backward-compat alias)
 - Default build type is `Release` (Debug is ~2x slower)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement` (GCC/Clang), `/W3` (MSVC)
@@ -84,13 +83,13 @@ CMake exports `md4c::md4c` and `md4c::md4c-html` targets for `find_package(md4c)
 python3 ../scripts/run-tests.py
 
 # Individual test suite:
-python3 test/run-testsuite.py -s test/spec.txt -p build/md2html/md2html
+python3 test/run-testsuite.py -s test/spec.txt -p build/cli/md4c
 
 # Pathological inputs only:
-python3 test/pathological-tests.py -p build/md2html/md2html
+python3 test/pathological-tests.py -p build/cli/md4c
 ```
 
-Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md2html` and compares normalized output.
+Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4c` and compares normalized output.
 
 Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `regressions.txt`, `coverage.txt`
 
@@ -346,10 +345,10 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
 
-## `md2html` CLI
+## `md4c` CLI
 
 ```sh
-md2html [OPTION]... [FILE]
+md4c [OPTION]... [FILE]
 # Reads from stdin if no FILE given
 ```
 
@@ -358,13 +357,10 @@ md2html [OPTION]... [FILE]
 | Option | Description |
 |---|---|
 | `-o`, `--output=FILE` | Output file (default: stdout) |
-| `-f`, `--full-html` | Generate full HTML document with header |
-| `-x`, `--xhtml` | Generate XHTML instead of HTML |
+| `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json` |
 | `-s`, `--stat` | Measure parsing time |
 | `-h`, `--help` | Display help |
 | `-v`, `--version` | Display version |
-| `--html-title=TITLE` | Set document title (with `--full-html`) |
-| `--html-css=URL` | Add CSS link (with `--full-html`) |
 
 **Dialect presets:** `--commonmark` (default), `--github`
 
@@ -372,7 +368,15 @@ md2html [OPTION]... [FILE]
 
 **Suppression flags:** `--fno-html-blocks`, `--fno-html-spans`, `--fno-html`, `--fno-indented-code`
 
-**Renderer flags:** `--fverbatim-entities`
+**HTML output options:**
+
+| Option | Description |
+|---|---|
+| `-f`, `--full-html` | Generate full HTML document with header |
+| `-x`, `--xhtml` | Generate XHTML instead of HTML |
+| `--fverbatim-entities` | Do not translate entities |
+| `--html-title=TITLE` | Set document title (with `--full-html`) |
+| `--html-css=URL` | Add CSS link (with `--full-html`) |
 
 ## Markdown Syntax Reference
 

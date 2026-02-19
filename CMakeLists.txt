@@ -11,7 +11,12 @@ set(PROJECT_VERSION "${MD_VERSION}")
 set(PROJECT_URL "https://github.com/mity/md4c")
 
 
-option(BUILD_MD2HTML_EXECUTABLE "Whether to compile the md2html executable" ON)
+option(BUILD_MD4C_CLI "Whether to compile the md4c CLI executable" ON)
+
+# Backward compatibility alias
+if(DEFINED BUILD_MD2HTML_EXECUTABLE)
+    set(BUILD_MD4C_CLI ${BUILD_MD2HTML_EXECUTABLE})
+endif()
 
 
 if(WIN32)
@@ -66,6 +71,6 @@ endif()
 include(GNUInstallDirs)
 
 add_subdirectory(src)
-if (BUILD_MD2HTML_EXECUTABLE)
-    add_subdirectory(md2html)
+if (BUILD_MD4C_CLI)
+    add_subdirectory(cli)
 endif ()
