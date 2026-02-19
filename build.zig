@@ -47,11 +47,12 @@ pub fn build(b: *std.Build) void {
         }),
         .version = version,
     });
-    md4x_html.addCSourceFiles(.{ .files = &.{"src/md4x-html.c"}, .flags = c_flags });
+    md4x_html.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-html.c"}, .flags = c_flags });
     md4x_html.addCSourceFile(entity_src);
     md4x_html.addIncludePath(b.path("src"));
+    md4x_html.addIncludePath(b.path("src/renderers"));
     md4x_html.linkLibrary(md4x);
-    md4x_html.installHeader(b.path("src/md4x-html.h"), "md4x-html.h");
+    md4x_html.installHeader(b.path("src/renderers/md4x-html.h"), "md4x-html.h");
 
     const md4x_json = b.addLibrary(.{
         .name = "md4x-json",
@@ -63,10 +64,11 @@ pub fn build(b: *std.Build) void {
         }),
         .version = version,
     });
-    md4x_json.addCSourceFiles(.{ .files = &.{"src/md4x-json.c"}, .flags = c_flags });
+    md4x_json.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-json.c"}, .flags = c_flags });
     md4x_json.addIncludePath(b.path("src"));
+    md4x_json.addIncludePath(b.path("src/renderers"));
     md4x_json.linkLibrary(md4x);
-    md4x_json.installHeader(b.path("src/md4x-json.h"), "md4x-json.h");
+    md4x_json.installHeader(b.path("src/renderers/md4x-json.h"), "md4x-json.h");
 
     const md4x_ansi = b.addLibrary(.{
         .name = "md4x-ansi",
@@ -78,11 +80,12 @@ pub fn build(b: *std.Build) void {
         }),
         .version = version,
     });
-    md4x_ansi.addCSourceFiles(.{ .files = &.{"src/md4x-ansi.c"}, .flags = c_flags });
+    md4x_ansi.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-ansi.c"}, .flags = c_flags });
     md4x_ansi.addCSourceFile(entity_src);
     md4x_ansi.addIncludePath(b.path("src"));
+    md4x_ansi.addIncludePath(b.path("src/renderers"));
     md4x_ansi.linkLibrary(md4x);
-    md4x_ansi.installHeader(b.path("src/md4x-ansi.h"), "md4x-ansi.h");
+    md4x_ansi.installHeader(b.path("src/renderers/md4x-ansi.h"), "md4x-ansi.h");
 
     b.installArtifact(md4x);
     b.installArtifact(md4x_html);
@@ -102,6 +105,7 @@ pub fn build(b: *std.Build) void {
     });
     exe.addCSourceFiles(.{ .files = &.{ "src/cli/md4x-cli.c", "src/cli/cmdline.c" }, .flags = c_flags });
     exe.addIncludePath(b.path("src"));
+    exe.addIncludePath(b.path("src/renderers"));
     exe.linkLibrary(md4x_html);
     exe.linkLibrary(md4x_json);
     exe.linkLibrary(md4x_ansi);
@@ -136,10 +140,11 @@ pub fn build(b: *std.Build) void {
     md4x_wasm.rdynamic = true;
     md4x_wasm.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
     md4x_wasm.addCSourceFiles(.{
-        .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-wasm.c" },
+        .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-wasm.c" },
         .flags = c_flags,
     });
     md4x_wasm.addIncludePath(b.path("src"));
+    md4x_wasm.addIncludePath(b.path("src/renderers"));
     md4x_wasm.root_module.export_symbol_names = &.{
         "md4x_alloc",
         "md4x_free",
@@ -206,10 +211,11 @@ pub fn build(b: *std.Build) void {
         });
         napi_lib.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
         napi_lib.addCSourceFiles(.{
-            .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
+            .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
             .flags = napi_c_flags,
         });
         napi_lib.addIncludePath(b.path("src"));
+        napi_lib.addIncludePath(b.path("src/renderers"));
         napi_lib.addIncludePath(.{ .cwd_relative = napi_include });
 
         if (nt.dlltool_machine) |machine| {
@@ -251,10 +257,11 @@ pub fn build(b: *std.Build) void {
         });
         md4x_napi.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
         md4x_napi.addCSourceFiles(.{
-            .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
+            .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
             .flags = napi_c_flags,
         });
         md4x_napi.addIncludePath(b.path("src"));
+        md4x_napi.addIncludePath(b.path("src/renderers"));
         md4x_napi.addIncludePath(.{ .cwd_relative = napi_include });
         md4x_napi.linker_allow_shlib_undefined = true;
 

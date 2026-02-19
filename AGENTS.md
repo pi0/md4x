@@ -16,16 +16,17 @@
 src/
   md4x.c              # Core parser (~6500 LoC)
   md4x.h              # Parser public API
-  md4x-html.c          # HTML renderer library (~570 LoC)
-  md4x-html.h          # HTML renderer public API
   entity.c             # HTML entity lookup table (generated)
   entity.h             # Entity header
-  md4x-json.c          # JSON AST renderer library (~580 LoC)
-  md4x-json.h          # JSON renderer public API
-  md4x-ansi.c          # ANSI terminal renderer library (~450 LoC)
-  md4x-ansi.h          # ANSI renderer public API
   md4x-wasm.c          # WASM exports (alloc/free + renderer wrappers)
   md4x-napi.c          # Node.js NAPI addon (module registration + renderer wrappers)
+  renderers/
+    md4x-html.c        # HTML renderer library (~570 LoC)
+    md4x-html.h        # HTML renderer public API
+    md4x-json.c        # JSON AST renderer library (~580 LoC)
+    md4x-json.h        # JSON renderer public API
+    md4x-ansi.c        # ANSI terminal renderer library (~450 LoC)
+    md4x-ansi.h        # ANSI renderer public API
   cli/
     md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
     cmdline.c            # Command-line parser (from c-reusables)
@@ -612,7 +613,7 @@ Text type mappings: `text` (literal), `linebreak`, `softbreak`, `html_inline` (l
 
 Leaf nodes (`code_block`, `html_block`, `code`, `text`, `html_inline`) store content in `literal`. Container nodes (`document`, `block_quote`, `list`, `item`, `paragraph`, `heading`, `emph`, `strong`, `link`, `image`, etc.) have `children` arrays.
 
-The JSON renderer is implemented as a library in `src/md4x-json.c` (public API in `src/md4x-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
+The JSON renderer is implemented as a library in `src/renderers/md4x-json.c` (public API in `src/renderers/md4x-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
 
 ## Markdown Syntax Reference
 
