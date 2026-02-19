@@ -16,9 +16,57 @@
   #editor { border-right: 1px solid #ddd; overflow: auto; }
   .output-panel { display: flex; flex-direction: column; }
   #output { flex: 1; overflow: auto; font-size: 14px; line-height: 1.6; }
-  #output.mode-html { padding: 16px; font-family: serif; }
+  #output.mode-html { padding: 20px 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2328; }
+  #output.mode-html h1, #output.mode-html h2, #output.mode-html h3,
+  #output.mode-html h4, #output.mode-html h5, #output.mode-html h6 {
+    margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; line-height: 1.25;
+  }
+  #output.mode-html h1 { font-size: 1.75em; padding-bottom: 0.3em; border-bottom: 1px solid #d1d9e0; }
+  #output.mode-html h2 { font-size: 1.4em; padding-bottom: 0.3em; border-bottom: 1px solid #d1d9e0; }
+  #output.mode-html h3 { font-size: 1.15em; }
+  #output.mode-html h1:first-child, #output.mode-html h2:first-child { margin-top: 0; }
+  #output.mode-html p { margin: 0.75em 0; }
+  #output.mode-html a { color: #0969da; text-decoration: none; }
+  #output.mode-html a:hover { text-decoration: underline; }
+  #output.mode-html img { max-width: 100%; height: auto; }
+  #output.mode-html ul, #output.mode-html ol { margin: 0.5em 0; padding-left: 2em; }
+  #output.mode-html li { margin: 0.25em 0; }
+  #output.mode-html li input[type="checkbox"] { margin-right: 0.4em; }
+  #output.mode-html blockquote {
+    margin: 0.75em 0; padding: 0.5em 1em; border-left: 3px solid #d1d9e0; color: #656d76;
+  }
+  #output.mode-html blockquote > :first-child { margin-top: 0; }
+  #output.mode-html blockquote > :last-child { margin-bottom: 0; }
+  #output.mode-html code {
+    font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.875em; padding: 0.2em 0.4em; background: #eff1f3; border-radius: 4px;
+  }
+  #output.mode-html pre {
+    margin: 0.75em 0; padding: 12px 16px; background: #f6f8fa; border-radius: 6px; overflow-x: auto;
+  }
+  #output.mode-html pre code { padding: 0; background: none; font-size: 0.85em; }
+  #output.mode-html table {
+    margin: 0.75em 0; border-collapse: collapse; width: auto; min-width: 50%;
+  }
+  #output.mode-html th, #output.mode-html td {
+    padding: 6px 13px; border: 1px solid #d1d9e0;
+  }
+  #output.mode-html th { font-weight: 600; background: #f6f8fa; }
+  #output.mode-html tr:nth-child(even) { background: #f6f8fa; }
+  #output.mode-html hr { margin: 1.5em 0; border: none; border-top: 2px solid #d1d9e0; }
+  #output.mode-html del { color: #656d76; }
+  #output.mode-html details { margin: 0.75em 0; }
+  #output.mode-html details summary { cursor: pointer; font-weight: 500; }
+  #output.mode-html x-equation { font-family: ui-monospace, monospace; color: #6639a6; }
+  #output.mode-html x-wikilink { color: #0969da; border-bottom: 1px dashed #0969da; }
+  #output.mode-raw, #output.mode-json { background: #1a1b26; }
   #output.mode-raw pre.shiki, #output.mode-json pre.shiki { margin: 0; padding: 16px; font-size: 13px; height: 100%; overflow: auto; }
-  #output.mode-ansi { padding: 16px; font-family: monospace; white-space: pre-wrap; background: #000; color: #eee; }
+  #output.mode-ansi {
+    padding: 20px 24px; font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+    background: linear-gradient(135deg, #0f0f1a 0%, #161625 100%); color: #c8cad8; overflow: auto;
+  }
+  #output.mode-ansi span { background: transparent; }
   .output-header { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid #ddd; gap: 12px; }
   .output-header select { padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
 </style>
@@ -37,8 +85,8 @@
       <select id="mode">
         <option value="html">HTML (rendered)</option>
         <option value="raw">HTML (source)</option>
-        <option value="json">JSON AST</option>
-        <option value="ansi">ANSI</option>
+        <option value="json">JSON AST (comark)</option>
+        <option value="ansi">ANSI (CLI)</option>
       </select>
     </div>
     <div id="output"></div>
@@ -49,35 +97,162 @@
   import '@milkdown/crepe/theme/common/style.css';
   import '@milkdown/crepe/theme/frame.css';
   import { initWasm, renderToHtml, renderToJson, renderToAnsi } from './lib/wasm.mjs';
-  import ansiHTML from 'ansi-html';
   import { createHighlighter } from 'shiki';
+
+  const ansiColors = {
+    30: '#545464', 31: '#ff6b6b', 32: '#69db7c', 33: '#ffd43b',
+    34: '#74c0fc', 35: '#da77f2', 36: '#66d9e8', 37: '#c8cad8',
+    39: null, // default
+    90: '#686878', 91: '#ff8787', 92: '#8ce99a', 93: '#ffe066',
+    94: '#91d5ff', 95: '#e599f7', 96: '#99e9f2', 97: '#e4e5eb',
+  };
+  function ansiToHtml(str) {
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let out = '', styles = { bold: false, dim: false, italic: false, underline: false, strike: false, color: null };
+    const parts = str.split(/\x1b\[([\d;]*)m/);
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) {
+        const text = parts[i];
+        if (!text) continue;
+        const css = [];
+        if (styles.bold) css.push('font-weight:bold');
+        if (styles.dim) css.push('opacity:0.6');
+        if (styles.italic) css.push('font-style:italic');
+        if (styles.underline) css.push('text-decoration:underline');
+        if (styles.strike) css.push('text-decoration:line-through');
+        if (styles.color) css.push(`color:${styles.color}`);
+        out += css.length ? `<span style="${css.join(';')}">${esc(text)}</span>` : esc(text);
+      } else {
+        for (const c of (parts[i] || '0').split(';')) {
+          const n = Number(c);
+          if (n === 0) { styles = { bold: false, dim: false, italic: false, underline: false, strike: false, color: null }; }
+          else if (n === 1) styles.bold = true;
+          else if (n === 2) styles.dim = true;
+          else if (n === 3) styles.italic = true;
+          else if (n === 4) styles.underline = true;
+          else if (n === 9) styles.strike = true;
+          else if (n === 22) { styles.bold = false; styles.dim = false; }
+          else if (n === 23) styles.italic = false;
+          else if (n === 24) styles.underline = false;
+          else if (n === 29) styles.strike = false;
+          else if (ansiColors[n] !== undefined) styles.color = ansiColors[n];
+        }
+      }
+    }
+    return out;
+  }
 
   const output = document.getElementById('output');
   const modeEl = document.getElementById('mode');
 
   const defaultMd = `# Hello md4x
 
-This is a **live** _playground_ for the md4x parser.
+This is a **live** _playground_ for [md4x](https://github.com/pi0/md4x) — a fast markdown parser and renderer.
 
-## Features
+## Inline Formatting
 
-- [x] CommonMark
-- [ ] Tables
-- [ ] ~~Strikethrough~~
+**Bold text**, *italic text*, __underlined text__, ~~strikethrough~~, and \`inline code\`.
 
-| Column A | Column B |
-|----------|----------|
-| foo      | bar      |
+You can also **combine _bold and italic_** or ~~**bold strikethrough**~~.
 
-> Blockquote with \`inline code\`
+## Links & Autolinks
+
+- [Explicit link](https://github.com/pi0/md4x)
+- Autolink URL: https://github.com
+- Autolink email: hello@example.com
+- Autolink www: www.example.com
+
+## Images
+
+![md4x](https://www.petmd.com/sites/default/files/petmd-cat-happy-13.jpg)
+
+## Lists
+
+Unordered:
+
+- First item
+- Second item
+  - Nested item
+  - Another nested
+- Third item
+
+Ordered:
+
+1. Step one
+2. Step two
+3. Step three
+
+## Task Lists
+
+- [x] CommonMark support
+- [x] Tables
+- [x] Strikethrough
+- [x] Task lists
+- [ ] More to explore...
+
+## Blockquotes
+
+> Blockquotes can contain **inline** formatting.
+>
+> > And they can be nested too.
+
+## Code
+
+Inline: \`const x = 42;\`
+
+Fenced block:
 
 \`\`\`js
-console.log("hello");
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
 \`\`\`
 
-Visit https://github.com for more.
+Indented block:
 
-$E = mc^2$`;
+    four spaces
+    indented code
+
+## Tables
+
+| Feature         | Status | Notes              |
+|:----------------|:------:|-------------------:|
+| CommonMark      |   ✓    |       Spec 0.31.2  |
+| Tables          |   ✓    | Alignment support  |
+| Strikethrough   |   ✓    |   \`~\` or \`~~\`  |
+| Task Lists      |   ✓    |  \`[x]\` / \`[ ]\` |
+| LaTeX Math      |   ✓    | Inline and display |
+| Wiki Links      |   ✓    |  \`[[target]]\`    |
+| Underline       |   ✓    |    \`__text__\`     |
+| Frontmatter     |   ✓    |    YAML \`---\`     |
+
+
+## Wiki Links
+
+Link to [[another page]] using wiki-style syntax.
+
+## Horizontal Rule
+
+---
+
+## HTML (Raw)
+
+<details>
+<summary>Click to expand</summary>
+
+Raw HTML is passed through by the parser.
+
+</details>
+
+## Hard Breaks
+
+Line one with two trailing spaces
+Line two (hard break above).
+
+Line three with backslash\\
+Line four (hard break above).
+
+`;
 
   // Restore state from URL hash
   let initialMd = defaultMd;
@@ -97,7 +272,7 @@ $E = mc^2$`;
   });
 
   const highlighter = await createHighlighter({
-    themes: ['vitesse-light'],
+    themes: ['tokyo-night'],
     langs: ['html', 'json'],
   });
 
@@ -123,16 +298,13 @@ $E = mc^2$`;
       if (m === 'html') {
         output.innerHTML = renderToHtml(md);
       } else if (m === 'raw') {
-        output.innerHTML = highlighter.codeToHtml(renderToHtml(md), { lang: 'html', theme: 'vitesse-light' });
+        output.innerHTML = highlighter.codeToHtml(renderToHtml(md), { lang: 'html', theme: 'tokyo-night' });
       } else if (m === 'json') {
-        output.innerHTML = highlighter.codeToHtml(JSON.stringify(renderToJson(md), null, 2), { lang: 'json', theme: 'vitesse-light' });
+        output.innerHTML = highlighter.codeToHtml(JSON.stringify(renderToJson(md), null, 2), { lang: 'json', theme: 'tokyo-night' });
       } else if (m === 'ansi') {
         const ansi = renderToAnsi(md)
-          .replace(/\033\]8;[^\033]*\033\\/g, '')
-          .replace(/\033\[([\d;]+)m/g, (_, codes) =>
-            codes.split(';').map(c => `\x1b[${c}m`).join('')
-          );
-        output.innerHTML = ansiHTML(ansi);
+          .replace(/\033\]8;[^\033]*\033\\/g, '');
+        output.innerHTML = ansiToHtml(ansi);
       }
     } catch (e) {
       output.textContent = `Error: ${e.message}`;
