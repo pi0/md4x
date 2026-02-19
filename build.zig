@@ -273,6 +273,6 @@ pub fn build(b: *std.Build) void {
         napi_step.dependOn(&napi_install.step);
 
         b.getInstallStep().dependOn(wasm_step);
-        b.getInstallStep().dependOn(napi_step);
+        b.getInstallStep().dependOn(napi_all_step);
     }
 }
