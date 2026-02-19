@@ -31,11 +31,11 @@ jobs:
       - name: Build NAPI
         run: zig build napi -Dnapi-include=node_modules/node-api-headers/include
 
-      - name: Test
-        run: bun ./scripts/run-tests.ts
+      # - name: Test
+      #   run: bun ./scripts/run-tests.ts
 
-      # - name: Test (vitest)
-      #   run: bun vitest run
+      - name: Test (vitest)
+        run: bun vitest run
 
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
