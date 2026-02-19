@@ -1,7 +1,10 @@
-
 # The MIT License (MIT)
 
-Copyright © 2016-2024 Martin Mitáš
+Copyright © 2016-2024 Martin Mitáš (https://github.com/mity/md4c)
+Copyright © 2025-present Pooya Parsa <pooya@pi0.io>
+
+This software is a fork of [md4c](https://github.com/mity/md4c) by Martin Mitáš,
+originally licensed under the MIT License.
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the “Software”),
