@@ -227,6 +227,29 @@ The package exports TypeScript types for the Comark AST:
 - `ComarkText` — Plain string representing text content
 - `ComarkElementAttributes` — Key-value record: `{ [key: string]: unknown }`
 
+### Comark AST Format
+
+The JSON renderer produces a **Comark AST** — a lightweight, array-based format. Each node is either a plain string (text) or an element tuple `[tag, props, ...children]`.
+
+**Property type conventions in AST output:**
+
+| MDC Syntax                     | AST Props                           | Description                  |
+| ------------------------------ | ----------------------------------- | ---------------------------- |
+| `prop="value"`                 | `"prop": "value"`                   | String prop                  |
+| `bool`                         | `":bool": "true"`                   | Boolean (`:` prefix in key)  |
+| `:count="5"`                   | `":count": "5"`                     | Number/bind (`:` prefix)     |
+| `:data='{"k":"v"}'`            | `":data": "{\"k\":\"v\"}"`          | JSON passthrough             |
+| `#my-id`                       | `"id": "my-id"`                     | ID shorthand                 |
+| `.class-one .class-two`        | `"class": "class-one class-two"`    | Class shorthand (merged)     |
+
+**Key AST mappings:**
+
+- Headings: `["h1", {"id": "slug"}, "text"]` — auto-generated slug ID
+- Code blocks: `["pre", {"language": "js", "filename": "app.js", "highlights": [1,2]}, ["code", {"class": "language-js"}, "..."]]`
+- Components: `["component-name", {props}, ...children]`
+- Slots: `["template", {"name": "slot-name"}, ...children]`
+- Images: `["img", {"src": "url", "alt": "text"}]` (void, no children)
+
 ### JS Package Testing
 
 Tests use vitest with a shared test suite (`packages/md4x/test/_suite.mjs`) that validates both NAPI and WASM bindings:
@@ -738,7 +761,7 @@ Inline `$...$` and display `$$...$$`. Opener must not be preceded by alphanumeri
 
 ### Extension: Frontmatter (`MD_FLAG_FRONTMATTER`)
 
-YAML-style frontmatter delimited by `---` at the very start of the document. The opening `---` must be on the first line (no leading blank lines). Content is exposed as verbatim text via `MD_BLOCK_FRONTMATTER`. HTML renderer outputs `<x-frontmatter>...</x-frontmatter>`. If unclosed, the rest of the document is treated as frontmatter content.
+YAML-style frontmatter delimited by `---` at the very start of the document. The opening `---` must be on the first line (no leading blank lines). Content is exposed as verbatim text via `MD_BLOCK_FRONTMATTER`. HTML renderer outputs `<x-frontmatter>...</x-frontmatter>`. If unclosed, the rest of the document is treated as frontmatter content. Special fields: `depth` (max heading level for TOC, default 2), `searchDepth` (TOC search depth, default 2).
 
 ### Extension: Inline Components (`MD_FLAG_COMPONENTS`)
 
@@ -848,6 +871,38 @@ Constraints:
 - `MD_SPAN_SPAN` is emitted for `[text]{attrs}` with `MD_SPAN_SPAN_DETAIL`
 
 HTML renderer: attributes rendered on opening tags. JSON renderer: attrs merged into node props. ANSI renderer: transparent (ignores attrs).
+
+### Code Block Metadata
+
+Fenced code blocks support filename and line highlighting metadata:
+
+```
+```javascript [app.js] {1-3,5}
+code here
+```
+```
+
+- **Filename**: `[filename]` — stored as `filename` prop in AST
+- **Highlights**: `{3}` single line, `{1-5}` range, `{1,3,5}` multiple, `{1-3,7,10-12}` combined — stored as `highlights` array in AST
+- **Escape**: backslash for special chars in filename: `[@[...slug\].ts]`
+- All metadata can be combined in any order
+
+### Emojis
+
+`:emoji_name:` syntax is supported (e.g. `:rocket:` → 🚀, `:wave:` → 👋). Works in text and inside components.
+
+### Excerpts
+
+`<!-- more -->` comment splits content into excerpt and body:
+
+```
+# Title
+Intro paragraph (excerpt)
+<!-- more -->
+Full content (body only)
+```
+
+Available as `result.excerpt` (content before marker) and `result.body` (full content) from the parse API.
 
 ## Code Generation Scripts
 
