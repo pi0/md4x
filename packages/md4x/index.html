@@ -118,7 +118,7 @@
   import { Crepe } from '@milkdown/crepe';
   import '@milkdown/crepe/theme/common/style.css';
   import '@milkdown/crepe/theme/frame.css';
-  import { initWasm, renderToHtml, renderToJson, renderToAnsi } from './lib/wasm.mjs';
+  import { initWasm, renderToHtml, parseAST, renderToAnsi } from './lib/wasm.mjs';
   import { createHighlighter } from 'shiki';
 
   const ansiColors = {
@@ -327,7 +327,7 @@ Line four (hard break above).
       } else if (m === 'raw') {
         output.innerHTML = highlighter.codeToHtml(renderToHtml(md), { lang: 'html', theme: 'tokyo-night' });
       } else if (m === 'json') {
-        output.innerHTML = highlighter.codeToHtml(JSON.stringify(renderToJson(md), null, 2), { lang: 'json', theme: 'tokyo-night' });
+        output.innerHTML = highlighter.codeToHtml(JSON.stringify(parseAST(md), null, 2), { lang: 'json', theme: 'tokyo-night' });
       } else if (m === 'ansi') {
         const ansi = renderToAnsi(md)
           .replace(/\033\]8;[^\033]*\033\\/g, '');
