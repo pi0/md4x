@@ -509,6 +509,13 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "<x-frontmatter>"); break;
         case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_TEMPLATE: {
+            const MD_BLOCK_TEMPLATE_DETAIL* det = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
+            RENDER_VERBATIM(r, "<template name=\"");
+            render_attribute(r, &det->name, render_html_escaped);
+            RENDER_VERBATIM(r, "\">\n");
+            break;
+        }
     }
 
     return 0;
@@ -539,6 +546,7 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "</x-frontmatter>\n"); break;
         case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_TEMPLATE:     RENDER_VERBATIM(r, "</template>\n"); break;
     }
 
     return 0;

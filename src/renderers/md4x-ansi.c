@@ -390,6 +390,10 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             }
             render_ansi(r, ANSI_COLOR_CYAN);
             break;
+
+        case MD_BLOCK_TEMPLATE:
+            /* Transparent — content renders normally within parent component. */
+            break;
     }
 
     return 0;
@@ -484,6 +488,10 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_COMPONENT:
             render_ansi(r, ANSI_COLOR_DEFAULT);
             r->need_newline = 1;
+            break;
+
+        case MD_BLOCK_TEMPLATE:
+            /* Transparent — no output needed. */
             break;
     }
 

@@ -280,6 +280,16 @@ struct MD_CTX_tag {
     int alloc_block_components;     /* Allocated capacity. */
     int block_component_nesting;    /* Current nesting depth (for active open components). */
 
+    /* Slot info array within block components.
+     * Each #slot-name opener pushes its info here. The index is stored
+     * in the container block's data field for later lookup. */
+    struct {
+        OFF name_beg;               /* Offset of slot name in source. */
+        OFF name_end;
+    } *slot_info;
+    int n_slots;                    /* Number of entries used. */
+    int alloc_slots;                /* Allocated capacity. */
+
     /* Inline attribute info array.
      * Resolved trailing {attrs} on inline spans (emphasis, code, links, etc.).
      * Built by md_resolve_attrs() after all other mark resolution. */
@@ -5807,6 +5817,7 @@ md_process_all_blocks(MD_CTX* ctx)
             MD_BLOCK_OL_DETAIL ol;
             MD_BLOCK_LI_DETAIL li;
             MD_BLOCK_COMPONENT_DETAIL component;
+            MD_BLOCK_TEMPLATE_DETAIL tmpl;
         } det;
 
         memset(&det, 0, sizeof(det));
@@ -5850,6 +5861,20 @@ md_process_all_blocks(MD_CTX* ctx)
                 break;
             }
 
+            case MD_BLOCK_TEMPLATE: {
+                int slot_idx = (int) block->data;
+                if(slot_idx >= 0 && slot_idx < ctx->n_slots) {
+                    OFF name_beg = ctx->slot_info[slot_idx].name_beg;
+                    OFF name_end = ctx->slot_info[slot_idx].name_end;
+
+                    memset(&comp_name_build, 0, sizeof(comp_name_build));
+                    MD_CHECK(md_build_attribute(ctx, STR(name_beg), name_end - name_beg,
+                                                0, &det.tmpl.name, &comp_name_build));
+                    clean_component_detail = TRUE;
+                }
+                break;
+            }
+
             default:
                 /* noop */
                 break;
@@ -5859,7 +5884,8 @@ md_process_all_blocks(MD_CTX* ctx)
             if(block->flags & MD_BLOCK_CONTAINER_CLOSER) {
                 MD_LEAVE_BLOCK(block->type, &det);
 
-                if(block->type == MD_BLOCK_UL || block->type == MD_BLOCK_OL || block->type == MD_BLOCK_QUOTE)
+                if(block->type == MD_BLOCK_UL || block->type == MD_BLOCK_OL || block->type == MD_BLOCK_QUOTE
+                   || block->type == MD_BLOCK_COMPONENT || block->type == MD_BLOCK_TEMPLATE)
                     ctx->n_containers--;
             }
 
@@ -5877,6 +5903,10 @@ md_process_all_blocks(MD_CTX* ctx)
                     ctx->n_containers++;
                 } else if(block->type == MD_BLOCK_COMPONENT) {
                     /* Block components wrap content in <p>...</p>. */
+                    ctx->containers[ctx->n_containers].is_loose = TRUE;
+                    ctx->n_containers++;
+                } else if(block->type == MD_BLOCK_TEMPLATE) {
+                    /* Template slots wrap content in <p>...</p>. */
                     ctx->containers[ctx->n_containers].is_loose = TRUE;
                     ctx->n_containers++;
                 }
@@ -6170,6 +6200,30 @@ md_push_block_component_info(MD_CTX* ctx, unsigned colon_count,
         ctx->block_component_info[idx].name_end = name_end;
         ctx->block_component_info[idx].props_beg = props_beg;
         ctx->block_component_info[idx].props_end = props_end;
+        return idx;
+    }
+}
+
+static int
+md_push_slot_info(MD_CTX* ctx, OFF name_beg, OFF name_end)
+{
+    if(ctx->n_slots >= ctx->alloc_slots) {
+        int new_alloc = (ctx->alloc_slots > 0
+                ? ctx->alloc_slots + ctx->alloc_slots / 2
+                : 16);
+        void* new_arr = realloc(ctx->slot_info, new_alloc * sizeof(ctx->slot_info[0]));
+        if(new_arr == NULL) {
+            MD_LOG("realloc() failed.");
+            return -1;
+        }
+        ctx->slot_info = new_arr;
+        ctx->alloc_slots = new_alloc;
+    }
+
+    {
+        int idx = ctx->n_slots++;
+        ctx->slot_info[idx].name_beg = name_beg;
+        ctx->slot_info[idx].name_end = name_end;
         return idx;
     }
 }
@@ -6662,6 +6716,35 @@ md_is_block_component_closer(MD_CTX* ctx, OFF off, OFF* p_end)
     return colon_count;
 }
 
+/* Check if line at 'off' is a slot opener: #slot-name (within a block component).
+ * Returns non-zero on success, 0 on failure. */
+static int
+md_is_slot_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_end, OFF* p_end)
+{
+    /* Must start with '#'. */
+    if(off >= ctx->size || CH(off) != _T('#'))
+        return 0;
+    off++;
+
+    /* Slot name must start with a letter. */
+    if(off >= ctx->size || !ISALPHA(off))
+        return 0;
+
+    *p_name_beg = off;
+    while(off < ctx->size && (ISALNUM(off) || CH(off) == _T('-')))
+        off++;
+    *p_name_end = off;
+
+    /* Only whitespace allowed after. */
+    while(off < ctx->size && ISBLANK(off))
+        off++;
+    if(off < ctx->size && !ISNEWLINE(off))
+        return 0;
+
+    *p_end = off;
+    return 1;
+}
+
 static int
 md_is_container_compatible(const MD_CONTAINER* pivot, const MD_CONTAINER* container)
 {
@@ -6744,6 +6827,10 @@ md_enter_child_containers(MD_CTX* ctx, int n_children)
                 MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_COMPONENT, 0, c->start, MD_BLOCK_CONTAINER_OPENER));
                 break;
 
+            case _T('#'):
+                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_TEMPLATE, 0, c->start, MD_BLOCK_CONTAINER_OPENER));
+                break;
+
             default:
                 MD_UNREACHABLE();
                 break;
@@ -6789,6 +6876,11 @@ md_leave_child_containers(MD_CTX* ctx, int n_keep)
                 MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_COMPONENT, 0,
                                 c->start, MD_BLOCK_CONTAINER_CLOSER));
                 ctx->block_component_nesting--;
+                break;
+
+            case _T('#'):
+                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_TEMPLATE, 0,
+                                c->start, MD_BLOCK_CONTAINER_CLOSER));
                 break;
 
             default:
@@ -6924,7 +7016,9 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
 
         } else if(c->ch == _T(':')) {
             /* Block component: always continues (content is normal markdown). */
-        } else if(c->ch != _T('>')  &&  c->ch != _T(':')  &&  line->indent >= c->contents_indent) {
+        } else if(c->ch == _T('#')) {
+            /* Template slot: always continues (content is normal markdown). */
+        } else if(c->ch != _T('>')  &&  c->ch != _T(':')  &&  c->ch != _T('#')  &&  line->indent >= c->contents_indent) {
             /* List. */
             line->indent -= c->contents_indent;
         } else {
@@ -6936,10 +7030,11 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
 
     if(off >= ctx->size  ||  ISNEWLINE(off)) {
         /* Blank line does not need any real indentation to be nested inside
-         * a list or block component. */
+         * a list, block component, or template slot. */
         if(n_brothers + n_children == 0) {
             while(n_parents < ctx->n_containers  &&  ctx->containers[n_parents].ch != _T('>')
-                  &&  ctx->containers[n_parents].ch != _T(':'))
+                  &&  ctx->containers[n_parents].ch != _T(':')
+                  &&  ctx->containers[n_parents].ch != _T('#'))
                 n_parents++;
         }
     }
@@ -7053,6 +7148,55 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 }
                 if(line->type == MD_LINE_BLANK)
                     break;
+            }
+        }
+
+        /* Check for slot opener (#slot-name) inside a block component.
+         * Slots cannot interrupt a paragraph. */
+        if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&  ctx->block_component_nesting > 0  &&
+           line->indent < ctx->code_indent_offset  &&
+           pivot_line->type != MD_LINE_TEXT  &&
+           off < ctx->size  &&  CH(off) == _T('#'))
+        {
+            OFF name_beg, name_end, slot_end;
+            if(md_is_slot_opener(ctx, off, &name_beg, &name_end, &slot_end)) {
+                int slot_idx = md_push_slot_info(ctx, name_beg, name_end);
+                if(slot_idx < 0) { ret = -1; goto abort; }
+
+                /* Close any existing template container within the current component. */
+                {
+                    int i;
+                    for(i = ctx->n_containers - 1; i >= 0; i--) {
+                        if(ctx->containers[i].ch == _T('#')) {
+                            if(n_children == 0)
+                                MD_CHECK(md_leave_child_containers(ctx, i));
+                            break;
+                        }
+                        /* Stop at component boundary. */
+                        if(ctx->containers[i].ch == _T(':'))
+                            break;
+                    }
+                }
+
+                container.ch = _T('#');
+                container.is_loose = FALSE;
+                container.is_task = FALSE;
+                container.mark_indent = 0;
+                container.contents_indent = 0;
+                container.start = (unsigned) slot_idx;
+                container.colon_count = 0;
+
+                if(n_brothers + n_children == 0)
+                    pivot_line = &md_dummy_blank_line;
+                if(n_children == 0)
+                    MD_CHECK(md_leave_child_containers(ctx, n_parents + n_brothers));
+
+                n_children++;
+                MD_CHECK(md_push_container(ctx, &container));
+
+                off = slot_end;
+                line->type = MD_LINE_BLANK;
+                break;
             }
         }
 
@@ -7679,6 +7823,7 @@ md_parse(const MD_CHAR* text, MD_SIZE size, const MD_PARSER* parser, void* userd
     free(ctx.block_bytes);
     free(ctx.containers);
     free(ctx.block_component_info);
+    free(ctx.slot_info);
     free(ctx.inline_attrs);
 
     return ret;

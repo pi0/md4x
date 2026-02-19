@@ -327,3 +327,133 @@ Message
 .
 <p><widget data="{&quot;x&quot;:1}"></widget></p>
 ````````````````````````````````
+
+
+# Component Slots
+
+## Single named slot
+
+```````````````````````````````` example
+::card
+#title
+Card Title
+::
+.
+<card>
+<template name="title">
+<p>Card Title</p>
+</template>
+</card>
+````````````````````````````````
+
+## Multiple named slots
+
+```````````````````````````````` example
+::card
+#header
+## Card Title
+
+#content
+This is the main content
+
+#footer
+Footer text
+::
+.
+<card>
+<template name="header">
+<h2>Card Title</h2>
+</template>
+<template name="content">
+<p>This is the main content</p>
+</template>
+<template name="footer">
+<p>Footer text</p>
+</template>
+</card>
+````````````````````````````````
+
+## Default content before named slot
+
+```````````````````````````````` example
+::card
+Default content
+
+#title
+Card Title
+::
+.
+<card>
+<p>Default content</p>
+<template name="title">
+<p>Card Title</p>
+</template>
+</card>
+````````````````````````````````
+
+## Slot with rich markdown content
+
+```````````````````````````````` example
+::card
+#body
+This has **bold** and *italic* text.
+
+- Item one
+- Item two
+::
+.
+<card>
+<template name="body">
+<p>This has <strong>bold</strong> and <em>italic</em> text.</p>
+<ul>
+<li>Item one</li>
+<li>Item two</li>
+</ul>
+</template>
+</card>
+````````````````````````````````
+
+## Empty slot
+
+```````````````````````````````` example
+::card
+#empty
+#content
+Text here
+::
+.
+<card>
+<template name="empty">
+</template>
+<template name="content">
+<p>Text here</p>
+</template>
+</card>
+````````````````````````````````
+
+## Slot name outside component is literal text
+
+```````````````````````````````` example
+#not-a-slot
+.
+<p>#not-a-slot</p>
+````````````````````````````````
+
+## Slot in nested component
+
+```````````````````````````````` example
+:::outer
+::inner
+#title
+Inner Title
+::
+:::
+.
+<outer>
+<inner>
+<template name="title">
+<p>Inner Title</p>
+</template>
+</inner>
+</outer>
+````````````````````````````````

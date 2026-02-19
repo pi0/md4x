@@ -109,7 +109,12 @@ typedef enum MD_BLOCKTYPE {
     /* Block component (::component-name{props} ... ::).
      * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
      * Detail: Structure MD_BLOCK_COMPONENT_DETAIL. */
-    MD_BLOCK_COMPONENT
+    MD_BLOCK_COMPONENT,
+
+    /* Template/slot within a block component (#slot-name).
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_BLOCK_TEMPLATE_DETAIL. */
+    MD_BLOCK_TEMPLATE
 } MD_BLOCKTYPE;
 
 /* Span represents an in-line piece of a document which should be rendered with
@@ -342,6 +347,11 @@ typedef struct MD_BLOCK_COMPONENT_DETAIL {
     const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
     MD_SIZE raw_props_size;         /* Size of raw_props. */
 } MD_BLOCK_COMPONENT_DETAIL;
+
+/* Detailed info for MD_BLOCK_TEMPLATE (component slot). */
+typedef struct MD_BLOCK_TEMPLATE_DETAIL {
+    MD_ATTRIBUTE name;              /* Slot name (e.g. "header", "footer"). */
+} MD_BLOCK_TEMPLATE_DETAIL;
 
 /* Detailed info for inline spans with trailing attributes {.class #id key="value"}.
  * Used for MD_SPAN_EM, MD_SPAN_STRONG, MD_SPAN_CODE, MD_SPAN_DEL, MD_SPAN_U

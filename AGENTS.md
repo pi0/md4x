@@ -96,6 +96,7 @@ Outputs to `zig-out/` (`bin/md4x`, `lib/libmd4x*.a`, `include/md4x*.h`).
 The project can also be consumed as a Zig package dependency via `build.zig.zon`.
 
 Produces four static libraries, one executable, and optional WASM/NAPI targets:
+
 - **libmd4x** — Parser library (compiled with `-DMD4X_USE_UTF8`)
 - **libmd4x-html** — HTML renderer (links against libmd4x)
 - **libmd4x-json** — JSON AST renderer (links against libmd4x)
@@ -117,24 +118,24 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 
 **Exported functions:**
 
-| Function | Description |
-|---|---|
-| `md4x_alloc(size) -> ptr` | Allocate memory in WASM linear memory |
-| `md4x_free(ptr)` | Free previously allocated memory |
-| `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error) |
-| `md4x_to_json(ptr, size) -> int` | Render to JSON AST |
-| `md4x_to_ansi(ptr, size) -> int` | Render to ANSI |
-| `md4x_result_ptr() -> ptr` | Get output buffer pointer (after render) |
-| `md4x_result_size() -> size` | Get output buffer size (after render) |
+| Function                         | Description                              |
+| -------------------------------- | ---------------------------------------- |
+| `md4x_alloc(size) -> ptr`        | Allocate memory in WASM linear memory    |
+| `md4x_free(ptr)`                 | Free previously allocated memory         |
+| `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error)          |
+| `md4x_to_json(ptr, size) -> int` | Render to JSON AST                       |
+| `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
+| `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
+| `md4x_result_size() -> size`     | Get output buffer size (after render)    |
 
 **Usage from JS (via `lib/wasm.mjs` wrapper):**
 
 ```js
-import { initWasm, renderToHtml } from 'md4x/wasm';
+import { initWasm, renderToHtml } from "md4x/wasm";
 
 await initWasm(); // load WASM binary (call once before using render methods)
 
-const html = renderToHtml('# Hello'); // sync after init
+const html = renderToHtml("# Hello"); // sync after init
 ```
 
 `initWasm(input?)` accepts an optional input: `ArrayBuffer`, `Uint8Array`, `WebAssembly.Module`, `Response`, or `Promise<Response>`. When called with no arguments in Node.js, it reads the bundled `.wasm` file from disk. All render methods are **sync** after initialization. All extensions are enabled by default (`MD_DIALECT_ALL`).
@@ -161,31 +162,31 @@ zig build napi-win32-arm64 -Dnapi-include=node_modules/node-api-headers/include
 `zig build napi` outputs `packages/md4x/build/md4x.node` (host platform, for development).
 `zig build napi-all` outputs platform-specific binaries to `packages/md4x/build/`:
 
-| Output file | Platform |
-|---|---|
-| `md4x.linux-x64.node` | Linux x86_64 |
-| `md4x.linux-arm64.node` | Linux aarch64 |
-| `md4x.darwin-x64.node` | macOS x86_64 |
+| Output file              | Platform            |
+| ------------------------ | ------------------- |
+| `md4x.linux-x64.node`    | Linux x86_64        |
+| `md4x.linux-arm64.node`  | Linux aarch64       |
+| `md4x.darwin-x64.node`   | macOS x86_64        |
 | `md4x.darwin-arm64.node` | macOS Apple Silicon |
-| `md4x.win32-x64.node` | Windows x86_64 |
-| `md4x.win32-arm64.node` | Windows ARM64 |
+| `md4x.win32-x64.node`    | Windows x86_64      |
+| `md4x.win32-arm64.node`  | Windows ARM64       |
 
 Windows targets use `zig dlltool` to generate import libraries from `node_modules/node-api-headers/def/node_api.def`. The `-Dnapi-def` build option can override the `.def` path.
 
 **Exported functions (C-level, raw strings):**
 
-| Function | Signature |
-|---|---|
-| `renderToHtml` | `(input: string) => string` |
+| Function       | Signature                                 |
+| -------------- | ----------------------------------------- |
+| `renderToHtml` | `(input: string) => string`               |
 | `renderToJson` | `(input: string) => string` (JSON string) |
-| `renderToAnsi` | `(input: string) => string` |
+| `renderToAnsi` | `(input: string) => string`               |
 
 **Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
 
 ```js
-import { renderToHtml } from 'md4x/napi';
+import { renderToHtml } from "md4x/napi";
 
-const html = renderToHtml('# Hello');
+const html = renderToHtml("# Hello");
 ```
 
 The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToJson` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
@@ -196,23 +197,23 @@ The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` 
 
 Configured in `packages/md4x/package.json` via `exports`:
 
-| Subpath | Module | Description |
-|---|---|---|
+| Subpath       | Module                                           | Description                                  |
+| ------------- | ------------------------------------------------ | -------------------------------------------- |
 | `md4x` (bare) | `lib/napi.mjs` (node) / `lib/wasm.mjs` (default) | Auto-selects NAPI on Node.js, WASM elsewhere |
-| `md4x/wasm` | `lib/wasm.mjs` | WASM-based API (sync after `initWasm()`) |
-| `md4x/napi` | `lib/napi.mjs` | Sync NAPI-based API (ESM only) |
+| `md4x/wasm`   | `lib/wasm.mjs`                                   | WASM-based API (sync after `initWasm()`)     |
+| `md4x/napi`   | `lib/napi.mjs`                                   | Sync NAPI-based API (ESM only)               |
 
 All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer flag configuration is exposed to JS consumers.
 
 **JS API functions:**
 
-| Function | NAPI | WASM |
-|---|---|---|
-| `initWasm(input?)` | — | `Promise<void>` (call once before render) |
-| `renderToHtml(input: string)` | `string` | `string` |
-| `renderToJson(input: string)` | `string` | `string` |
-| `parseAST(input: string)` | `ComarkTree` | `ComarkTree` |
-| `renderToAnsi(input: string)` | `string` | `string` |
+| Function                      | NAPI         | WASM                                      |
+| ----------------------------- | ------------ | ----------------------------------------- |
+| `initWasm(input?)`            | —            | `Promise<void>` (call once before render) |
+| `renderToHtml(input: string)` | `string`     | `string`                                  |
+| `renderToJson(input: string)` | `string`     | `string`                                  |
+| `parseAST(input: string)`     | `ComarkTree` | `ComarkTree`                              |
+| `renderToAnsi(input: string)` | `string`     | `string`                                  |
 
 `renderToJson` returns the raw JSON string from the C renderer. `parseAST` calls `renderToJson` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
 
@@ -246,6 +247,7 @@ bun packages/md4x/bench/index.mjs
 ### Workspace Setup
 
 The root `package.json` defines a bun workspace (`"workspaces": ["packages/*"]`) with:
+
 - `node-api-headers` — Required for NAPI builds
 - `prettier` — Code formatting
 - Package manager: `bun@1.3.9`
@@ -306,6 +308,7 @@ typedef struct MD_PARSER {
 - Any callback may abort parsing by returning non-zero
 
 **Linear time guarantee** — Protections against pathological inputs:
+
 - Code span mark limits (32 backticks max)
 - Table column limits (128 max)
 - Link reference definition abuse limits
@@ -333,66 +336,67 @@ leave_block(MD_BLOCK_DOC)
 
 MD4X assumes ASCII-compatible encoding. Preprocessor macros:
 
-| Macro | Effect |
-|---|---|
-| _(default)_ | UTF-8 support enabled (since v0.4.3, UTF-8 is default) |
-| `MD4X_USE_ASCII` | Force ASCII-only mode |
-| `MD4X_USE_UTF16` | Windows UTF-16 via `WCHAR` (Windows only) |
+| Macro            | Effect                                                 |
+| ---------------- | ------------------------------------------------------ |
+| _(default)_      | UTF-8 support enabled (since v0.4.3, UTF-8 is default) |
+| `MD4X_USE_ASCII` | Force ASCII-only mode                                  |
+| `MD4X_USE_UTF16` | Windows UTF-16 via `WCHAR` (Windows only)              |
 
 Unicode matters for: word boundary classification (emphasis), case-insensitive link reference matching (case-folding), entity translation (left to renderer).
 
 ### Block Types (`MD_BLOCKTYPE`)
 
-| Type | HTML | Detail struct |
-|---|---|---|
-| `MD_BLOCK_DOC` | `<body>` | — |
-| `MD_BLOCK_QUOTE` | `<blockquote>` | — |
-| `MD_BLOCK_UL` | `<ul>` | `MD_BLOCK_UL_DETAIL` |
-| `MD_BLOCK_OL` | `<ol>` | `MD_BLOCK_OL_DETAIL` |
-| `MD_BLOCK_LI` | `<li>` | `MD_BLOCK_LI_DETAIL` |
-| `MD_BLOCK_HR` | `<hr>` | — |
-| `MD_BLOCK_H` | `<h1>`–`<h6>` | `MD_BLOCK_H_DETAIL` |
-| `MD_BLOCK_CODE` | `<pre><code>` | `MD_BLOCK_CODE_DETAIL` |
-| `MD_BLOCK_HTML` | _(raw HTML)_ | — |
-| `MD_BLOCK_P` | `<p>` | — |
-| `MD_BLOCK_TABLE` | `<table>` | `MD_BLOCK_TABLE_DETAIL` |
-| `MD_BLOCK_THEAD` | `<thead>` | — |
-| `MD_BLOCK_TBODY` | `<tbody>` | — |
-| `MD_BLOCK_TR` | `<tr>` | — |
-| `MD_BLOCK_TH` | `<th>` | `MD_BLOCK_TD_DETAIL` |
-| `MD_BLOCK_TD` | `<td>` | `MD_BLOCK_TD_DETAIL` |
-| `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | — |
-| `MD_BLOCK_COMPONENT` | _(dynamic tag)_ | `MD_BLOCK_COMPONENT_DETAIL` |
+| Type                   | HTML              | Detail struct               |
+| ---------------------- | ----------------- | --------------------------- |
+| `MD_BLOCK_DOC`         | `<body>`          | —                           |
+| `MD_BLOCK_QUOTE`       | `<blockquote>`    | —                           |
+| `MD_BLOCK_UL`          | `<ul>`            | `MD_BLOCK_UL_DETAIL`        |
+| `MD_BLOCK_OL`          | `<ol>`            | `MD_BLOCK_OL_DETAIL`        |
+| `MD_BLOCK_LI`          | `<li>`            | `MD_BLOCK_LI_DETAIL`        |
+| `MD_BLOCK_HR`          | `<hr>`            | —                           |
+| `MD_BLOCK_H`           | `<h1>`–`<h6>`     | `MD_BLOCK_H_DETAIL`         |
+| `MD_BLOCK_CODE`        | `<pre><code>`     | `MD_BLOCK_CODE_DETAIL`      |
+| `MD_BLOCK_HTML`        | _(raw HTML)_      | —                           |
+| `MD_BLOCK_P`           | `<p>`             | —                           |
+| `MD_BLOCK_TABLE`       | `<table>`         | `MD_BLOCK_TABLE_DETAIL`     |
+| `MD_BLOCK_THEAD`       | `<thead>`         | —                           |
+| `MD_BLOCK_TBODY`       | `<tbody>`         | —                           |
+| `MD_BLOCK_TR`          | `<tr>`            | —                           |
+| `MD_BLOCK_TH`          | `<th>`            | `MD_BLOCK_TD_DETAIL`        |
+| `MD_BLOCK_TD`          | `<td>`            | `MD_BLOCK_TD_DETAIL`        |
+| `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | —                           |
+| `MD_BLOCK_COMPONENT`   | _(dynamic tag)_   | `MD_BLOCK_COMPONENT_DETAIL` |
+| `MD_BLOCK_TEMPLATE`    | `<template>`      | `MD_BLOCK_TEMPLATE_DETAIL`  |
 
 ### Span Types (`MD_SPANTYPE`)
 
-| Type | HTML | Detail struct |
-|---|---|---|
-| `MD_SPAN_EM` | `<em>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
-| `MD_SPAN_STRONG` | `<strong>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
-| `MD_SPAN_A` | `<a>` | `MD_SPAN_A_DETAIL` |
-| `MD_SPAN_IMG` | `<img>` | `MD_SPAN_IMG_DETAIL` |
-| `MD_SPAN_CODE` | `<code>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
-| `MD_SPAN_DEL` | `<del>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
-| `MD_SPAN_LATEXMATH` | _(inline math)_ | — |
-| `MD_SPAN_LATEXMATH_DISPLAY` | _(display math)_ | — |
-| `MD_SPAN_WIKILINK` | _(wiki link)_ | `MD_SPAN_WIKILINK_DETAIL` |
-| `MD_SPAN_U` | `<u>` | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
-| `MD_SPAN_COMPONENT` | _(dynamic tag)_ | `MD_SPAN_COMPONENT_DETAIL` |
-| `MD_SPAN_SPAN` | `<span>` | `MD_SPAN_SPAN_DETAIL` |
+| Type                        | HTML             | Detail struct                    |
+| --------------------------- | ---------------- | -------------------------------- |
+| `MD_SPAN_EM`                | `<em>`           | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_STRONG`            | `<strong>`       | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_A`                 | `<a>`            | `MD_SPAN_A_DETAIL`               |
+| `MD_SPAN_IMG`               | `<img>`          | `MD_SPAN_IMG_DETAIL`             |
+| `MD_SPAN_CODE`              | `<code>`         | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_DEL`               | `<del>`          | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_LATEXMATH`         | _(inline math)_  | —                                |
+| `MD_SPAN_LATEXMATH_DISPLAY` | _(display math)_ | —                                |
+| `MD_SPAN_WIKILINK`          | _(wiki link)_    | `MD_SPAN_WIKILINK_DETAIL`        |
+| `MD_SPAN_U`                 | `<u>`            | `MD_SPAN_ATTRS_DETAIL` or `NULL` |
+| `MD_SPAN_COMPONENT`         | _(dynamic tag)_  | `MD_SPAN_COMPONENT_DETAIL`       |
+| `MD_SPAN_SPAN`              | `<span>`         | `MD_SPAN_SPAN_DETAIL`            |
 
 ### Text Types (`MD_TEXTTYPE`)
 
-| Type | Description |
-|---|---|
-| `MD_TEXT_NORMAL` | Normal text |
-| `MD_TEXT_NULLCHAR` | NULL character (replace with U+FFFD) |
-| `MD_TEXT_BR` | Hard line break (`<br>`) |
-| `MD_TEXT_SOFTBR` | Soft line break |
-| `MD_TEXT_ENTITY` | HTML entity (`&nbsp;`, `&#1234;`, `&#x12AB;`) |
-| `MD_TEXT_CODE` | Text inside code block/span (`\n` for newlines, no BR events) |
-| `MD_TEXT_HTML` | Raw HTML text (`\n` for newlines in block-level HTML) |
-| `MD_TEXT_LATEXMATH` | Text inside LaTeX equation (processed like code spans) |
+| Type                | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| `MD_TEXT_NORMAL`    | Normal text                                                   |
+| `MD_TEXT_NULLCHAR`  | NULL character (replace with U+FFFD)                          |
+| `MD_TEXT_BR`        | Hard line break (`<br>`)                                      |
+| `MD_TEXT_SOFTBR`    | Soft line break                                               |
+| `MD_TEXT_ENTITY`    | HTML entity (`&nbsp;`, `&#1234;`, `&#x12AB;`)                 |
+| `MD_TEXT_CODE`      | Text inside code block/span (`\n` for newlines, no BR events) |
+| `MD_TEXT_HTML`      | Raw HTML text (`\n` for newlines in block-level HTML)         |
+| `MD_TEXT_LATEXMATH` | Text inside LaTeX equation (processed like code spans)        |
 
 ### Detail Structs
 
@@ -475,6 +479,10 @@ typedef struct MD_BLOCK_COMPONENT_DETAIL {
     const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated */
     MD_SIZE raw_props_size;         /* Size of raw_props */
 } MD_BLOCK_COMPONENT_DETAIL;
+
+typedef struct MD_BLOCK_TEMPLATE_DETAIL {
+    MD_ATTRIBUTE name;              /* Slot name (e.g. "header", "footer") */
+} MD_BLOCK_TEMPLATE_DETAIL;
 ```
 
 ### `MD_ATTRIBUTE`
@@ -494,26 +502,26 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 
 ### Parser Flags
 
-| Flag | Value | Description |
-|---|---|---|
-| `MD_FLAG_COLLAPSEWHITESPACE` | `0x0001` | Collapse non-trivial whitespace to single space |
-| `MD_FLAG_PERMISSIVEATXHEADERS` | `0x0002` | Allow ATX headers without space (`###header`) |
-| `MD_FLAG_PERMISSIVEURLAUTOLINKS` | `0x0004` | Recognize URLs as autolinks without `<>` |
-| `MD_FLAG_PERMISSIVEEMAILAUTOLINKS` | `0x0008` | Recognize emails as autolinks without `<>` and `mailto:` |
-| `MD_FLAG_NOINDENTEDCODEBLOCKS` | `0x0010` | Disable indented code blocks (fenced only) |
-| `MD_FLAG_NOHTMLBLOCKS` | `0x0020` | Disable raw HTML blocks |
-| `MD_FLAG_NOHTMLSPANS` | `0x0040` | Disable inline raw HTML |
-| `MD_FLAG_TABLES` | `0x0100` | Enable tables extension |
-| `MD_FLAG_STRIKETHROUGH` | `0x0200` | Enable strikethrough extension |
-| `MD_FLAG_PERMISSIVEWWWAUTOLINKS` | `0x0400` | Enable `www.` autolinks |
-| `MD_FLAG_TASKLISTS` | `0x0800` | Enable task list extension |
-| `MD_FLAG_LATEXMATHSPANS` | `0x1000` | Enable `$` / `$$` LaTeX math |
-| `MD_FLAG_WIKILINKS` | `0x2000` | Enable `[[wiki links]]` |
-| `MD_FLAG_UNDERLINE` | `0x4000` | Enable underline (disables `_` emphasis) |
-| `MD_FLAG_HARD_SOFT_BREAKS` | `0x8000` | Force all soft breaks to act as hard breaks |
-| `MD_FLAG_FRONTMATTER` | `0x10000` | Enable frontmatter extension |
-| `MD_FLAG_COMPONENTS` | `0x20000` | Enable components (inline `:name[content]{props}` and block `::name{props}...::`) |
-| `MD_FLAG_ATTRIBUTES` | `0x40000` | Enable `{...}` attributes on inline elements and `[text]{.class}` spans |
+| Flag                               | Value     | Description                                                                       |
+| ---------------------------------- | --------- | --------------------------------------------------------------------------------- |
+| `MD_FLAG_COLLAPSEWHITESPACE`       | `0x0001`  | Collapse non-trivial whitespace to single space                                   |
+| `MD_FLAG_PERMISSIVEATXHEADERS`     | `0x0002`  | Allow ATX headers without space (`###header`)                                     |
+| `MD_FLAG_PERMISSIVEURLAUTOLINKS`   | `0x0004`  | Recognize URLs as autolinks without `<>`                                          |
+| `MD_FLAG_PERMISSIVEEMAILAUTOLINKS` | `0x0008`  | Recognize emails as autolinks without `<>` and `mailto:`                          |
+| `MD_FLAG_NOINDENTEDCODEBLOCKS`     | `0x0010`  | Disable indented code blocks (fenced only)                                        |
+| `MD_FLAG_NOHTMLBLOCKS`             | `0x0020`  | Disable raw HTML blocks                                                           |
+| `MD_FLAG_NOHTMLSPANS`              | `0x0040`  | Disable inline raw HTML                                                           |
+| `MD_FLAG_TABLES`                   | `0x0100`  | Enable tables extension                                                           |
+| `MD_FLAG_STRIKETHROUGH`            | `0x0200`  | Enable strikethrough extension                                                    |
+| `MD_FLAG_PERMISSIVEWWWAUTOLINKS`   | `0x0400`  | Enable `www.` autolinks                                                           |
+| `MD_FLAG_TASKLISTS`                | `0x0800`  | Enable task list extension                                                        |
+| `MD_FLAG_LATEXMATHSPANS`           | `0x1000`  | Enable `$` / `$$` LaTeX math                                                      |
+| `MD_FLAG_WIKILINKS`                | `0x2000`  | Enable `[[wiki links]]`                                                           |
+| `MD_FLAG_UNDERLINE`                | `0x4000`  | Enable underline (disables `_` emphasis)                                          |
+| `MD_FLAG_HARD_SOFT_BREAKS`         | `0x8000`  | Force all soft breaks to act as hard breaks                                       |
+| `MD_FLAG_FRONTMATTER`              | `0x10000` | Enable frontmatter extension                                                      |
+| `MD_FLAG_COMPONENTS`               | `0x20000` | Enable components (inline `:name[content]{props}` and block `::name{props}...::`) |
+| `MD_FLAG_ATTRIBUTES`               | `0x40000` | Enable `{...}` attributes on inline elements and `[text]{.class}` spans           |
 
 **Compound flags:**
 
@@ -537,11 +545,11 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 
 ### Renderer Flags (`MD_HTML_FLAG_*`)
 
-| Flag | Value | Description |
-|---|---|---|
-| `MD_HTML_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
-| `MD_HTML_FLAG_VERBATIM_ENTITIES` | `0x0002` | Do not translate HTML entities |
-| `MD_HTML_FLAG_SKIP_UTF8_BOM` | `0x0004` | Skip UTF-8 BOM at input start |
+| Flag                             | Value    | Description                                   |
+| -------------------------------- | -------- | --------------------------------------------- |
+| `MD_HTML_FLAG_DEBUG`             | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_HTML_FLAG_VERBATIM_ENTITIES` | `0x0002` | Do not translate HTML entities                |
+| `MD_HTML_FLAG_SKIP_UTF8_BOM`     | `0x0004` | Skip UTF-8 BOM at input start                 |
 
 ### Rendering Details
 
@@ -564,20 +572,20 @@ md_parse_props(raw, size, &parsed);
 
 **Parsed output (`MD_PARSED_PROPS`):**
 
-| Field | Type | Description |
-|---|---|---|
-| `props[32]` | `MD_PROP[]` | Parsed props (key/value pairs, booleans, bind) |
-| `n_props` | `int` | Number of parsed props |
-| `id` / `id_size` | `const MD_CHAR*` / `MD_SIZE` | `#id` shorthand (last wins) |
-| `class_buf` / `class_len` | `MD_CHAR[512]` / `MD_SIZE` | Merged `.class` values (space-separated) |
+| Field                     | Type                         | Description                                    |
+| ------------------------- | ---------------------------- | ---------------------------------------------- |
+| `props[32]`               | `MD_PROP[]`                  | Parsed props (key/value pairs, booleans, bind) |
+| `n_props`                 | `int`                        | Number of parsed props                         |
+| `id` / `id_size`          | `const MD_CHAR*` / `MD_SIZE` | `#id` shorthand (last wins)                    |
+| `class_buf` / `class_len` | `MD_CHAR[512]` / `MD_SIZE`   | Merged `.class` values (space-separated)       |
 
 **Prop types (`MD_PROP_TYPE`):**
 
-| Type | Syntax | Description |
-|---|---|---|
-| `MD_PROP_STRING` | `key="value"`, `key='value'`, `key=value` | String prop |
-| `MD_PROP_BOOLEAN` | `flag` | Boolean prop (bare word) |
-| `MD_PROP_BIND` | `:key='json'` | JSON passthrough |
+| Type              | Syntax                                    | Description              |
+| ----------------- | ----------------------------------------- | ------------------------ |
+| `MD_PROP_STRING`  | `key="value"`, `key='value'`, `key=value` | String prop              |
+| `MD_PROP_BOOLEAN` | `flag`                                    | Boolean prop (bare word) |
+| `MD_PROP_BIND`    | `:key='json'`                             | JSON passthrough         |
 
 All `key`/`value` pointers are zero-copy references into the original raw string (not null-terminated — use `*_size` fields).
 
@@ -595,10 +603,10 @@ Produces `{"type":"comark","value":[...]}` where each node is either a plain JSO
 
 ### Renderer Flags (`MD_JSON_FLAG_*`)
 
-| Flag | Value | Description |
-|---|---|---|
-| `MD_JSON_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
-| `MD_JSON_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start |
+| Flag                         | Value    | Description                                   |
+| ---------------------------- | -------- | --------------------------------------------- |
+| `MD_JSON_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_JSON_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                 |
 
 ## ANSI Renderer API (`md4x-ansi.h`)
 
@@ -612,11 +620,11 @@ int md_ansi(const MD_CHAR* input, MD_SIZE input_size,
 
 ### Renderer Flags (`MD_ANSI_FLAG_*`)
 
-| Flag | Value | Description |
-|---|---|---|
-| `MD_ANSI_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
-| `MD_ANSI_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start |
-| `MD_ANSI_FLAG_NO_COLOR` | `0x0004` | Suppress ANSI escape codes (plain text output) |
+| Flag                         | Value    | Description                                    |
+| ---------------------------- | -------- | ---------------------------------------------- |
+| `MD_ANSI_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr  |
+| `MD_ANSI_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                  |
+| `MD_ANSI_FLAG_NO_COLOR`      | `0x0004` | Suppress ANSI escape codes (plain text output) |
 
 ### Rendering Details
 
@@ -646,23 +654,23 @@ md4x [OPTION]... [FILE]
 
 **General options:**
 
-| Option | Description |
-|---|---|
-| `-o`, `--output=FILE` | Output file (default: stdout) |
+| Option                  | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `-o`, `--output=FILE`   | Output file (default: stdout)                           |
 | `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json`, `ansi` |
-| `-s`, `--stat` | Measure parsing time |
-| `-h`, `--help` | Display help |
-| `-v`, `--version` | Display version |
+| `-s`, `--stat`          | Measure parsing time                                    |
+| `-h`, `--help`          | Display help                                            |
+| `-v`, `--version`       | Display version                                         |
 
 All extensions are enabled by default (`MD_DIALECT_ALL`). No dialect preset flags.
 
 **HTML output options:**
 
-| Option | Description |
-|---|---|
-| `-f`, `--full-html` | Generate full HTML document with header |
+| Option               | Description                             |
+| -------------------- | --------------------------------------- |
+| `-f`, `--full-html`  | Generate full HTML document with header |
 | `--html-title=TITLE` | Set document title (with `--full-html`) |
-| `--html-css=URL` | Add CSS link (with `--full-html`) |
+| `--html-css=URL`     | Add CSS link (with `--full-html`)       |
 
 **ANSI output (`--format=ansi`):**
 
@@ -742,6 +750,7 @@ Inline components use the MDC syntax: `:component-name`, `:component[content]`, 
 - **Props only**: `:tooltip{text="Hover"}`
 
 Constraints:
+
 - `:` must not be preceded by an alphanumeric character
 - Component name: `[a-zA-Z][a-zA-Z0-9-]*`
 - Standalone components (no `[content]` or `{props}`) require a hyphen in the name
@@ -767,6 +776,7 @@ This is **important** content.
 - **Deep nesting**: `::::` > `:::` > `::` (outer must have more colons than inner)
 
 Constraints:
+
 - Block components **cannot interrupt paragraphs** (require blank line before)
 - Opening line: `::name` or `::name{props}` (2+ colons, component name, optional props)
 - Closing line: `::` (2+ colons only, no name)
@@ -777,6 +787,35 @@ Constraints:
 Implementation: Block components use the container mechanism (`MD_CONTAINER` with `ch = ':'`). Component info (name/props source offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field.
 
 HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
+
+### Component Slots (`MD_FLAG_COMPONENTS`)
+
+Inside a block component, `#slot-name` at line start creates a named slot. Content after `#slot-name` until the next `#slot` or `::` closing is the slot body. Content before the first `#slot` stays as direct children (default slot).
+
+```
+::card
+#header
+## Card Title
+
+#content
+Main content
+
+#footer
+Footer text
+::
+```
+
+Constraints:
+
+- `#slot-name` must be at the start of a line (after container prefixes)
+- Slot name: `[a-zA-Z][a-zA-Z0-9-]*` (same as component names)
+- Slots **cannot interrupt paragraphs** (require blank line before)
+- Slots are only recognized inside block component containers
+- `#slot-name` outside a component is treated as literal text
+
+Implementation: Slots use the container mechanism (`MD_CONTAINER` with `ch = '#'`). Slot info (name offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field. A new `#slot` implicitly closes any existing slot within the current component.
+
+HTML renderer: `<template name="slot-name">...content...</template>`. JSON renderer: `["template", {"name": "slot-name"}, ...children]`. ANSI renderer: transparent (content renders normally).
 
 ### Extension: Inline Attributes (`MD_FLAG_ATTRIBUTES`)
 
@@ -802,6 +841,7 @@ The `[text]{.class}` syntax (brackets NOT followed by `(url)`) creates a generic
 Property syntax is shared with components: `{key="value" bool #id .class}`. Multiple `.class` values are merged. Empty `{}` is a no-op.
 
 Constraints:
+
 - `{...}` must immediately follow the closing delimiter (no space)
 - Only applies to resolved inline elements (not plain text — `hello{.class}` is literal)
 - Spans with `MD_FLAG_ATTRIBUTES`: em/strong/code/del/u pass `MD_SPAN_ATTRS_DETAIL*` (or `NULL` without attrs), links/images extend their detail structs with `raw_attrs`/`raw_attrs_size`

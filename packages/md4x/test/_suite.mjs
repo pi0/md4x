@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST }) {
+export function defineSuite({
+  renderToHtml,
+  renderToJson,
+  renderToAnsi,
+  parseAST,
+}) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
       expect(await renderToHtml("# Hello")).toBe("<h1>Hello</h1>\n");
@@ -73,6 +78,84 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       expect(html).toContain('color="blue"');
       expect(html).toContain("<badge");
       expect(html).toContain("New</badge>");
+    });
+
+    it("renders bold and italic combined", async () => {
+      const html = await renderToHtml("***Bold and italic***");
+      expect(html).toContain("<strong>");
+      expect(html).toContain("<em>");
+      expect(html).toContain("Bold and italic");
+    });
+
+    it("renders a basic image", async () => {
+      const html = await renderToHtml("![Alt text](image.png)");
+      expect(html).toContain('<img src="image.png" alt="Alt text"');
+    });
+
+    it("renders image with title", async () => {
+      const html = await renderToHtml('![Alt](image.png "Image title")');
+      expect(html).toContain('title="Image title"');
+      expect(html).toContain('src="image.png"');
+    });
+
+    it("renders link with title", async () => {
+      const html = await renderToHtml(
+        '[Link](https://example.com "Link title")',
+      );
+      expect(html).toContain('title="Link title"');
+      expect(html).toContain('href="https://example.com"');
+    });
+
+    it("renders a blockquote", async () => {
+      const html = await renderToHtml("> This is a blockquote");
+      expect(html).toContain("<blockquote>");
+      expect(html).toContain("This is a blockquote");
+    });
+
+    it("renders horizontal rule", async () => {
+      expect(await renderToHtml("***")).toContain("<hr");
+    });
+
+    it("renders ordered list", async () => {
+      const html = await renderToHtml("1. First\n2. Second\n3. Third");
+      expect(html).toContain("<ol>");
+      expect(html).toContain("<li>First</li>");
+    });
+
+    it("renders unordered list with nesting", async () => {
+      const html = await renderToHtml("- Item 1\n  - Nested\n- Item 2");
+      expect(html).toContain("<ul>");
+      expect(html).toContain("Nested");
+    });
+
+    it("renders frontmatter", async () => {
+      const html = await renderToHtml("---\ntitle: Test\n---\n\n# Content");
+      expect(html).toContain("<x-frontmatter>");
+      expect(html).toContain("<h1>Content</h1>");
+    });
+
+    it("renders aligned table", async () => {
+      const html = await renderToHtml(
+        "| Left | Right |\n|:-----|------:|\n| a    | b     |",
+      );
+      expect(html).toContain("<table>");
+      expect(html).toContain("align");
+    });
+
+    it("renders inline markdown in table cells", async () => {
+      const html = await renderToHtml("| a |\n|---|\n| **bold** |");
+      expect(html).toContain("<strong>bold</strong>");
+      expect(html).toContain("<td>");
+    });
+
+    it("renders deep nested block components", async () => {
+      const html = await renderToHtml(
+        "::::outer\n\n:::middle\n\n::inner\nContent\n::\n\n:::\n\n::::",
+      );
+      expect(html).toContain("<outer>");
+      expect(html).toContain("<middle>");
+      expect(html).toContain("<inner>");
+      expect(html).toContain("Content");
     });
   });
 
@@ -176,7 +259,9 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("parses code block with filename, highlights and meta", async () => {
-      const ast = await parseAST("```ts {1-2} [utils.ts] meta=value\ncode\n```");
+      const ast = await parseAST(
+        "```ts {1-2} [utils.ts] meta=value\ncode\n```",
+      );
       const pre = ast.value[0];
       expect(pre[1].language).toBe("ts");
       expect(pre[1].filename).toBe("utils.ts");
@@ -261,6 +346,61 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       // Second child is text
       expect(comp[3]).toBe(" text");
     });
+
+    it("parses basic image AST", async () => {
+      const ast = await parseAST("![Alt text](image.png)");
+      const p = ast.value[0];
+      const img = p[2];
+      expect(img[0]).toBe("img");
+      expect(img[1].src).toBe("image.png");
+      expect(img[1].alt).toBe("Alt text");
+    });
+
+    it("parses link with title AST", async () => {
+      const ast = await parseAST('[Link](https://example.com "title")');
+      const p = ast.value[0];
+      const a = p[2];
+      expect(a[0]).toBe("a");
+      expect(a[1].href).toBe("https://example.com");
+      expect(a[1].title).toBe("title");
+    });
+
+    it("parses blockquote AST", async () => {
+      const ast = await parseAST("> Quote text");
+      const bq = ast.value[0];
+      expect(bq[0]).toBe("blockquote");
+    });
+
+    it("parses horizontal rule AST", async () => {
+      const ast = await parseAST("***");
+      const hr = ast.value[0];
+      expect(hr[0]).toBe("hr");
+    });
+
+    it("parses ordered list AST", async () => {
+      const ast = await parseAST("1. First\n2. Second");
+      const ol = ast.value[0];
+      expect(ol[0]).toBe("ol");
+    });
+
+    it("parses unordered list AST", async () => {
+      const ast = await parseAST("- Item 1\n- Item 2");
+      const ul = ast.value[0];
+      expect(ul[0]).toBe("ul");
+    });
+
+    it("parses frontmatter AST", async () => {
+      const ast = await parseAST("---\ntitle: Test\n---\n\n# Content");
+      expect(ast.value[0][0]).toBe("frontmatter");
+      expect(ast.value[1][0]).toBe("h1");
+    });
+
+    it.skip("parses excerpt with <!-- more --> separator", async () => {
+      const ast = await parseAST(
+        "# Title\n\nIntro paragraph\n\n<!-- more -->\n\nFull content",
+      );
+      expect(ast.excerpt).toBeDefined();
+    });
   });
 
   describe("block components", () => {
@@ -296,7 +436,9 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("parses nested block components AST", async () => {
-      const ast = await parseAST(":::outer\nOuter\n\n::inner\nInner\n::\n\n:::");
+      const ast = await parseAST(
+        ":::outer\nOuter\n\n::inner\nInner\n::\n\n:::",
+      );
       const outer = ast.value[0];
       expect(outer[0]).toBe("outer");
       // First child: paragraph "Outer"
@@ -327,7 +469,7 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("parses block component with id and class AST", async () => {
-      const ast = await parseAST('::alert{#my-id .highlight}\nText\n::');
+      const ast = await parseAST("::alert{#my-id .highlight}\nText\n::");
       const comp = ast.value[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1].id).toBe("my-id");
@@ -339,6 +481,73 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       const comp = ast.value[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1].dismissible).toBe(true);
+    });
+
+    it("parses deep nested block components AST", async () => {
+      const ast = await parseAST(
+        "::::l1\n\n:::l2\n\n::l3\nDeep\n::\n\n:::\n\n::::",
+      );
+      const l1 = ast.value[0];
+      expect(l1[0]).toBe("l1");
+      const l2 = l1[2];
+      expect(l2[0]).toBe("l2");
+      const l3 = l2[2];
+      expect(l3[0]).toBe("l3");
+    });
+
+    it("parses block component with named slots AST", async () => {
+      const ast = await parseAST(
+        "::card\n#header\n## Card Title\n\n#content\nMain content\n\n#footer\nFooter text\n::",
+      );
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      const header = card[2];
+      expect(header[0]).toBe("template");
+      expect(header[1].name).toBe("header");
+      const content = card[3];
+      expect(content[0]).toBe("template");
+      expect(content[1].name).toBe("content");
+      const footer = card[4];
+      expect(footer[0]).toBe("template");
+      expect(footer[1].name).toBe("footer");
+    });
+
+    it("renders single slot HTML", async () => {
+      const html = await renderToHtml(
+        "::card\n#title\nCard Title\n::",
+      );
+      expect(html).toContain('<template name="title">');
+      expect(html).toContain("</template>");
+      expect(html).toContain("<p>Card Title</p>");
+    });
+
+    it("parses default content before named slot AST", async () => {
+      const ast = await parseAST(
+        "::card\nDefault content\n\n#title\nCard Title\n::",
+      );
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      // Default content is a direct child (paragraph)
+      expect(card[2][0]).toBe("p");
+      expect(card[2][2]).toBe("Default content");
+      // Named slot follows
+      const tmpl = card[3];
+      expect(tmpl[0]).toBe("template");
+      expect(tmpl[1].name).toBe("title");
+    });
+
+    it("parses empty slot AST", async () => {
+      const ast = await parseAST(
+        "::card\n#empty\n#content\nText here\n::",
+      );
+      const card = ast.value[0];
+      const empty = card[2];
+      expect(empty[0]).toBe("template");
+      expect(empty[1].name).toBe("empty");
+      expect(empty.length).toBe(2); // no children
+      const content = card[3];
+      expect(content[0]).toBe("template");
+      expect(content[1].name).toBe("content");
     });
   });
 
@@ -392,11 +601,20 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("renders mixed props in HTML", async () => {
-      const html = await renderToHtml(':badge[T]{#myid .cls1 .cls2 key="val" flag}');
+      const html = await renderToHtml(
+        ':badge[T]{#myid .cls1 .cls2 key="val" flag}',
+      );
       expect(html).toContain('id="myid"');
       expect(html).toContain('class="cls1 cls2"');
       expect(html).toContain('key="val"');
       expect(html).toContain("flag");
+    });
+
+    it("handles array/JSON prop value", async () => {
+      const ast = await parseAST(':widget{:items=\'["a","b"]\'}');
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("widget");
+      expect(comp[1][":items"]).toEqual(["a", "b"]);
     });
   });
 
@@ -417,14 +635,18 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("renders link with target HTML", async () => {
-      const html = await renderToHtml('[Link](https://example.com){target="_blank"}');
+      const html = await renderToHtml(
+        '[Link](https://example.com){target="_blank"}',
+      );
       expect(html).toContain('target="_blank"');
       expect(html).toContain('<a href="https://example.com"');
     });
 
     it("renders image with class HTML", async () => {
       const html = await renderToHtml("![alt](img.png){.responsive}");
-      expect(html).toContain('<img src="img.png" alt="alt" class="responsive">');
+      expect(html).toContain(
+        '<img src="img.png" alt="alt" class="responsive">',
+      );
     });
 
     it("renders span syntax HTML", async () => {
@@ -468,7 +690,9 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
 
     it("parses link with attrs AST", async () => {
-      const ast = await parseAST('[Link](https://example.com){target="_blank"}');
+      const ast = await parseAST(
+        '[Link](https://example.com){target="_blank"}',
+      );
       const p = ast.value[0];
       const a = p[2];
       expect(a[0]).toBe("a");
@@ -534,6 +758,58 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       const html = await renderToHtml("hello{.class}");
       expect(html).toContain("hello{.class}");
       expect(html).not.toContain("<span");
+    });
+
+    it("renders strikethrough with attrs HTML", async () => {
+      const html = await renderToHtml("~~del~~{.red}");
+      expect(html).toContain('<del class="red">del</del>');
+    });
+
+    it("renders strong with boolean attr HTML", async () => {
+      const html = await renderToHtml("**bold**{flag}");
+      expect(html).toContain("<strong");
+      expect(html).toContain("flag");
+      expect(html).toContain(">bold</strong>");
+    });
+
+    it("renders strong with data attr HTML", async () => {
+      const html = await renderToHtml('**bold**{data-value="custom"}');
+      expect(html).toContain('data-value="custom"');
+      expect(html).toContain(">bold</strong>");
+    });
+
+    it("parses strikethrough with attrs AST", async () => {
+      const ast = await parseAST("~~del~~{.red}");
+      const p = ast.value[0];
+      const del = p[2];
+      expect(del[0]).toBe("del");
+      expect(del[1].class).toBe("red");
+    });
+
+    it("parses strong with boolean attr AST", async () => {
+      const ast = await parseAST("**bold**{flag}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1].flag).toBe(true);
+    });
+
+    it("parses strong with data attr AST", async () => {
+      const ast = await parseAST('**bold**{data-value="custom"}');
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]["data-value"]).toBe("custom");
+    });
+
+    it.skip("renders heading with auto-id", async () => {
+      const html = await renderToHtml("# Hello World");
+      expect(html).toContain('id="hello-world"');
+    });
+
+    it.skip("renders emoji", async () => {
+      const html = await renderToHtml("Hello :wave:");
+      expect(html).toContain("\u{1F44B}");
     });
   });
 

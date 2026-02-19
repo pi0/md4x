@@ -3,6 +3,7 @@
 > **After each completed step:** update this file (check the box) and commit changes with `git commit && git push`.
 >
 > **Running tests:** always use `timeout 3 <command>` (3 second max) to prevent hangs.
+>
 > ```sh
 > timeout 3 bun scripts/run-tests.ts           # C test suites
 > timeout 3 pnpm vitest run packages/md4x/test  # JS binding tests
@@ -101,10 +102,14 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
   - 12 spec tests in `test/spec-components.txt` (basic, props, nesting, empty, blockquote, etc.)
   - 8 JS test cases in `_suite.mjs` (HTML + AST for various scenarios)
 
-- [ ] **3.7** Implement component slots parsing (deferred to Phase 3b)
+- [x] **3.7** Implement component slots parsing
   - Inside a block component, `#slot-name` at line start creates a named slot
   - Content after `#slot-name` until next `#slot` or `::` closing is the slot body
-  - Emit as `["template", {"name": "slot-name"}, ...children]` in JSON
+  - Parser: `MD_BLOCK_TEMPLATE` with `MD_BLOCK_TEMPLATE_DETAIL` (slot name attribute)
+  - HTML: `<template name="slot-name">...content...</template>`
+  - JSON: `["template", {"name": "slot-name"}, ...children]`
+  - ANSI: transparent (content renders normally within parent component)
+  - 7 spec tests in `test/spec-components.txt`, 8 JS tests (4 NAPI + 4 WASM)
 
 ### Phase 4: Component Property Parser
 

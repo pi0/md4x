@@ -75,6 +75,7 @@ struct JSON_NODE {
         struct { char* src; char* title; } img;
         struct { char* target; } wikilink;
         struct { char* raw_props; MD_SIZE raw_props_size; } component;
+        struct { char* name; } tmpl;
     } detail;
 
     /* Non-zero if the tag is heap-allocated (dynamic component tag). */
@@ -150,6 +151,8 @@ json_node_free(JSON_NODE* node)
             if(node->detail.img.title) free(node->detail.img.title);
         } else if(strcmp(node->tag, "wikilink") == 0) {
             if(node->detail.wikilink.target) free(node->detail.wikilink.target);
+        } else if(strcmp(node->tag, "template") == 0) {
+            if(node->detail.tmpl.name) free(node->detail.tmpl.name);
         }
         if(node->tag_is_dynamic) {
             if(node->detail.component.raw_props) free(node->detail.component.raw_props);
@@ -275,6 +278,7 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TD:           tag = "td"; break;
         case MD_BLOCK_FRONTMATTER:  tag = "frontmatter"; break;
         case MD_BLOCK_COMPONENT:    tag = NULL; break;  /* handled below */
+        case MD_BLOCK_TEMPLATE:     tag = NULL; break;  /* handled below */
         default:                    tag = "unknown"; break;
     }
 
@@ -295,6 +299,12 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
                 node->detail.component.raw_props_size = d->raw_props_size;
             }
         }
+    } else if(type == MD_BLOCK_TEMPLATE) {
+        const MD_BLOCK_TEMPLATE_DETAIL* d = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
+        char* name_str = json_attr_to_str(&d->name);
+        node = json_node_new("template", JSON_NODE_ELEMENT);
+        if(node == NULL) { free(name_str); ctx->error = 1; return -1; }
+        node->detail.tmpl.name = name_str;
     } else {
         node = json_node_new(tag, JSON_NODE_ELEMENT);
     }
@@ -875,6 +885,13 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
         if(node->detail.wikilink.target != NULL) {
             json_write_str(w, "\"target\":");
             json_write_string(w, node->detail.wikilink.target, (MD_SIZE) strlen(node->detail.wikilink.target));
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "template") == 0) {
+        if(node->detail.tmpl.name != NULL) {
+            json_write_str(w, "\"name\":");
+            json_write_string(w, node->detail.tmpl.name, (MD_SIZE) strlen(node->detail.tmpl.name));
             has_prop = 1;
         }
     }
