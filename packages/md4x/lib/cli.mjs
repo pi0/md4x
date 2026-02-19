@@ -22,26 +22,44 @@ const { values, positionals } = parseArgs({
   },
 });
 
+const _tty = process.stderr.isTTY;
+const c = (code) => (s) => _tty ? `\x1b[${code}m${s}\x1b[0m` : s;
+const _b = c(1);
+const _d = c(2);
+const _c = c(36);
+const _g = c(32);
+
 function usage() {
   process.stderr.write(
-    `Usage: md4x [OPTION]... [FILE]
-Convert input FILE (or standard input) in Markdown format.
+    `${_b("md4x")} — Markdown renderer
 
-General options:
-  -o  --output=FILE    Output file (default is standard output)
-  -t, --format=FORMAT  Output format: html, json, ansi (default: ansi for TTY, html otherwise)
-  -s, --stat           Measure time of input parsing
-  -h, --help           Display this help and exit
-  -v, --version        Display version and exit
+${_g("Usage:")} ${_b("md4x")} ${_d("[OPTION]... [FILE]")}
 
-Input can be a file path, "-" for stdin, an HTTP/HTTPS URL, or a shorthand:
-  gh:<owner>/<repo>[/path]   GitHub (auto-converted to raw content)
-  npm:<package>[@version][/path]  npm package file via unpkg
+${_g("General options:")}
+  ${_c("-o")}, ${_c("--output")}=${_d("FILE")}     Output file ${_d("(default: stdout)")}
+  ${_c("-t")}, ${_c("--format")}=${_d("FORMAT")}   Output format: html, json, ansi ${_d("(default: ansi for TTY, html otherwise)")}
+  ${_c("-s")}, ${_c("--stat")}            Measure parsing time
+  ${_c("-h")}, ${_c("--help")}            Display this help and exit
+  ${_c("-v")}, ${_c("--version")}         Display version and exit
 
-HTML output options:
-  -f, --full-html      Generate full HTML document, including header
-      --html-title=TITLE Sets the title of the document
-      --html-css=URL   In full HTML mode add a css link
+${_g("Input:")}
+  File path, ${_c("-")} for stdin, HTTP/HTTPS URL, or shorthand:
+  ${_c("gh:")}${_d("<owner>/<repo>[/path]")}          GitHub raw content
+  ${_c("npm:")}${_d("<package>[@version][/path]")}    npm package via unpkg
+
+${_g("HTML options:")}
+      ${_c("-f")}, ${_c("--full-html")}     Full HTML document with header
+      ${_c("--html-title")}=${_d("TITLE")}  Document title
+      ${_c("--html-css")}=${_d("URL")}      CSS link
+
+${_g("Examples:")}
+  ${_d("$")} ${_b("md4x")} README.md                        ${_d("# Render to terminal")}
+  ${_d("$")} ${_b("md4x")} ${_c("-t html")} doc.md                   ${_d("# HTML output")}
+  ${_d("$")} ${_b("md4x")} ${_c("-t json")} doc.md                   ${_d("# JSON AST output")}
+  ${_d("$")} ${_b("md4x")} ${_c("gh:")}pi0/md4x                      ${_d("# GitHub repo README")}
+  ${_d("$")} ${_b("md4x")} ${_c("npm:")}vue@3                        ${_d("# npm package README")}
+  ${_d("$")} echo "# Hello" | ${_b("md4x")}                 ${_d("# Pipe from stdin")}
+  ${_d("$")} ${_b("md4x")} ${_c("-f --html-css")}=style.css doc.md   ${_d("# Full HTML with CSS")}
 `,
   );
 }

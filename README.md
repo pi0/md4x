@@ -16,7 +16,6 @@ npx md4x -t json doc.md                     # JSON AST output (comark)
 # Remote sources
 npx md4x https://nitro.build/guide          # Fetch and render any URL
 npx md4x gh:nitrojs/nitro                   # GitHub repo → README.md
-npx md4x gh:pi0/md4c/blob/main/AGENTS.md    # GitHub file (blob URL)
 npx md4x npm:vue@3                          # npm package at specific version
 
 # Stdin
