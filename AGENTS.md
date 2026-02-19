@@ -9,6 +9,8 @@
 - **License:** MIT
 - **Language:** C (C89/C99 compatible)
 - **Spec:** CommonMark 0.31.2
+- **Build:** Zig (`zig build`)
+- **JS Runtime:** Bun (do **not** use npm, pnpm, yarn, or npx — use `bun`/`bunx` exclusively)
 
 ## Project Structure
 
