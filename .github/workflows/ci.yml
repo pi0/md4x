@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -17,6 +19,9 @@ jobs:
         with:
           version: 0.14.1
 
+      - name: Install JS dependencies
+        run: bun install
+
       - name: Build
         run: zig build
 
@@ -24,16 +29,18 @@ jobs:
         run: zig build wasm
 
       - name: Build NAPI
-        run: |
-          bun install
-          zig build napi -Dnapi-include=node_modules/node-api-headers/include
+        run: zig build napi -Dnapi-include=node_modules/node-api-headers/include
 
       - name: Test
-        run: python3 scripts/run-tests.py
+        run: bun ./scripts/run-tests.ts
+
+      - name: Test (vitest)
+        run: bun vitest run
 
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: bunx vite build packages/md4x
+        run: bunx vite@7.3.1 build
+        working-directory: packages/md4x
 
       - name: Upload Pages Artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

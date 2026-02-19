@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "zig build",
-    "test": "vitest run",
+    "test": "bun ./scripts/run-tests.ts && vitest run",
     "bench": "bun packages/md4x/bench/index.mjs"
   },
   "devDependencies": {
