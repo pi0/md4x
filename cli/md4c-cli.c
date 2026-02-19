@@ -29,6 +29,8 @@
 #include <time.h>
 
 #include "md4c-html.h"
+#include "md4c-json.h"
+#include "md4c-ansi.h"
 #include "cmdline.h"
 
 
@@ -37,10 +39,11 @@
 typedef enum {
     FORMAT_HTML,
     FORMAT_TEXT,
-    FORMAT_JSON
+    FORMAT_JSON,
+    FORMAT_ANSI
 } OutputFormat;
 
-static const char* format_name[] = { "html", "text", "json" };
+static const char* format_name[] = { "html", "text", "json", "ansi" };
 
 /* Global options. */
 static OutputFormat output_format = FORMAT_HTML;
@@ -184,8 +187,25 @@ process_file(const char* in_path, FILE* in, FILE* out)
             ret = md_html(buf_in.data, (MD_SIZE)buf_in.size, process_output,
                         (void*) &buf_out, p_flags, r_flags);
             break;
+        case FORMAT_JSON: {
+            unsigned j_flags = MD_JSON_FLAG_DEBUG;
+#ifndef MD4C_USE_ASCII
+            j_flags |= MD_JSON_FLAG_SKIP_UTF8_BOM;
+#endif
+            ret = md_json(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out, p_flags, j_flags);
+            break;
+        }
+        case FORMAT_ANSI: {
+            unsigned a_flags = MD_ANSI_FLAG_DEBUG;
+#ifndef MD4C_USE_ASCII
+            a_flags |= MD_ANSI_FLAG_SKIP_UTF8_BOM;
+#endif
+            ret = md_ansi(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out, p_flags, a_flags);
+            break;
+        }
         case FORMAT_TEXT:
-        case FORMAT_JSON:
             fprintf(stderr, "Format '%s' is not yet implemented.\n",
                     format_name[output_format]);
             ret = -1;
@@ -302,7 +322,7 @@ usage(void)
         "\n"
         "General options:\n"
         "  -o  --output=FILE    Output file (default is standard output)\n"
-        "  -t, --format=FORMAT  Output format: html (default), text, json\n"
+        "  -t, --format=FORMAT  Output format: html (default), text, json, ansi\n"
         "  -s, --stat           Measure time of input parsing\n"
         "  -h, --help           Display this help and exit\n"
         "  -v, --version        Display version and exit\n"
@@ -395,9 +415,11 @@ cmdline_callback(int opt, char const* value, void* data)
                 output_format = FORMAT_TEXT;
             else if(strcmp(value, "json") == 0)
                 output_format = FORMAT_JSON;
+            else if(strcmp(value, "ansi") == 0)
+                output_format = FORMAT_ANSI;
             else {
                 fprintf(stderr, "Unknown format: %s\n", value);
-                fprintf(stderr, "Supported formats: html, text, json\n");
+                fprintf(stderr, "Supported formats: html, text, json, ansi\n");
                 exit(1);
             }
             break;

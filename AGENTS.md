@@ -22,9 +22,15 @@ src/
   entity.h             # Entity header
   md4c.pc.in           # pkg-config for libmd4c
   md4c-html.pc.in      # pkg-config for libmd4c-html
-  CMakeLists.txt       # Builds libmd4c + libmd4c-html
+  md4c-json.c          # JSON AST renderer library (~580 LoC)
+  md4c-json.h          # JSON renderer public API
+  md4c-json.pc.in      # pkg-config for libmd4c-json
+  md4c-ansi.c          # ANSI terminal renderer library (~450 LoC)
+  md4c-ansi.h          # ANSI renderer public API
+  md4c-ansi.pc.in      # pkg-config for libmd4c-ansi
+  CMakeLists.txt       # Builds libmd4c + libmd4c-html + libmd4c-json + libmd4c-ansi
 cli/
-  md4c-cli.c           # CLI utility (multi-format: html, text, json)
+  md4c-cli.c           # CLI utility (multi-format: html, text, json, ansi)
   cmdline.c            # Command-line parser (from c-reusables)
   cmdline.h            # Command-line parser API
   md4c.1               # Man page
@@ -62,10 +68,12 @@ cmake ..
 make
 ```
 
-Produces two libraries and one executable:
+Produces four libraries and one executable:
 - **libmd4c** — Parser library (compiled with `-DMD4C_USE_UTF8`)
 - **libmd4c-html** — HTML renderer (links against libmd4c)
-- **md4c** — CLI utility (supports `--format=html|text|json`)
+- **libmd4c-json** — JSON AST renderer (links against libmd4c)
+- **libmd4c-ansi** — ANSI terminal renderer (links against libmd4c)
+- **md4c** — CLI utility (supports `--format=html|text|json|ansi`)
 
 CMake options:
 - `BUILD_SHARED_LIBS=ON|OFF` — Shared (default Linux) vs static (default Windows)
@@ -74,7 +82,7 @@ CMake options:
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement` (GCC/Clang), `/W3` (MSVC)
 
-CMake exports `md4c::md4c` and `md4c::md4c-html` targets for `find_package(md4c)`.
+CMake exports `md4c::md4c`, `md4c::md4c-html`, `md4c::md4c-json`, and `md4c::md4c-ansi` targets for `find_package(md4c)`.
 
 ## Testing
 
@@ -345,6 +353,60 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
 
+## JSON Renderer API (`md4c-json.h`)
+
+Renders Markdown into a nested JSON AST tree (mdast/unist-like):
+
+```c
+int md_json(const MD_CHAR* input, MD_SIZE input_size,
+            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+            void* userdata, unsigned parser_flags, unsigned renderer_flags);
+```
+
+### Renderer Flags (`MD_JSON_FLAG_*`)
+
+| Flag | Value | Description |
+|---|---|---|
+| `MD_JSON_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_JSON_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start |
+
+## ANSI Renderer API (`md4c-ansi.h`)
+
+Renders Markdown into ANSI terminal output with escape codes for styling:
+
+```c
+int md_ansi(const MD_CHAR* input, MD_SIZE input_size,
+            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+            void* userdata, unsigned parser_flags, unsigned renderer_flags);
+```
+
+### Renderer Flags (`MD_ANSI_FLAG_*`)
+
+| Flag | Value | Description |
+|---|---|---|
+| `MD_ANSI_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_ANSI_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start |
+| `MD_ANSI_FLAG_NO_COLOR` | `0x0004` | Suppress ANSI escape codes (plain text output) |
+
+### Rendering Details
+
+- Headings: bold magenta (`\033[1;35m`)
+- Bold/strong: bold (`\033[1m`)
+- Italic/emphasis: italic (`\033[3m`)
+- Underline: underline (`\033[4m`)
+- Strikethrough: strikethrough (`\033[9m`)
+- Inline code: cyan (`\033[36m`)
+- Code blocks: dim (`\033[2m`) with 2-space indent
+- Links: underline blue (`\033[4;34m`) with OSC 8 clickable hyperlinks
+- Blockquotes: dim vertical bar prefix (`│`)
+- Horizontal rules: box-drawing line (`────────`)
+- Lists: dim bullet/number prefix with nesting indentation
+- Task lists: `[x]`/`[ ]` with green for checked items
+- Images: `[image: alt]` in dim
+- Entities resolved to UTF-8 characters
+
+Uses streaming renderer pattern (like HTML renderer), no AST construction.
+
 ## `md4c` CLI
 
 ```sh
@@ -357,7 +419,7 @@ md4c [OPTION]... [FILE]
 | Option | Description |
 |---|---|
 | `-o`, `--output=FILE` | Output file (default: stdout) |
-| `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json` |
+| `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json`, `ansi` |
 | `-s`, `--stat` | Measure parsing time |
 | `-h`, `--help` | Display help |
 | `-v`, `--version` | Display version |
@@ -377,6 +439,24 @@ md4c [OPTION]... [FILE]
 | `--fverbatim-entities` | Do not translate entities |
 | `--html-title=TITLE` | Set document title (with `--full-html`) |
 | `--html-css=URL` | Add CSS link (with `--full-html`) |
+
+**ANSI output (`--format=ansi`):**
+
+Produces terminal-friendly output with ANSI escape codes for colors, bold, italic, underline, and other text styling. Use `MD_ANSI_FLAG_NO_COLOR` (or pipe through `cat` to strip codes) for plain text.
+
+**JSON output (`--format=json`):**
+
+Produces a nested AST tree compatible with the [commonmark.js](https://github.com/commonmark/commonmark.js) AST format. Each node has `"type"`, type-specific properties, and `"children"` (for container nodes) or `"literal"` (for leaf nodes).
+
+Block type mappings: `document`, `block_quote`, `list` (listType, listTight, listStart, listDelimiter), `item` (task, checked), `thematic_break`, `heading` (level), `code_block` (info, fence, literal), `html_block` (literal), `paragraph`, `table` (columns, header_rows, body_rows), `table_head`, `table_body`, `table_row`, `table_header_cell` (align), `table_cell` (align), `frontmatter`.
+
+Span type mappings: `emph`, `strong`, `link` (destination, title, autolink), `image` (destination, title), `code` (literal), `delete`, `latex_math`, `latex_math_display`, `wikilink` (target), `underline`.
+
+Text type mappings: `text` (literal), `linebreak`, `softbreak`, `html_inline` (literal).
+
+Leaf nodes (`code_block`, `html_block`, `code`, `text`, `html_inline`) store content in `literal`. Container nodes (`document`, `block_quote`, `list`, `item`, `paragraph`, `heading`, `emph`, `strong`, `link`, `image`, etc.) have `children` arrays.
+
+The JSON renderer is implemented as a library in `src/md4c-json.c` (public API in `src/md4c-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
 
 ## Markdown Syntax Reference
 
