@@ -342,6 +342,64 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
   });
 
+  describe("component property parsing", () => {
+    it("merges multiple classes", async () => {
+      const ast = await parseAST(":badge[Text]{.foo .bar .baz}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].class).toBe("foo bar baz");
+    });
+
+    it("merges multiple classes on block component", async () => {
+      const ast = await parseAST("::alert{.warning .large}\nMsg\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].class).toBe("warning large");
+    });
+
+    it("handles single-quoted string values", async () => {
+      const ast = await parseAST(":badge[Text]{color='blue'}");
+      const comp = ast.value[0][2];
+      expect(comp[1].color).toBe("blue");
+    });
+
+    it("handles mixed props with id, classes, key-value, and boolean", async () => {
+      const ast = await parseAST(':badge[T]{#myid .cls1 .cls2 key="val" flag}');
+      const comp = ast.value[0][2];
+      expect(comp[1].id).toBe("myid");
+      expect(comp[1].class).toBe("cls1 cls2");
+      expect(comp[1].key).toBe("val");
+      expect(comp[1].flag).toBe(true);
+    });
+
+    it("handles empty props object", async () => {
+      const ast = await parseAST(":badge[Text]{}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1]).toEqual({});
+    });
+
+    it("handles bind syntax in props", async () => {
+      const ast = await parseAST(":widget{:data='{\"x\":1}'}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("widget");
+      expect(comp[1][":data"]).toEqual({ x: 1 });
+    });
+
+    it("renders merged classes in HTML", async () => {
+      const html = await renderToHtml(":badge[Text]{.foo .bar .baz}");
+      expect(html).toContain('class="foo bar baz"');
+    });
+
+    it("renders mixed props in HTML", async () => {
+      const html = await renderToHtml(':badge[T]{#myid .cls1 .cls2 key="val" flag}');
+      expect(html).toContain('id="myid"');
+      expect(html).toContain('class="cls1 cls2"');
+      expect(html).toContain('key="val"');
+      expect(html).toContain("flag");
+    });
+  });
+
   describe("renderToAnsi", () => {
     it("renders heading with ansi codes", async () => {
       expect(await renderToAnsi("# Hello")).toContain("Hello");

@@ -272,3 +272,58 @@ Paragraph two
 <p>Paragraph two</p>
 </card>
 ````````````````````````````````
+
+
+# Component Property Parsing
+
+## Multiple classes are merged
+
+```````````````````````````````` example
+:badge[Text]{.foo .bar .baz}
+.
+<p><badge class="foo bar baz">Text</badge></p>
+````````````````````````````````
+
+## Multiple classes merged on block component
+
+```````````````````````````````` example
+::alert{.warning .large .bold}
+Message
+::
+.
+<alert class="warning large bold">
+<p>Message</p>
+</alert>
+````````````````````````````````
+
+## Single-quoted string values
+
+```````````````````````````````` example
+:badge[Text]{color='blue'}
+.
+<p><badge color="blue">Text</badge></p>
+````````````````````````````````
+
+## Mixed props with id, classes, key-value, and boolean
+
+```````````````````````````````` example
+:badge[Text]{#myid .cls1 .cls2 key="val" flag}
+.
+<p><badge id="myid" key="val" flag class="cls1 cls2">Text</badge></p>
+````````````````````````````````
+
+## Empty props object
+
+```````````````````````````````` example
+:badge[Text]{}
+.
+<p><badge>Text</badge></p>
+````````````````````````````````
+
+## Bind syntax in props
+
+```````````````````````````````` example
+:widget{:data='{"x":1}'}
+.
+<p><widget data="{&quot;x&quot;:1}"></widget></p>
+````````````````````````````````

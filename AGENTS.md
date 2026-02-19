@@ -23,9 +23,10 @@ src/
   md4x-wasm.c          # WASM exports (alloc/free + renderer wrappers)
   md4x-napi.c          # Node.js NAPI addon (module registration + renderer wrappers)
   renderers/
-    md4x-html.c        # HTML renderer library (~570 LoC)
+    md4x-props.h       # Shared component property parser (header-only)
+    md4x-html.c        # HTML renderer library (~500 LoC)
     md4x-html.h        # HTML renderer public API
-    md4x-json.c        # JSON AST renderer library (~580 LoC)
+    md4x-json.c        # JSON AST renderer library (~530 LoC)
     md4x-json.h        # JSON renderer public API
     md4x-ansi.c        # ANSI terminal renderer library (~450 LoC)
     md4x-ansi.h        # ANSI renderer public API
@@ -532,6 +533,36 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Task lists render with `<input type="checkbox">` elements
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
+
+## Shared Property Parser (`md4x-props.h`)
+
+Header-only utility for parsing component property strings (`{key="value" bool #id .class :bind='json'}`). Used by both JSON and HTML renderers.
+
+```c
+#include "md4x-props.h"
+
+MD_PARSED_PROPS parsed;
+md_parse_props(raw, size, &parsed);
+```
+
+**Parsed output (`MD_PARSED_PROPS`):**
+
+| Field | Type | Description |
+|---|---|---|
+| `props[32]` | `MD_PROP[]` | Parsed props (key/value pairs, booleans, bind) |
+| `n_props` | `int` | Number of parsed props |
+| `id` / `id_size` | `const MD_CHAR*` / `MD_SIZE` | `#id` shorthand (last wins) |
+| `class_buf` / `class_len` | `MD_CHAR[512]` / `MD_SIZE` | Merged `.class` values (space-separated) |
+
+**Prop types (`MD_PROP_TYPE`):**
+
+| Type | Syntax | Description |
+|---|---|---|
+| `MD_PROP_STRING` | `key="value"`, `key='value'`, `key=value` | String prop |
+| `MD_PROP_BOOLEAN` | `flag` | Boolean prop (bare word) |
+| `MD_PROP_BIND` | `:key='json'` | JSON passthrough |
+
+All `key`/`value` pointers are zero-copy references into the original raw string (not null-terminated — use `*_size` fields).
 
 ## JSON Renderer API (`md4x-json.h`)
 

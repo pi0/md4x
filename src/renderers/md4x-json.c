@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include "md4x-json.h"
+#include "md4x-props.h"
 
 
 #ifdef _WIN32
@@ -658,126 +659,66 @@ json_align_str(int align)
 }
 
 /* Write parsed component props from a raw props string.
- * Syntax: key="value", key='value', bool, #id, .class, :key='json'
+ * Uses the shared md_parse_props() parser from md4x-props.h.
  * Returns number of props written. */
 static int
 json_write_component_props(JSON_WRITER* w, const char* raw, MD_SIZE size)
 {
-    MD_OFFSET i = 0;
-    int n_props = 0;
-    int n_classes = 0;
+    MD_PARSED_PROPS parsed;
+    int n_written = 0;
+    int i;
 
-    /* First pass: count .class entries so we can merge them. */
-    /* We do a simpler approach: write non-class props first, collect classes, write at end. */
-    /* Actually, let's do a single-pass approach for simplicity. Classes get merged. */
+    md_parse_props(raw, size, &parsed);
 
-    /* Collect class names into a temporary buffer. */
-    char class_buf[512];
-    MD_SIZE class_len = 0;
+    /* Write #id. */
+    if(parsed.id != NULL && parsed.id_size > 0) {
+        if(n_written > 0) json_write(w, ",", 1);
+        json_write_str(w, "\"id\":");
+        json_write_string(w, parsed.id, parsed.id_size);
+        n_written++;
+    }
 
-    while(i < size) {
-        /* Skip whitespace. */
-        while(i < size && (raw[i] == ' ' || raw[i] == '\t'))
-            i++;
-        if(i >= size) break;
+    /* Write regular props. */
+    for(i = 0; i < parsed.n_props; i++) {
+        const MD_PROP* p = &parsed.props[i];
 
-        if(raw[i] == '#') {
-            /* #id → "id":"value" */
-            MD_OFFSET start = ++i;
-            while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
-                i++;
-            if(i > start) {
-                if(n_props > 0) json_write(w, ",", 1);
-                json_write_str(w, "\"id\":");
-                json_write_string(w, raw + start, i - start);
-                n_props++;
-            }
-        }
-        else if(raw[i] == '.') {
-            /* .class → collect for merged "class" prop */
-            MD_OFFSET start = ++i;
-            while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}' && raw[i] != '.')
-                i++;
-            if(i > start) {
-                if(class_len > 0 && class_len + 1 < sizeof(class_buf)) {
-                    class_buf[class_len++] = ' ';
-                }
-                if(class_len + (i - start) < sizeof(class_buf)) {
-                    memcpy(class_buf + class_len, raw + start, i - start);
-                    class_len += i - start;
-                }
-                n_classes++;
-            }
-        }
-        else {
-            /* key="value", key='value', or bare boolean */
-            MD_OFFSET key_start = i;
-            int is_bind = 0;
+        if(n_written > 0) json_write(w, ",", 1);
 
-            /* Check for :key (bind syntax) */
-            if(raw[i] == ':') {
-                is_bind = 1;
-                key_start = ++i;
-            }
-
-            while(i < size && raw[i] != '=' && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
-                i++;
-
-            if(i > key_start && i < size && raw[i] == '=') {
-                /* key=value or key="value" or key='value' */
-                MD_OFFSET key_end = i;
-                i++; /* skip '=' */
-
-                if(i < size && (raw[i] == '"' || raw[i] == '\'')) {
-                    char quote = raw[i];
-                    MD_OFFSET val_start = ++i;
-                    while(i < size && raw[i] != quote)
-                        i++;
-                    if(n_props > 0) json_write(w, ",", 1);
-                    if(is_bind) json_write(w, "\":", 2);
-                    else json_write(w, "\"", 1);
-                    json_write_escaped(w, raw + key_start, key_end - key_start);
-                    json_write_str(w, "\":");
-                    if(is_bind) {
-                        /* For :key='value', pass value as-is (JSON passthrough). */
-                        json_write(w, raw + val_start, i - val_start);
-                    } else {
-                        json_write_string(w, raw + val_start, i - val_start);
-                    }
-                    n_props++;
-                    if(i < size) i++; /* skip closing quote */
-                } else {
-                    /* Unquoted value */
-                    MD_OFFSET val_start = i;
-                    while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
-                        i++;
-                    if(n_props > 0) json_write(w, ",", 1);
-                    json_write(w, "\"", 1);
-                    json_write_escaped(w, raw + key_start, key_end - key_start);
-                    json_write_str(w, "\":");
-                    json_write_string(w, raw + val_start, i - val_start);
-                    n_props++;
-                }
-            } else if(i > key_start) {
-                /* Boolean prop */
-                if(n_props > 0) json_write(w, ",", 1);
+        switch(p->type) {
+            case MD_PROP_STRING:
                 json_write(w, "\"", 1);
-                json_write_escaped(w, raw + key_start, i - key_start);
+                json_write_escaped(w, p->key, p->key_size);
+                json_write_str(w, "\":");
+                json_write_string(w, p->value, p->value_size);
+                n_written++;
+                break;
+
+            case MD_PROP_BOOLEAN:
+                json_write(w, "\"", 1);
+                json_write_escaped(w, p->key, p->key_size);
                 json_write_str(w, "\":true");
-                n_props++;
-            }
+                n_written++;
+                break;
+
+            case MD_PROP_BIND:
+                json_write(w, "\":", 2);
+                json_write_escaped(w, p->key, p->key_size);
+                json_write_str(w, "\":");
+                json_write(w, p->value, p->value_size);
+                n_written++;
+                break;
         }
     }
 
-    /* Write merged class prop. */
-    if(class_len > 0) {
-        if(n_props > 0) json_write(w, ",", 1);
+    /* Write merged class. */
+    if(parsed.class_len > 0) {
+        if(n_written > 0) json_write(w, ",", 1);
         json_write_str(w, "\"class\":");
-        json_write_string(w, class_buf, class_len);
-        n_props++;
+        json_write_string(w, parsed.class_buf, parsed.class_len);
+        n_written++;
     }
 
-    return n_props;
+    return n_written;
 }
 
 /* Write the props object for an element node. */

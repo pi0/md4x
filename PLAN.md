@@ -108,7 +108,7 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
 
 ### Phase 4: Component Property Parser
 
-- [ ] **4.1** Implement shared property parser utility
+- [x] **4.1** Implement shared property parser utility
   - Parse `{prop="value" bool #id .class-name :data='{"key":"val"}'}` syntax
   - Handle string values (double/single quoted)
   - Handle boolean (bare word → `:word="true"` in AST)
@@ -117,7 +117,7 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
   - Handle `:key='value'` → `:key` prop (JSON passthrough)
   - This can be a shared C function used by both inline/block component renderers
 
-- [ ] **4.2** Add test cases for property parsing edge cases
+- [x] **4.2** Add test cases for property parsing edge cases
 
 ### Phase 5: Attributes on Native Elements
 
