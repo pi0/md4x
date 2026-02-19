@@ -389,10 +389,31 @@ export function defineSuite({
       expect(ul[0]).toBe("ul");
     });
 
-    it("parses frontmatter AST", async () => {
-      const ast = await parseAST("---\ntitle: Test\n---\n\n# Content");
-      expect(ast.value[0][0]).toBe("frontmatter");
+    it("parses frontmatter AST with YAML props", async () => {
+      const ast = await parseAST(
+        "---\ntitle: Hello\ncount: 42\ndraft: true\n---\n\n# Content",
+      );
+      const fm = ast.value[0];
+      expect(fm[0]).toBe("frontmatter");
+      expect(fm[1]).toEqual({ title: "Hello", count: 42, draft: true });
+      expect(typeof fm[2]).toBe("string");
       expect(ast.value[1][0]).toBe("h1");
+    });
+
+    it("parses frontmatter YAML type coercion", async () => {
+      const ast = await parseAST(
+        '---\nstr: hello\nquoted: "world"\nnum: 3.14\nneg: -1\nbool_yes: yes\nbool_no: no\nnull_val: null\ntilde: ~\nempty:\n---',
+      );
+      const props = ast.value[0][1];
+      expect(props.str).toBe("hello");
+      expect(props.quoted).toBe("world");
+      expect(props.num).toBe(3.14);
+      expect(props.neg).toBe(-1);
+      expect(props.bool_yes).toBe(true);
+      expect(props.bool_no).toBe(false);
+      expect(props.null_val).toBe(null);
+      expect(props.tilde).toBe(null);
+      expect(props.empty).toBe(null);
     });
 
     it.skip("parses excerpt with <!-- more --> separator", async () => {

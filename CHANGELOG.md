@@ -2,6 +2,13 @@
 
 ## Next
 
+### Frontmatter YAML parsing in JSON renderer
+
+The JSON renderer now parses basic YAML frontmatter into the props object instead of leaving it as raw text only. Flat `key: value` pairs are parsed with type coercion: numbers, booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty), and strings (bare or quoted). The raw text is still preserved as a child string.
+
+Before: `["frontmatter", {}, "title: Hello\ncount: 42"]`
+After: `["frontmatter", {"title": "Hello", "count": 42}, "title: Hello\ncount: 42\n"]`
+
 ### Component slots (`MD_FLAG_COMPONENTS`)
 
 Added named slot syntax inside block components: `#slot-name` at line start creates a `MD_BLOCK_TEMPLATE` container. Content after `#slot-name` until the next slot or component closer becomes the slot body. HTML renderer outputs `<template name="slot-name">...content...</template>`. JSON renderer outputs `["template", {"name": "slot-name"}, ...children]`.

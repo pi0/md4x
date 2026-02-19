@@ -787,6 +787,163 @@ json_write_component_props(JSON_WRITER* w, const char* raw, MD_SIZE size)
     return n_written;
 }
 
+/* Helper: check if a string matches a value (case-insensitive, known length). */
+static int
+yaml_streq_ci(const char* s, MD_SIZE len, const char* lit, MD_SIZE lit_len)
+{
+    MD_SIZE i;
+    if(len != lit_len) return 0;
+    for(i = 0; i < len; i++) {
+        char c = s[i];
+        if(c >= 'A' && c <= 'Z') c += 32;
+        if(c != lit[i]) return 0;
+    }
+    return 1;
+}
+
+/* Helper: check if a value string looks like a JSON number. */
+static int
+yaml_is_number(const char* s, MD_SIZE len)
+{
+    MD_SIZE i = 0;
+    int has_digit = 0;
+    int has_dot = 0;
+
+    if(len == 0) return 0;
+
+    /* Optional leading sign. */
+    if(s[0] == '-' || s[0] == '+') {
+        i++;
+        if(i >= len) return 0;
+    }
+
+    for(; i < len; i++) {
+        if(s[i] >= '0' && s[i] <= '9') {
+            has_digit = 1;
+        } else if(s[i] == '.' && !has_dot) {
+            has_dot = 1;
+        } else {
+            return 0;
+        }
+    }
+    return has_digit;
+}
+
+/* Write parsed YAML frontmatter as JSON props.
+ * Supports flat key: value pairs with type coercion.
+ * Returns number of props written. */
+static int
+json_write_yaml_props(JSON_WRITER* w, const char* text, MD_SIZE size)
+{
+    const char* p = text;
+    const char* end = text + size;
+    int n_written = 0;
+
+    while(p < end) {
+        const char* line_start = p;
+        const char* line_end;
+        const char* key_start;
+        const char* key_end;
+        const char* val_start;
+        const char* val_end;
+        const char* colon;
+
+        /* Find end of line. */
+        line_end = p;
+        while(line_end < end && *line_end != '\n')
+            line_end++;
+
+        /* Advance past newline for next iteration. */
+        p = (line_end < end) ? line_end + 1 : line_end;
+
+        /* Trim leading whitespace. */
+        key_start = line_start;
+        while(key_start < line_end && (*key_start == ' ' || *key_start == '\t'))
+            key_start++;
+
+        /* Skip blank lines and comments. */
+        if(key_start >= line_end || *key_start == '#')
+            continue;
+
+        /* Find colon separator. */
+        colon = key_start;
+        while(colon < line_end && *colon != ':')
+            colon++;
+        if(colon >= line_end)
+            continue;
+
+        /* Trim key (from key_start to colon). */
+        key_end = colon;
+        while(key_end > key_start && (*(key_end - 1) == ' ' || *(key_end - 1) == '\t'))
+            key_end--;
+        if(key_end <= key_start)
+            continue;
+
+        /* Value: everything after colon. */
+        val_start = colon + 1;
+        while(val_start < line_end && (*val_start == ' ' || *val_start == '\t'))
+            val_start++;
+
+        /* Trim trailing whitespace (including \r). */
+        val_end = line_end;
+        while(val_end > val_start && (*(val_end - 1) == ' ' || *(val_end - 1) == '\t' || *(val_end - 1) == '\r'))
+            val_end--;
+
+        /* Write comma separator between props. */
+        if(n_written > 0)
+            json_write(w, ",", 1);
+
+        /* Write key. */
+        json_write(w, "\"", 1);
+        json_write_escaped(w, key_start, (MD_SIZE)(key_end - key_start));
+        json_write_str(w, "\":");
+
+        /* Determine value type and write. */
+        {
+            MD_SIZE val_len = (MD_SIZE)(val_end - val_start);
+
+            /* Empty value → null. */
+            if(val_len == 0) {
+                json_write_str(w, "null");
+            }
+            /* Null literals: null, ~. */
+            else if(yaml_streq_ci(val_start, val_len, "null", 4)
+                    || (val_len == 1 && val_start[0] == '~')) {
+                json_write_str(w, "null");
+            }
+            /* Boolean true: true, yes, on. */
+            else if(yaml_streq_ci(val_start, val_len, "true", 4)
+                    || yaml_streq_ci(val_start, val_len, "yes", 3)
+                    || yaml_streq_ci(val_start, val_len, "on", 2)) {
+                json_write_str(w, "true");
+            }
+            /* Boolean false: false, no, off. */
+            else if(yaml_streq_ci(val_start, val_len, "false", 5)
+                    || yaml_streq_ci(val_start, val_len, "no", 2)
+                    || yaml_streq_ci(val_start, val_len, "off", 3)) {
+                json_write_str(w, "false");
+            }
+            /* Number. */
+            else if(yaml_is_number(val_start, val_len)) {
+                json_write(w, val_start, val_len);
+            }
+            /* Quoted string (single or double). */
+            else if(val_len >= 2
+                    && ((val_start[0] == '"' && val_end[-1] == '"')
+                        || (val_start[0] == '\'' && val_end[-1] == '\''))) {
+                json_write_string(w, val_start + 1, val_len - 2);
+            }
+            /* Plain string. */
+            else {
+                json_write_string(w, val_start, val_len);
+            }
+        }
+        n_written++;
+    }
+
+    return n_written;
+}
+
 /* Write the props object for an element node. */
 static void
 json_write_props(JSON_WRITER* w, const JSON_NODE* node)
@@ -893,6 +1050,11 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
             json_write_str(w, "\"name\":");
             json_write_string(w, node->detail.tmpl.name, (MD_SIZE) strlen(node->detail.tmpl.name));
             has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "frontmatter") == 0) {
+        if(node->text_value != NULL && node->text_size > 0) {
+            has_prop = json_write_yaml_props(w, node->text_value, node->text_size) > 0;
         }
     }
     else if(node->tag_is_dynamic) {
