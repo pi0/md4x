@@ -103,7 +103,6 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
-- **md4x.node** — Node.js NAPI addon (`zig build napi`, output: `packages/md4x/build/md4x.node`)
 - **md4x.{platform}-{arch}.node** — Cross-compiled NAPI addons (`zig build napi-all`, 6 targets)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
@@ -144,7 +143,6 @@ const html = renderToHtml("# Hello"); // sync after init
 
 ```sh
 bunx nypm add node-api-headers
-zig build napi -Dnapi-include=node_modules/node-api-headers/include   # host platform only
 zig build napi-all -Dnapi-include=node_modules/node-api-headers/include  # all 6 platforms
 ```
 
@@ -159,7 +157,6 @@ zig build napi-win32-x64 -Dnapi-include=node_modules/node-api-headers/include
 zig build napi-win32-arm64 -Dnapi-include=node_modules/node-api-headers/include
 ```
 
-`zig build napi` outputs `packages/md4x/build/md4x.node` (host platform, for development).
 `zig build napi-all` outputs platform-specific binaries to `packages/md4x/build/`:
 
 | Output file              | Platform            |
@@ -191,7 +188,7 @@ const html = renderToHtml("# Hello");
 
 The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToJson` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
 
-The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node` with a fallback to `md4x.node` for development builds.
+The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node`.
 
 ### JS Package Exports
 

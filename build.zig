@@ -243,36 +243,6 @@ pub fn build(b: *std.Build) void {
         napi_all_step.dependOn(&cross_install.step);
     }
 
-    // Host-platform NAPI (for development)
-    {
-        const md4x_napi = b.addLibrary(.{
-            .linkage = .dynamic,
-            .name = "md4x",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-                .strip = strip,
-            }),
-        });
-        md4x_napi.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
-        md4x_napi.addCSourceFiles(.{
-            .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
-            .flags = napi_c_flags,
-        });
-        md4x_napi.addIncludePath(b.path("src"));
-        md4x_napi.addIncludePath(b.path("src/renderers"));
-        md4x_napi.addIncludePath(.{ .cwd_relative = napi_include });
-        md4x_napi.linker_allow_shlib_undefined = true;
-
-        const napi_install = b.addInstallArtifact(md4x_napi, .{
-            .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
-            .dest_sub_path = "md4x.node",
-        });
-        const napi_step = b.step("napi", "Build Node.js NAPI addon (host platform)");
-        napi_step.dependOn(&napi_install.step);
-
-        b.getInstallStep().dependOn(wasm_step);
-        b.getInstallStep().dependOn(napi_all_step);
-    }
+    b.getInstallStep().dependOn(wasm_step);
+    b.getInstallStep().dependOn(napi_all_step);
 }
