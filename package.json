@@ -8,13 +8,15 @@
   ],
   "scripts": {
     "build": "zig build",
-    "test": "bun ./scripts/run-tests.ts && vitest run",
+    "vitest": "vitest",
+    "test": "bun ./scripts/run-tests.ts && bun vitest",
     "bench": "bun packages/md4x/bench/index.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
     "node-api-headers": "^1.8.0",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "vitest": "^4.0.18"
   },
   "packageManager": "bun@1.3.9"
 }
