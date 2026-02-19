@@ -376,6 +376,7 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 | `MD_SPAN_LATEXMATH_DISPLAY` | _(display math)_ | — |
 | `MD_SPAN_WIKILINK` | _(wiki link)_ | `MD_SPAN_WIKILINK_DETAIL` |
 | `MD_SPAN_U` | `<u>` | — |
+| `MD_SPAN_COMPONENT` | _(dynamic tag)_ | `MD_SPAN_COMPONENT_DETAIL` |
 
 ### Text Types (`MD_TEXTTYPE`)
 
@@ -444,6 +445,12 @@ typedef struct MD_SPAN_IMG_DETAIL {
 typedef struct MD_SPAN_WIKILINK_DETAIL {
     MD_ATTRIBUTE target;
 } MD_SPAN_WIKILINK_DETAIL;
+
+typedef struct MD_SPAN_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "badge", "icon-star") */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated */
+    MD_SIZE raw_props_size;         /* Size of raw_props */
+} MD_SPAN_COMPONENT_DETAIL;
 ```
 
 ### `MD_ATTRIBUTE`
@@ -481,6 +488,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 | `MD_FLAG_UNDERLINE` | `0x4000` | Enable underline (disables `_` emphasis) |
 | `MD_FLAG_HARD_SOFT_BREAKS` | `0x8000` | Force all soft breaks to act as hard breaks |
 | `MD_FLAG_FRONTMATTER` | `0x10000` | Enable frontmatter extension |
+| `MD_FLAG_COMPONENTS` | `0x20000` | Enable inline components (`:name`, `:name[content]{props}`) |
 
 **Compound flags:**
 
@@ -488,7 +496,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 - `MD_FLAG_NOHTML` = no HTML blocks + no HTML spans
 - `MD_DIALECT_COMMONMARK` = `0` (strict CommonMark)
 - `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists
-- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter)
+- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter + components)
 
 ## HTML Renderer API (`md4x-html.h`)
 
@@ -609,7 +617,7 @@ Produces terminal-friendly output with ANSI escape codes for colors, bold, itali
 
 Produces a Comark AST: `{"type":"comark","value":[...]}`. Each node is either a plain string (text) or a tuple array `[tag, props, ...children]`.
 
-Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked), `hr`, `h1`–`h6`, `pre` (language) with inner `code`, `html_block`, `p`, `table`, `thead`, `tbody`, `tr`, `th` (align), `td` (align), `frontmatter`. Spans: `em`, `strong`, `a` (href, title), `img` (src, alt, title — void), `code`, `del`, `math`, `math-display`, `wikilink` (target), `u`. Text: plain strings (merged), `["br",{}]` for hard breaks, `"\n"` for soft breaks.
+Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked), `hr`, `h1`–`h6`, `pre` (language) with inner `code`, `html_block`, `p`, `table`, `thead`, `tbody`, `tr`, `th` (align), `td` (align), `frontmatter`. Spans: `em`, `strong`, `a` (href, title), `img` (src, alt, title — void), `code`, `del`, `math`, `math-display`, `wikilink` (target), `u`, inline components (dynamic tag name with parsed props). Text: plain strings (merged), `["br",{}]` for hard breaks, `"\n"` for soft breaks.
 
 Code blocks serialize as `["pre", {language}, ["code", {class: "language-X"}, literal]]`. Images are void elements with alt text in props: `["img", {src, alt}]`.
 
@@ -668,6 +676,24 @@ Inline `$...$` and display `$$...$$`. Opener must not be preceded by alphanumeri
 ### Extension: Frontmatter (`MD_FLAG_FRONTMATTER`)
 
 YAML-style frontmatter delimited by `---` at the very start of the document. The opening `---` must be on the first line (no leading blank lines). Content is exposed as verbatim text via `MD_BLOCK_FRONTMATTER`. HTML renderer outputs `<x-frontmatter>...</x-frontmatter>`. If unclosed, the rest of the document is treated as frontmatter content.
+
+### Extension: Inline Components (`MD_FLAG_COMPONENTS`)
+
+Inline components use the MDC syntax: `:component-name`, `:component[content]`, `:component[content]{props}`, `:component{props}`.
+
+- **Standalone**: `:icon-star` — requires hyphen in name (to avoid URL/email conflicts)
+- **With content**: `:badge[New]` — content supports inline markdown (emphasis, links, etc.)
+- **With props**: `:badge[New]{color="blue"}` — raw props passed to renderers
+- **Props only**: `:tooltip{text="Hover"}`
+
+Constraints:
+- `:` must not be preceded by an alphanumeric character
+- Component name: `[a-zA-Z][a-zA-Z0-9-]*`
+- Standalone components (no `[content]` or `{props}`) require a hyphen in the name
+
+Property syntax in `{...}`: `key="value"`, `key='value'`, `bool` (boolean true), `#id`, `.class`, `:key='json'` (JSON passthrough). Multiple `.class` values are merged.
+
+HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
 
 ## Code Generation Scripts
 

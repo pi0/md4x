@@ -58,6 +58,22 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     it("supports latex math", async () => {
       expect(await renderToHtml("$E=mc^2$")).toContain("E=mc^2");
     });
+
+    it("renders inline component", async () => {
+      expect(await renderToHtml(":icon-star")).toContain("<icon-star>");
+    });
+
+    it("renders inline component with content", async () => {
+      const html = await renderToHtml(":badge[New]");
+      expect(html).toContain("<badge>New</badge>");
+    });
+
+    it("renders inline component with props", async () => {
+      const html = await renderToHtml(':badge[New]{color="blue"}');
+      expect(html).toContain('color="blue"');
+      expect(html).toContain("<badge");
+      expect(html).toContain("New</badge>");
+    });
   });
 
   describe("renderToJson", () => {
@@ -180,6 +196,70 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       expect(pre[1].filename).toBeUndefined();
       expect(pre[1].highlights).toBeUndefined();
       expect(pre[1].meta).toBeUndefined();
+    });
+
+    it("parses standalone inline component", async () => {
+      const ast = await parseAST(":icon-star");
+      const p = ast.value[0];
+      expect(p[0]).toBe("p");
+      const comp = p[2];
+      expect(comp[0]).toBe("icon-star");
+      expect(comp[1]).toEqual({});
+    });
+
+    it("parses inline component with content", async () => {
+      const ast = await parseAST(":badge[New]");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[2]).toBe("New");
+    });
+
+    it("parses inline component with content and props", async () => {
+      const ast = await parseAST(':badge[New]{color="blue"}');
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].color).toBe("blue");
+      expect(comp[2]).toBe("New");
+    });
+
+    it("parses inline component with props only", async () => {
+      const ast = await parseAST(':tooltip{text="Hover"}');
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("tooltip");
+      expect(comp[1].text).toBe("Hover");
+    });
+
+    it("parses inline component with id and class props", async () => {
+      const ast = await parseAST(":badge[Text]{#my-id .highlight}");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].id).toBe("my-id");
+      expect(comp[1].class).toBe("highlight");
+      expect(comp[2]).toBe("Text");
+    });
+
+    it("parses inline component with boolean prop", async () => {
+      const ast = await parseAST(":alert{dismissible}");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].dismissible).toBe(true);
+    });
+
+    it("inline component with markdown content", async () => {
+      const ast = await parseAST(":badge[**bold** text]");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      // First child is strong element
+      expect(comp[2][0]).toBe("strong");
+      expect(comp[2][2]).toBe("bold");
+      // Second child is text
+      expect(comp[3]).toBe(" text");
     });
   });
 

@@ -366,6 +366,92 @@ render_open_wikilink_span(MD_HTML* r, const MD_SPAN_WIKILINK_DETAIL* det)
     RENDER_VERBATIM(r, "\">");
 }
 
+static void
+render_open_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+
+    /* Render raw props as HTML attributes. */
+    if(det->raw_props != NULL && det->raw_props_size > 0) {
+        const MD_CHAR* raw = det->raw_props;
+        MD_SIZE size = det->raw_props_size;
+        MD_OFFSET i = 0;
+
+        while(i < size) {
+            while(i < size && (raw[i] == ' ' || raw[i] == '\t'))
+                i++;
+            if(i >= size) break;
+
+            if(raw[i] == '#') {
+                MD_OFFSET start = ++i;
+                while(i < size && raw[i] != ' ' && raw[i] != '\t')
+                    i++;
+                if(i > start) {
+                    RENDER_VERBATIM(r, " id=\"");
+                    render_html_escaped(r, raw + start, i - start);
+                    RENDER_VERBATIM(r, "\"");
+                }
+            }
+            else if(raw[i] == '.') {
+                MD_OFFSET start = ++i;
+                while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '.')
+                    i++;
+                if(i > start) {
+                    RENDER_VERBATIM(r, " class=\"");
+                    render_html_escaped(r, raw + start, i - start);
+                    RENDER_VERBATIM(r, "\"");
+                }
+            }
+            else {
+                MD_OFFSET key_start = i;
+                if(raw[i] == ':') key_start = ++i;
+
+                while(i < size && raw[i] != '=' && raw[i] != ' ' && raw[i] != '\t')
+                    i++;
+
+                if(i > key_start && i < size && raw[i] == '=') {
+                    MD_OFFSET key_end = i;
+                    i++;
+                    RENDER_VERBATIM(r, " ");
+                    render_html_escaped(r, raw + key_start, key_end - key_start);
+
+                    if(i < size && (raw[i] == '"' || raw[i] == '\'')) {
+                        char quote = raw[i];
+                        MD_OFFSET val_start = ++i;
+                        while(i < size && raw[i] != quote)
+                            i++;
+                        RENDER_VERBATIM(r, "=\"");
+                        render_html_escaped(r, raw + val_start, i - val_start);
+                        RENDER_VERBATIM(r, "\"");
+                        if(i < size) i++;
+                    } else {
+                        MD_OFFSET val_start = i;
+                        while(i < size && raw[i] != ' ' && raw[i] != '\t')
+                            i++;
+                        RENDER_VERBATIM(r, "=\"");
+                        render_html_escaped(r, raw + val_start, i - val_start);
+                        RENDER_VERBATIM(r, "\"");
+                    }
+                } else if(i > key_start) {
+                    RENDER_VERBATIM(r, " ");
+                    render_html_escaped(r, raw + key_start, i - key_start);
+                }
+            }
+        }
+    }
+
+    RENDER_VERBATIM(r, ">");
+}
+
+static void
+render_close_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "</");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    RENDER_VERBATIM(r, ">");
+}
+
 
 /**************************************
  ***  HTML renderer implementation  ***
@@ -465,6 +551,7 @@ enter_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH:         RENDER_VERBATIM(r, "<x-equation>"); break;
         case MD_SPAN_LATEXMATH_DISPLAY: RENDER_VERBATIM(r, "<x-equation type=\"display\">"); break;
         case MD_SPAN_WIKILINK:          render_open_wikilink_span(r, (MD_SPAN_WIKILINK_DETAIL*) detail); break;
+        case MD_SPAN_COMPONENT:         render_open_component_span(r, (MD_SPAN_COMPONENT_DETAIL*) detail); break;
     }
 
     return 0;
@@ -491,6 +578,7 @@ leave_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH:         /*fall through*/
         case MD_SPAN_LATEXMATH_DISPLAY: RENDER_VERBATIM(r, "</x-equation>"); break;
         case MD_SPAN_WIKILINK:          RENDER_VERBATIM(r, "</x-wikilink>"); break;
+        case MD_SPAN_COMPONENT:         render_close_component_span(r, (MD_SPAN_COMPONENT_DETAIL*) detail); break;
     }
 
     return 0;

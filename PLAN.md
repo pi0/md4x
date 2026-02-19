@@ -43,27 +43,33 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
 
 ### Phase 2: Inline Components (parser-level)
 
-- [ ] **2.1** Add `MD_SPAN_COMPONENT` to `MD_SPANTYPE` enum and detail struct
+- [x] **2.1** Add `MD_SPAN_COMPONENT` to `MD_SPANTYPE` enum and detail struct
   - `MD_SPAN_COMPONENT` with `MD_SPAN_COMPONENT_DETAIL` (tag name, raw props string)
-  - Add `MD_FLAG_COMPONENTS` flag (e.g. `0x20000`)
+  - Add `MD_FLAG_COMPONENTS` flag (`0x20000`)
   - Update `MD_DIALECT_ALL` to include it
 
-- [ ] **2.2** Implement inline component parsing in `md4x.c`
+- [x] **2.2** Implement inline component parsing in `md4x.c`
   - Recognize `:component-name` — alphanumeric + hyphens after `:`
   - Parse optional `[content]` and `{props}` after component name
   - Emit `enter_span(MD_SPAN_COMPONENT)` / `leave_span(MD_SPAN_COMPONENT)`
+  - Inline markdown parsed inside `[content]` (emphasis, links, etc.)
+  - Standalone components (no `[content]` or `{props}`) require a hyphen in the name
+  - `:` must not be preceded by alphanumeric to avoid URL conflicts
 
-- [ ] **2.3** Handle inline components in JSON renderer
+- [x] **2.3** Handle inline components in JSON renderer
   - Map `MD_SPAN_COMPONENT` to dynamic tag name from detail
   - Parse props string into individual `key="value"`, `bool`, `#id`, `.class` attributes
   - Emit as `["component-name", {props}, ...children]`
 
-- [ ] **2.4** Handle inline components in HTML renderer
+- [x] **2.4** Handle inline components in HTML renderer
   - Render as `<component-name ...props>content</component-name>`
 
-- [ ] **2.5** Add test cases for inline components
-  - `test/spec-components.txt` — basic inline component tests
-  - JS test cases for AST output
+- [x] **2.5** Handle inline components in ANSI renderer
+  - Render with cyan color styling
+
+- [x] **2.6** Add test cases for inline components
+  - `test/spec-components.txt` — 12 test cases
+  - JS test cases in `_suite.mjs` — 10 new tests (HTML + AST)
 
 ### Phase 3: Block Components (parser-level)
 

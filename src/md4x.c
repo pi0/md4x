@@ -2756,7 +2756,7 @@ md_build_mark_char_map(MD_CTX* ctx)
     if(ctx->parser.flags & MD_FLAG_PERMISSIVEEMAILAUTOLINKS)
         ctx->mark_char_map['@'] = 1;
 
-    if(ctx->parser.flags & MD_FLAG_PERMISSIVEURLAUTOLINKS)
+    if(ctx->parser.flags & (MD_FLAG_PERMISSIVEURLAUTOLINKS | MD_FLAG_COMPONENTS))
         ctx->mark_char_map[':'] = 1;
 
     if(ctx->parser.flags & MD_FLAG_PERMISSIVEWWWAUTOLINKS)
@@ -3011,6 +3011,22 @@ md_collect_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines, int table_m
     OFF codespan_last_potential_closers[CODESPAN_MARK_MAXLEN] = { 0 };
     int codespan_scanned_till_paragraph_end = FALSE;
 
+    /* Deferred component closers: for components with content like :badge[text],
+     * the closer mark must be added AFTER content marks to maintain position order.
+     * We record them here and add them after the main scanning loop. */
+    struct {
+        int opener_index;   /* Index of 'C' opener mark */
+        OFF closer_beg;
+        OFF closer_end;
+    } deferred_comp_closers[16];
+    int n_deferred_comp_closers = 0;
+    /* Skip regions: ranges [skip_beg, skip_end) to skip during scanning (e.g. ]{props}) */
+    struct {
+        OFF beg;
+        OFF end;
+    } skip_regions[16];
+    int n_skip_regions = 0;
+
     for(line_index = 0; line_index < n_lines; line_index++) {
         const MD_LINE* line = &lines[line_index];
         OFF off = line->beg;
@@ -3036,6 +3052,19 @@ md_collect_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines, int table_m
 
             if(off >= line->end)
                 break;
+
+            /* Check if off falls in a component skip region (]{props} area). */
+            if(n_skip_regions > 0) {
+                int skip_i;
+                for(skip_i = 0; skip_i < n_skip_regions; skip_i++) {
+                    if(off >= skip_regions[skip_i].beg  &&  off < skip_regions[skip_i].end) {
+                        off = skip_regions[skip_i].end;
+                        break;
+                    }
+                }
+                if(skip_i < n_skip_regions)
+                    continue;
+            }
 
             ch = CH(off);
 
@@ -3238,35 +3267,153 @@ md_collect_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines, int table_m
                 continue;
             }
 
-            /* A potential permissive URL autolink. */
+            /* A potential inline component or permissive URL autolink. */
             if(ch == _T(':')) {
-                static struct {
-                    const CHAR* scheme;
-                    SZ scheme_size;
-                    const CHAR* suffix;
-                    SZ suffix_size;
-                } scheme_map[] = {
-                    /* In the order from the most frequently used, arguably. */
-                    { _T("http"), 4,    _T("//"), 2 },
-                    { _T("https"), 5,   _T("//"), 2 },
-                    { _T("ftp"), 3,     _T("//"), 2 }
-                };
-                int scheme_index;
+                /* Inline component: :component-name, :component[content]{props}
+                 * The ':' must be at line start or preceded by whitespace/punctuation
+                 * (not alphanumeric) to avoid matching inside URLs like http://... */
+                if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&
+                   off + 1 < line->end  &&  ISALPHA(off+1)  &&
+                   (off == line->beg  ||  !ISALNUM(off-1)))
+                {
+                    OFF name_end = off + 2;
+                    int name_has_hyphen = 0;
+                    while(name_end < line->end  &&  (ISALNUM(name_end) || CH(name_end) == _T('-'))) {
+                        if(CH(name_end) == _T('-'))
+                            name_has_hyphen = 1;
+                        name_end++;
+                    }
+                    if(name_end > off + 1) {
+                        OFF comp_end = name_end;
+                        int has_content = 0;
+                        OFF content_beg = 0, content_end = 0;
+                        OFF props_beg = 0, props_end = 0;
+                        OFF opener_end, closer_beg, closer_end;
 
-                for(scheme_index = 0; scheme_index < (int) SIZEOF_ARRAY(scheme_map); scheme_index++) {
-                    const CHAR* scheme = scheme_map[scheme_index].scheme;
-                    const SZ scheme_size = scheme_map[scheme_index].scheme_size;
-                    const CHAR* suffix = scheme_map[scheme_index].suffix;
-                    const SZ suffix_size = scheme_map[scheme_index].suffix_size;
+                        /* Optional [content] */
+                        if(comp_end < line->end  &&  CH(comp_end) == _T('[')) {
+                            int bracket_depth = 1;
+                            OFF scan = comp_end + 1;
+                            content_beg = scan;
+                            while(scan < line->end  &&  bracket_depth > 0) {
+                                if(CH(scan) == _T('[')) bracket_depth++;
+                                else if(CH(scan) == _T(']')) bracket_depth--;
+                                if(bracket_depth > 0) scan++;
+                            }
+                            if(bracket_depth == 0) {
+                                has_content = 1;
+                                content_end = scan;
+                                comp_end = scan + 1;
+                            }
+                        }
 
-                    if(line->beg + scheme_size <= off  &&  md_ascii_eq(STR(off-scheme_size), scheme, scheme_size)  &&
-                        off + 1 + suffix_size < line->end  &&  md_ascii_eq(STR(off+1), suffix, suffix_size))
-                    {
-                        ADD_MARK(ch, off-scheme_size, off+1+suffix_size, MD_MARK_POTENTIAL_OPENER);
-                        /* Push a dummy as a reserve for a closer. */
-                        ADD_MARK('D', line->beg, line->end, 0);
-                        off += 1 + suffix_size;
-                        break;
+                        /* Optional {props} */
+                        if(comp_end < line->end  &&  CH(comp_end) == _T('{')) {
+                            int brace_depth = 1;
+                            OFF scan = comp_end + 1;
+                            props_beg = scan;
+                            while(scan < line->end  &&  brace_depth > 0) {
+                                if(CH(scan) == _T('{')) brace_depth++;
+                                else if(CH(scan) == _T('}')) brace_depth--;
+                                if(brace_depth > 0) scan++;
+                            }
+                            if(brace_depth == 0) {
+                                props_end = scan;
+                                comp_end = scan + 1;
+                            }
+                        }
+
+                        /* Standalone components (no content, no props) require
+                         * a hyphen in the name to avoid false positives like
+                         * :john.doe or :abc in URLs. */
+                        if(!has_content  &&  props_end == 0  &&  !name_has_hyphen)
+                            goto not_component;
+
+                        /* Mark layout:
+                         * Opener: eats ":name" or ":name[" (everything before content)
+                         * Closer: eats "]" and/or "{props}" (everything after content)
+                         * Dummy 1: stores props range
+                         * Text between opener.end and closer.beg = content (parsed inline) */
+                        if(has_content) {
+                            opener_end = content_beg;
+                            closer_beg = content_end;
+                            closer_end = comp_end;
+                        } else {
+                            opener_end = name_end;
+                            closer_beg = name_end;
+                            closer_end = comp_end;
+                        }
+
+                        if(has_content) {
+                            int opener_index;
+                            /* Add opener mark. The closer must be added AFTER
+                             * content inline marks are collected to maintain
+                             * position order in the marks array. */
+                            ADD_MARK('C', off, opener_end, MD_MARK_OPENER | MD_MARK_RESOLVED);
+                            opener_index = ctx->n_marks - 1;
+                            /* Dummy for props range (placed right after opener) */
+                            ADD_MARK('D', props_beg, props_end, 0);
+                            /* Defer closer creation until after content scanning */
+                            if(n_deferred_comp_closers < 16) {
+                                deferred_comp_closers[n_deferred_comp_closers].opener_index = opener_index;
+                                deferred_comp_closers[n_deferred_comp_closers].closer_beg = closer_beg;
+                                deferred_comp_closers[n_deferred_comp_closers].closer_end = closer_end;
+                                n_deferred_comp_closers++;
+                            }
+                            /* Register skip region: from content_end to comp_end
+                             * to prevent scanning inside ]{props} */
+                            if(n_skip_regions < 16) {
+                                skip_regions[n_skip_regions].beg = content_end;
+                                skip_regions[n_skip_regions].end = comp_end;
+                                n_skip_regions++;
+                            }
+                            /* Resume scanning from content start to collect inline marks */
+                            off = opener_end;
+                            continue;
+                        } else {
+                            ADD_MARK('C', off, opener_end, MD_MARK_OPENER | MD_MARK_RESOLVED);
+                            /* Dummy for props range */
+                            ADD_MARK('D', props_beg, props_end, 0);
+                            ADD_MARK('C', closer_beg, closer_end, MD_MARK_CLOSER | MD_MARK_RESOLVED);
+                            ctx->marks[ctx->n_marks-3].next = ctx->n_marks-1;
+                            ctx->marks[ctx->n_marks-1].prev = ctx->n_marks-3;
+                            off = comp_end;
+                            continue;
+                        }
+                    }
+                }
+                not_component:
+
+                /* A potential permissive URL autolink. */
+                if(ctx->parser.flags & MD_FLAG_PERMISSIVEURLAUTOLINKS) {
+                    static struct {
+                        const CHAR* scheme;
+                        SZ scheme_size;
+                        const CHAR* suffix;
+                        SZ suffix_size;
+                    } scheme_map[] = {
+                        /* In the order from the most frequently used, arguably. */
+                        { _T("http"), 4,    _T("//"), 2 },
+                        { _T("https"), 5,   _T("//"), 2 },
+                        { _T("ftp"), 3,     _T("//"), 2 }
+                    };
+                    int scheme_index;
+
+                    for(scheme_index = 0; scheme_index < (int) SIZEOF_ARRAY(scheme_map); scheme_index++) {
+                        const CHAR* scheme = scheme_map[scheme_index].scheme;
+                        const SZ scheme_size = scheme_map[scheme_index].scheme_size;
+                        const CHAR* suffix = scheme_map[scheme_index].suffix;
+                        const SZ suffix_size = scheme_map[scheme_index].suffix_size;
+
+                        if(line->beg + scheme_size <= off  &&  md_ascii_eq(STR(off-scheme_size), scheme, scheme_size)  &&
+                            off + 1 + suffix_size < line->end  &&  md_ascii_eq(STR(off+1), suffix, suffix_size))
+                        {
+                            ADD_MARK(ch, off-scheme_size, off+1+suffix_size, MD_MARK_POTENTIAL_OPENER);
+                            /* Push a dummy as a reserve for a closer. */
+                            ADD_MARK('D', line->beg, line->end, 0);
+                            off += 1 + suffix_size;
+                            break;
+                        }
                     }
                 }
 
@@ -3341,6 +3488,83 @@ md_collect_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines, int table_m
             }
 
             off++;
+        }
+    }
+
+    /* Insert deferred component closer marks at correct positions.
+     * We must insert (not append) to maintain position ordering in the
+     * marks array, which md_process_inlines() requires. Process in
+     * reverse order so earlier insertions don't shift later positions. */
+    if(n_deferred_comp_closers > 0) {
+        int i, j;
+        /* Sort by closer_beg descending for reverse-order insertion. */
+        for(i = 1; i < n_deferred_comp_closers; i++) {
+            int key_opener = deferred_comp_closers[i].opener_index;
+            OFF key_beg = deferred_comp_closers[i].closer_beg;
+            OFF key_end = deferred_comp_closers[i].closer_end;
+            j = i - 1;
+            while(j >= 0  &&  deferred_comp_closers[j].closer_beg < key_beg) {
+                deferred_comp_closers[j+1].opener_index = deferred_comp_closers[j].opener_index;
+                deferred_comp_closers[j+1].closer_beg = deferred_comp_closers[j].closer_beg;
+                deferred_comp_closers[j+1].closer_end = deferred_comp_closers[j].closer_end;
+                j--;
+            }
+            deferred_comp_closers[j+1].opener_index = key_opener;
+            deferred_comp_closers[j+1].closer_beg = key_beg;
+            deferred_comp_closers[j+1].closer_end = key_end;
+        }
+        for(i = 0; i < n_deferred_comp_closers; i++) {
+            int opener_index = deferred_comp_closers[i].opener_index;
+            OFF cbeg = deferred_comp_closers[i].closer_beg;
+            OFF cend = deferred_comp_closers[i].closer_end;
+            int insert_pos;
+            /* Find correct insertion position: first mark with beg >= cbeg,
+             * starting AFTER the props dummy (opener_index + 2). */
+            for(insert_pos = opener_index + 2; insert_pos < ctx->n_marks; insert_pos++) {
+                if(ctx->marks[insert_pos].beg >= cbeg)
+                    break;
+            }
+            /* Ensure capacity for one more mark. */
+            {
+                MD_MARK* new_mark = md_add_mark(ctx);
+                if(new_mark == NULL) { ret = -1; goto abort; }
+                /* md_add_mark incremented n_marks and gave us the last slot.
+                 * Now shift marks from insert_pos..n_marks-2 to insert_pos+1..n_marks-1. */
+                if(insert_pos < ctx->n_marks - 1) {
+                    memmove(&ctx->marks[insert_pos + 1], &ctx->marks[insert_pos],
+                            (ctx->n_marks - 1 - insert_pos) * sizeof(MD_MARK));
+                }
+            }
+            /* Write the closer mark at insert_pos. */
+            ctx->marks[insert_pos].beg = cbeg;
+            ctx->marks[insert_pos].end = cend;
+            ctx->marks[insert_pos].ch = 'C';
+            ctx->marks[insert_pos].flags = MD_MARK_CLOSER | MD_MARK_RESOLVED;
+            ctx->marks[insert_pos].prev = -1;
+            ctx->marks[insert_pos].next = -1;
+            /* Fix cross-references: any prev/next index >= insert_pos needs +1. */
+            for(j = 0; j < ctx->n_marks; j++) {
+                if(j == insert_pos)
+                    continue;
+                if(ctx->marks[j].prev >= insert_pos)
+                    ctx->marks[j].prev++;
+                if(ctx->marks[j].next >= insert_pos)
+                    ctx->marks[j].next++;
+            }
+            /* Adjust opener_index if it was shifted. */
+            if(opener_index >= insert_pos)
+                opener_index++;
+            /* Also adjust remaining deferred entries' opener_index. */
+            {
+                int k;
+                for(k = i + 1; k < n_deferred_comp_closers; k++) {
+                    if(deferred_comp_closers[k].opener_index >= insert_pos)
+                        deferred_comp_closers[k].opener_index++;
+                }
+            }
+            /* Link opener and closer. */
+            ctx->marks[opener_index].next = insert_pos;
+            ctx->marks[insert_pos].prev = opener_index;
         }
     }
 
@@ -4050,9 +4274,10 @@ md_analyze_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines,
     while(i < mark_end) {
         MD_MARK* mark = &ctx->marks[i];
 
-        /* Skip resolved spans. */
+        /* Skip resolved spans (but not component spans, whose content
+         * still needs inline mark analysis). */
         if(mark->flags & MD_MARK_RESOLVED) {
-            if((mark->flags & MD_MARK_OPENER)  &&
+            if((mark->flags & MD_MARK_OPENER)  &&  mark->ch != 'C'  &&
                !((flags & MD_ANALYZE_NOSKIP_EMPH) && ISANYOF_(mark->ch, "*_~")))
             {
                 MD_ASSERT(i < mark->next);
@@ -4202,6 +4427,30 @@ md_enter_leave_span_wikilink(MD_CTX* ctx, int enter, const CHAR* target, SZ targ
 
 abort:
     md_free_attribute(ctx, &target_build);
+    return ret;
+}
+
+static int
+md_enter_leave_span_component(MD_CTX* ctx, int enter,
+                               const CHAR* tag, SZ tag_size,
+                               const CHAR* raw_props, SZ raw_props_size)
+{
+    MD_ATTRIBUTE_BUILD tag_build = { 0 };
+    MD_SPAN_COMPONENT_DETAIL det;
+    int ret = 0;
+
+    memset(&det, 0, sizeof(MD_SPAN_COMPONENT_DETAIL));
+    MD_CHECK(md_build_attribute(ctx, tag, tag_size, 0, &det.tag_name, &tag_build));
+    det.raw_props = raw_props;
+    det.raw_props_size = raw_props_size;
+
+    if(enter)
+        MD_ENTER_SPAN(MD_SPAN_COMPONENT, &det);
+    else
+        MD_LEAVE_SPAN(MD_SPAN_COMPONENT, &det);
+
+abort:
+    md_free_attribute(ctx, &tag_build);
     return ret;
 }
 
@@ -4418,6 +4667,48 @@ md_process_inlines(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines)
                 case '&':       /* Entity. */
                     MD_TEXT(MD_TEXT_ENTITY, STR(mark->beg), mark->end - mark->beg);
                     break;
+
+                case 'C':       /* Inline component. */
+                {
+                    const MD_MARK* opener = (mark->flags & MD_MARK_OPENER) ? mark : &ctx->marks[mark->prev];
+                    const MD_MARK* closer = &ctx->marks[opener->next];
+                    const MD_MARK* props_mark = opener + 1;
+                    /* Tag name starts after ':' in the opener */
+                    const CHAR* tag_str = STR(opener->beg + 1);
+                    SZ name_end_off = opener->beg + 1;
+                    SZ tag_size;
+                    const CHAR* raw_props = NULL;
+                    SZ raw_props_size = 0;
+
+                    /* Scan to find end of component name (letters, digits, hyphens). */
+                    while(name_end_off < opener->end  &&
+                          (ISALNUM(name_end_off) || CH(name_end_off) == _T('-')))
+                        name_end_off++;
+                    tag_size = name_end_off - (opener->beg + 1);
+
+                    if(props_mark->ch == 'D'  &&  props_mark->end > props_mark->beg) {
+                        raw_props = STR(props_mark->beg);
+                        raw_props_size = props_mark->end - props_mark->beg;
+                    }
+
+                    if(mark->flags & MD_MARK_OPENER) {
+                        MD_CHECK(md_enter_leave_span_component(ctx, 1,
+                                    tag_str, tag_size, raw_props, raw_props_size));
+                        /* For void components (no content: opener.end == closer.beg),
+                         * emit the closing span immediately. */
+                        if(opener->end == closer->beg) {
+                            MD_CHECK(md_enter_leave_span_component(ctx, 0,
+                                        tag_str, tag_size, raw_props, raw_props_size));
+                        }
+                    } else {
+                        /* Closer: only emit if there was content (opener.end != closer.beg). */
+                        if(opener->end != closer->beg) {
+                            MD_CHECK(md_enter_leave_span_component(ctx, 0,
+                                        tag_str, tag_size, raw_props, raw_props_size));
+                        }
+                    }
+                    break;
+                }
 
                 case '\0':
                     MD_TEXT(MD_TEXT_NULLCHAR, _T(""), 1);

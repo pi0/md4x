@@ -150,7 +150,12 @@ typedef enum MD_SPANTYPE {
 
     /* <u>...</u>
      * Note: Recognized only when MD_FLAG_UNDERLINE is enabled. */
-    MD_SPAN_U
+    MD_SPAN_U,
+
+    /* Inline component :component-name[content]{props}
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_SPAN_COMPONENT_DETAIL. */
+    MD_SPAN_COMPONENT
 } MD_SPANTYPE;
 
 /* Text is the actual textual contents of span. */
@@ -308,6 +313,13 @@ typedef struct MD_SPAN_WIKILINK {
     MD_ATTRIBUTE target;
 } MD_SPAN_WIKILINK_DETAIL;
 
+/* Detailed info for MD_SPAN_COMPONENT. */
+typedef struct MD_SPAN_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "badge", "icon-star"). */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_props_size;         /* Size of raw_props. */
+} MD_SPAN_COMPONENT_DETAIL;
+
 /* Flags specifying extensions/deviations from CommonMark specification.
  *
  * By default (when MD_PARSER::flags == 0), we follow CommonMark specification.
@@ -329,6 +341,7 @@ typedef struct MD_SPAN_WIKILINK {
 #define MD_FLAG_UNDERLINE                   0x4000  /* Enable underline extension (and disables '_' for normal emphasis). */
 #define MD_FLAG_HARD_SOFT_BREAKS            0x8000  /* Force all soft breaks to act as hard breaks. */
 #define MD_FLAG_FRONTMATTER                 0x10000 /* Enable frontmatter extension. */
+#define MD_FLAG_COMPONENTS                  0x20000 /* Enable inline/block component syntax. */
 
 #define MD_FLAG_PERMISSIVEAUTOLINKS         (MD_FLAG_PERMISSIVEEMAILAUTOLINKS | MD_FLAG_PERMISSIVEURLAUTOLINKS | MD_FLAG_PERMISSIVEWWWAUTOLINKS)
 #define MD_FLAG_NOHTML                      (MD_FLAG_NOHTMLBLOCKS | MD_FLAG_NOHTMLSPANS)
@@ -344,7 +357,7 @@ typedef struct MD_SPAN_WIKILINK {
  */
 #define MD_DIALECT_COMMONMARK               0
 #define MD_DIALECT_GITHUB                   (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS)
-#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER)
+#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER | MD_FLAG_COMPONENTS)
 
 /* Parser structure.
  */

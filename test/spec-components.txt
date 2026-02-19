@@ -1,0 +1,98 @@
+
+# Inline Components
+
+## Standalone inline component
+
+```````````````````````````````` example
+:icon-star
+.
+<p><icon-star></icon-star></p>
+````````````````````````````````
+
+## Inline component with content
+
+```````````````````````````````` example
+:badge[New]
+.
+<p><badge>New</badge></p>
+````````````````````````````````
+
+## Inline component with content and properties
+
+```````````````````````````````` example
+:badge[New]{color="blue"}
+.
+<p><badge color="blue">New</badge></p>
+````````````````````````````````
+
+## Inline component with properties only (no content)
+
+```````````````````````````````` example
+:tooltip{text="Hover text"}
+.
+<p><tooltip text="Hover text"></tooltip></p>
+````````````````````````````````
+
+## Inline component within text
+
+```````````````````````````````` example
+Click the :button[Submit]{type="primary"} to continue.
+.
+<p>Click the <button type="primary">Submit</button> to continue.</p>
+````````````````````````````````
+
+## Multiple inline components in same paragraph
+
+```````````````````````````````` example
+Status: :badge[Active]{color="green"} and :icon-check
+.
+<p>Status: <badge color="green">Active</badge> and <icon-check></icon-check></p>
+````````````````````````````````
+
+## Inline component with markdown content
+
+```````````````````````````````` example
+:badge[**bold** text]
+.
+<p><badge><strong>bold</strong> text</badge></p>
+````````````````````````````````
+
+## Inline component with boolean prop
+
+```````````````````````````````` example
+:alert{dismissible}
+.
+<p><alert dismissible></alert></p>
+````````````````````````````````
+
+## Inline component with id and class
+
+```````````````````````````````` example
+:badge[Text]{#my-id .highlight}
+.
+<p><badge id="my-id" class="highlight">Text</badge></p>
+````````````````````````````````
+
+## Inline component with multiple properties
+
+```````````````````````````````` example
+:button[Click]{type="primary" size="lg" disabled}
+.
+<p><button type="primary" size="lg" disabled>Click</button></p>
+````````````````````````````````
+
+## Single-word component name
+
+```````````````````````````````` example
+:alert[Warning!]
+.
+<p><alert>Warning!</alert></p>
+````````````````````````````````
+
+## Component does not interfere with URLs
+
+```````````````````````````````` example
+Visit https://example.com for more.
+.
+<p>Visit <a href="https://example.com">https://example.com</a> for more.</p>
+````````````````````````````````

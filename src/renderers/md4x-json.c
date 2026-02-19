@@ -73,7 +73,11 @@ struct JSON_NODE {
         struct { char* href; char* title; } a;
         struct { char* src; char* title; } img;
         struct { char* target; } wikilink;
+        struct { char* raw_props; MD_SIZE raw_props_size; } component;
     } detail;
+
+    /* Non-zero if the tag is heap-allocated (dynamic component tag). */
+    int tag_is_dynamic;
 };
 
 typedef struct {
@@ -140,6 +144,10 @@ json_node_free(JSON_NODE* node)
             if(node->detail.img.title) free(node->detail.img.title);
         } else if(strcmp(node->tag, "wikilink") == 0) {
             if(node->detail.wikilink.target) free(node->detail.wikilink.target);
+        }
+        if(node->tag_is_dynamic) {
+            if(node->detail.component.raw_props) free(node->detail.component.raw_props);
+            free((char*)node->tag);
         }
     }
 
@@ -357,44 +365,61 @@ json_enter_span(MD_SPANTYPE type, void* detail, void* userdata)
         return 0;
     }
 
-    switch(type) {
-        case MD_SPAN_EM:                tag = "em"; break;
-        case MD_SPAN_STRONG:            tag = "strong"; break;
-        case MD_SPAN_A:                 tag = "a"; break;
-        case MD_SPAN_IMG:               tag = "img"; break;
-        case MD_SPAN_CODE:              tag = "code"; break;
-        case MD_SPAN_DEL:               tag = "del"; break;
-        case MD_SPAN_LATEXMATH:         tag = "math"; break;
-        case MD_SPAN_LATEXMATH_DISPLAY: tag = "math-display"; break;
-        case MD_SPAN_WIKILINK:          tag = "wikilink"; break;
-        case MD_SPAN_U:                 tag = "u"; break;
-        default:                        tag = "unknown"; break;
-    }
+    if(type == MD_SPAN_COMPONENT) {
+        const MD_SPAN_COMPONENT_DETAIL* d = (const MD_SPAN_COMPONENT_DETAIL*) detail;
+        tag = json_attr_to_str(&d->tag_name);
+        if(tag == NULL) { ctx->error = 1; return -1; }
+        node = json_node_new(tag, JSON_NODE_ELEMENT);
+        if(node == NULL) { free((char*)tag); ctx->error = 1; return -1; }
+        node->tag_is_dynamic = 1;
+        if(d->raw_props != NULL && d->raw_props_size > 0) {
+            node->detail.component.raw_props = (char*) malloc(d->raw_props_size + 1);
+            if(node->detail.component.raw_props != NULL) {
+                memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
+                node->detail.component.raw_props[d->raw_props_size] = '\0';
+                node->detail.component.raw_props_size = d->raw_props_size;
+            }
+        }
+    } else {
+        switch(type) {
+            case MD_SPAN_EM:                tag = "em"; break;
+            case MD_SPAN_STRONG:            tag = "strong"; break;
+            case MD_SPAN_A:                 tag = "a"; break;
+            case MD_SPAN_IMG:               tag = "img"; break;
+            case MD_SPAN_CODE:              tag = "code"; break;
+            case MD_SPAN_DEL:               tag = "del"; break;
+            case MD_SPAN_LATEXMATH:         tag = "math"; break;
+            case MD_SPAN_LATEXMATH_DISPLAY: tag = "math-display"; break;
+            case MD_SPAN_WIKILINK:          tag = "wikilink"; break;
+            case MD_SPAN_U:                 tag = "u"; break;
+            default:                        tag = "unknown"; break;
+        }
 
-    node = json_node_new(tag, JSON_NODE_ELEMENT);
-    if(node == NULL) { ctx->error = 1; return -1; }
+        node = json_node_new(tag, JSON_NODE_ELEMENT);
+        if(node == NULL) { ctx->error = 1; return -1; }
 
-    switch(type) {
-        case MD_SPAN_A: {
-            const MD_SPAN_A_DETAIL* d = (const MD_SPAN_A_DETAIL*) detail;
-            node->detail.a.href = json_attr_to_str(&d->href);
-            node->detail.a.title = json_attr_to_str(&d->title);
-            break;
+        switch(type) {
+            case MD_SPAN_A: {
+                const MD_SPAN_A_DETAIL* d = (const MD_SPAN_A_DETAIL*) detail;
+                node->detail.a.href = json_attr_to_str(&d->href);
+                node->detail.a.title = json_attr_to_str(&d->title);
+                break;
+            }
+            case MD_SPAN_IMG: {
+                const MD_SPAN_IMG_DETAIL* d = (const MD_SPAN_IMG_DETAIL*) detail;
+                node->detail.img.src = json_attr_to_str(&d->src);
+                node->detail.img.title = json_attr_to_str(&d->title);
+                ctx->image_nesting = 1;
+                break;
+            }
+            case MD_SPAN_WIKILINK: {
+                const MD_SPAN_WIKILINK_DETAIL* d = (const MD_SPAN_WIKILINK_DETAIL*) detail;
+                node->detail.wikilink.target = json_attr_to_str(&d->target);
+                break;
+            }
+            default:
+                break;
         }
-        case MD_SPAN_IMG: {
-            const MD_SPAN_IMG_DETAIL* d = (const MD_SPAN_IMG_DETAIL*) detail;
-            node->detail.img.src = json_attr_to_str(&d->src);
-            node->detail.img.title = json_attr_to_str(&d->title);
-            ctx->image_nesting = 1;
-            break;
-        }
-        case MD_SPAN_WIKILINK: {
-            const MD_SPAN_WIKILINK_DETAIL* d = (const MD_SPAN_WIKILINK_DETAIL*) detail;
-            node->detail.wikilink.target = json_attr_to_str(&d->target);
-            break;
-        }
-        default:
-            break;
     }
 
     json_append_child(ctx, node);
@@ -616,6 +641,129 @@ json_align_str(int align)
     }
 }
 
+/* Write parsed component props from a raw props string.
+ * Syntax: key="value", key='value', bool, #id, .class, :key='json'
+ * Returns number of props written. */
+static int
+json_write_component_props(JSON_WRITER* w, const char* raw, MD_SIZE size)
+{
+    MD_OFFSET i = 0;
+    int n_props = 0;
+    int n_classes = 0;
+
+    /* First pass: count .class entries so we can merge them. */
+    /* We do a simpler approach: write non-class props first, collect classes, write at end. */
+    /* Actually, let's do a single-pass approach for simplicity. Classes get merged. */
+
+    /* Collect class names into a temporary buffer. */
+    char class_buf[512];
+    MD_SIZE class_len = 0;
+
+    while(i < size) {
+        /* Skip whitespace. */
+        while(i < size && (raw[i] == ' ' || raw[i] == '\t'))
+            i++;
+        if(i >= size) break;
+
+        if(raw[i] == '#') {
+            /* #id → "id":"value" */
+            MD_OFFSET start = ++i;
+            while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
+                i++;
+            if(i > start) {
+                if(n_props > 0) json_write(w, ",", 1);
+                json_write_str(w, "\"id\":");
+                json_write_string(w, raw + start, i - start);
+                n_props++;
+            }
+        }
+        else if(raw[i] == '.') {
+            /* .class → collect for merged "class" prop */
+            MD_OFFSET start = ++i;
+            while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}' && raw[i] != '.')
+                i++;
+            if(i > start) {
+                if(class_len > 0 && class_len + 1 < sizeof(class_buf)) {
+                    class_buf[class_len++] = ' ';
+                }
+                if(class_len + (i - start) < sizeof(class_buf)) {
+                    memcpy(class_buf + class_len, raw + start, i - start);
+                    class_len += i - start;
+                }
+                n_classes++;
+            }
+        }
+        else {
+            /* key="value", key='value', or bare boolean */
+            MD_OFFSET key_start = i;
+            int is_bind = 0;
+
+            /* Check for :key (bind syntax) */
+            if(raw[i] == ':') {
+                is_bind = 1;
+                key_start = ++i;
+            }
+
+            while(i < size && raw[i] != '=' && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
+                i++;
+
+            if(i > key_start && i < size && raw[i] == '=') {
+                /* key=value or key="value" or key='value' */
+                MD_OFFSET key_end = i;
+                i++; /* skip '=' */
+
+                if(i < size && (raw[i] == '"' || raw[i] == '\'')) {
+                    char quote = raw[i];
+                    MD_OFFSET val_start = ++i;
+                    while(i < size && raw[i] != quote)
+                        i++;
+                    if(n_props > 0) json_write(w, ",", 1);
+                    if(is_bind) json_write(w, "\":", 2);
+                    else json_write(w, "\"", 1);
+                    json_write_escaped(w, raw + key_start, key_end - key_start);
+                    json_write_str(w, "\":");
+                    if(is_bind) {
+                        /* For :key='value', pass value as-is (JSON passthrough). */
+                        json_write(w, raw + val_start, i - val_start);
+                    } else {
+                        json_write_string(w, raw + val_start, i - val_start);
+                    }
+                    n_props++;
+                    if(i < size) i++; /* skip closing quote */
+                } else {
+                    /* Unquoted value */
+                    MD_OFFSET val_start = i;
+                    while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '}')
+                        i++;
+                    if(n_props > 0) json_write(w, ",", 1);
+                    json_write(w, "\"", 1);
+                    json_write_escaped(w, raw + key_start, key_end - key_start);
+                    json_write_str(w, "\":");
+                    json_write_string(w, raw + val_start, i - val_start);
+                    n_props++;
+                }
+            } else if(i > key_start) {
+                /* Boolean prop */
+                if(n_props > 0) json_write(w, ",", 1);
+                json_write(w, "\"", 1);
+                json_write_escaped(w, raw + key_start, i - key_start);
+                json_write_str(w, "\":true");
+                n_props++;
+            }
+        }
+    }
+
+    /* Write merged class prop. */
+    if(class_len > 0) {
+        if(n_props > 0) json_write(w, ",", 1);
+        json_write_str(w, "\"class\":");
+        json_write_string(w, class_buf, class_len);
+        n_props++;
+    }
+
+    return n_props;
+}
+
 /* Write the props object for an element node. */
 static void
 json_write_props(JSON_WRITER* w, const JSON_NODE* node)
@@ -715,6 +863,13 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
             json_write_str(w, "\"target\":");
             json_write_string(w, node->detail.wikilink.target, (MD_SIZE) strlen(node->detail.wikilink.target));
             has_prop = 1;
+        }
+    }
+    else if(node->tag_is_dynamic) {
+        /* Component: parse raw props string. */
+        if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {
+            has_prop = json_write_component_props(w, node->detail.component.raw_props,
+                                                  node->detail.component.raw_props_size);
         }
     }
 
