@@ -155,7 +155,7 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
 - [x] **7.3** Update NAPI bindings if needed
 - [x] **7.4** Run full test suite and fix regressions
 - [x] **7.5** Update `AGENTS.md` with new types, flags, and API docs
-- [ ] **7.6** Update `CHANGELOG.md`
+- [x] **7.6** Update `CHANGELOG.md`
 
 ---
 
