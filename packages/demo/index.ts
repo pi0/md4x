@@ -128,7 +128,7 @@ if (hash) {
 const [, highlighter] = await Promise.all([
   initWasm(),
   createHighlighter({
-    themes: ["tokyo-night"],
+    themes: ["github-light"],
     langs: ["html", "json"],
   }),
 ]);
@@ -185,12 +185,12 @@ function render() {
     } else if (m === "raw") {
       output.innerHTML = highlighter.codeToHtml(renderToHtml(md), {
         lang: "html",
-        theme: "tokyo-night",
+        theme: "github-light",
       });
     } else if (m === "json") {
       output.innerHTML = highlighter.codeToHtml(
         JSON.stringify(parseAST(md), null, 2),
-        { lang: "json", theme: "tokyo-night" },
+        { lang: "json", theme: "github-light" },
       );
     } else if (m === "ansi") {
       const ansi = renderToAnsi(md).replace(/\x1b\]8;[^\x1b]*\x1b\\/g, "");
@@ -201,6 +201,18 @@ function render() {
   }
   updateHash();
 }
+
+document.getElementById("reset")!.addEventListener("click", (e) => {
+  e.preventDefault();
+  modeEl.value = "html";
+  exampleEl.value = "basics";
+  currentMd = examples.basics;
+  editor.dispatch({
+    changes: { from: 0, to: editor.state.doc.length, insert: currentMd },
+  });
+  history.replaceState(null, "", location.pathname);
+  render();
+});
 
 modeEl.addEventListener("change", render);
 exampleEl.addEventListener("change", () => {

@@ -10,18 +10,20 @@
   </head>
   <body>
     <header>
-      <h1>md4x</h1>
-      <select id="example"></select>
-      <div class="mobile-tabs">
-        <button data-for="editor">Editor</button>
-        <button class="active" data-for="output">Output</button>
-      </div>
-      <select id="mode">
-        <option value="html">HTML (rendered)</option>
-        <option value="raw">HTML (source)</option>
-        <option value="json">JSON AST (comark)</option>
-        <option value="ansi">ANSI (CLI)</option>
-      </select>
+      <h1><a href="#" id="reset">md4x</a></h1>
+      <nav class="selectors">
+        <select id="example"></select>
+        <div class="mobile-tabs">
+          <button data-for="editor">Editor</button>
+          <button class="active" data-for="output">Output</button>
+        </div>
+        <select id="mode">
+          <option value="html">HTML (rendered)</option>
+          <option value="raw">HTML (source)</option>
+          <option value="json">JSON AST (comark)</option>
+          <option value="ansi">ANSI (CLI)</option>
+        </select>
+      </nav>
       <a
         href="https://github.com/pi0/md4x"
         target="_blank"
