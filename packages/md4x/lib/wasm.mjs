@@ -26,9 +26,13 @@ export async function initWasm(input) {
       bytes = response;
     }
   } else {
-    const { readFile } = await import("node:fs/promises");
-    const wasmPath = new URL("../build/md4x.wasm", import.meta.url);
-    bytes = await readFile(wasmPath);
+    const fsp = globalThis.process?.getBuiltinModule?.("fs/promises")
+    if (fsp) {
+      const wasmPath = new URL("../build/md4x.wasm", import.meta.url);
+    bytes = await fsp.readFile(wasmPath);
+    } else {
+      bytes = await fetch(await import("../build/md4x.wasm?url").then(m => m.default)).then(r => r.arrayBuffer())
+    }
   }
   const { instance } = await WebAssembly.instantiate(bytes, {
     wasi_snapshot_preview1: wasiStub,
