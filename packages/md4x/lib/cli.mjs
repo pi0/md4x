@@ -23,7 +23,7 @@ const { values, positionals } = parseArgs({
 });
 
 const _tty = process.stderr.isTTY;
-const c = (code) => (s) => _tty ? `\x1b[${code}m${s}\x1b[0m` : s;
+const c = (code) => (s) => (_tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const _b = c(1);
 const _d = c(2);
 const _c = c(36);

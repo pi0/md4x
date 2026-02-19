@@ -15,9 +15,9 @@ The root container for all parsed content:
 
 ```typescript
 type ComarkTree = {
-  type: 'comark'
-  value: ComarkNode[]
-}
+  type: "comark";
+  value: ComarkNode[];
+};
 ```
 
 ### ComarkNode
@@ -25,7 +25,7 @@ type ComarkTree = {
 Each node is either a text string or an element tuple:
 
 ```typescript
-type ComarkNode = ComarkElement | ComarkText
+type ComarkNode = ComarkElement | ComarkText;
 ```
 
 ### ComarkText
@@ -33,7 +33,7 @@ type ComarkNode = ComarkElement | ComarkText
 Plain string representing text content:
 
 ```typescript
-type ComarkText = string
+type ComarkText = string;
 ```
 
 ### ComarkElement
@@ -41,7 +41,7 @@ type ComarkText = string
 An element is a tuple array with tag, attributes, and children:
 
 ```typescript
-type ComarkElement = [string, ComarkElementAttributes, ...ComarkNode[]]
+type ComarkElement = [string, ComarkElementAttributes, ...ComarkNode[]];
 ```
 
 ### ComarkElementAttributes
@@ -50,8 +50,8 @@ Attributes are a key-value record:
 
 ```typescript
 type ComarkElementAttributes = {
-  [key: string]: unknown
-}
+  [key: string]: unknown;
+};
 ```
 
 ## Node Format
@@ -73,6 +73,7 @@ Elements are arrays with the format `[tag, props, ...children]`:
 ```
 
 **Components:**
+
 - **tag** (index 0): Element name or component tag
 - **props** (index 1): Object with attributes/properties
 - **children** (index 2+): Child nodes (strings or nested arrays)
@@ -100,7 +101,9 @@ This is a paragraph with **bold** and *italic* text.
 ```
 
 ```json
-["p", {},
+[
+  "p",
+  {},
   "This is a paragraph with ",
   ["strong", {}, "bold"],
   " and ",
@@ -138,14 +141,11 @@ This is a paragraph with **bold** and *italic* text.
 ```
 
 ```json
-["ul", {},
+[
+  "ul",
+  {},
   ["li", {}, "Item 1"],
-  ["li", {},
-    "Item 2",
-    ["ul", {},
-      ["li", {}, "Nested item"]
-    ]
-  ]
+  ["li", {}, "Item 2", ["ul", {}, ["li", {}, "Nested item"]]]
 ]
 ```
 
@@ -157,10 +157,7 @@ This is a paragraph with **bold** and *italic* text.
 ```
 
 ```json
-["ol", {},
-  ["li", {}, "First"],
-  ["li", {}, "Second"]
-]
+["ol", {}, ["li", {}, "First"], ["li", {}, "Second"]]
 ```
 
 ### Code Blocks
@@ -173,14 +170,14 @@ const b = 2
 ````
 
 ```json
-["pre", {
+[
+  "pre",
+  {
     "language": "javascript",
     "filename": "app.js",
     "highlights": [1, 2]
   },
-  ["code", { "class": "language-javascript" },
-    "const a = 1\nconst b = 2"
-  ]
+  ["code", { "class": "language-javascript" }, "const a = 1\nconst b = 2"]
 ]
 ```
 
@@ -191,11 +188,7 @@ Use `const` for constants
 ```
 
 ```json
-["p", {},
-  "Use ",
-  ["code", {}, "const"],
-  " for constants"
-]
+["p", {}, "Use ", ["code", {}, "const"], " for constants"]
 ```
 
 ### Blockquotes
@@ -205,9 +198,7 @@ Use `const` for constants
 ```
 
 ```json
-["blockquote", {},
-  ["p", {}, "This is a quote"]
-]
+["blockquote", {}, ["p", {}, "This is a quote"]]
 ```
 
 ### Tables
@@ -219,19 +210,11 @@ Use `const` for constants
 ```
 
 ```json
-["table", {},
-  ["thead", {},
-    ["tr", {},
-      ["th", {}, "Header 1"],
-      ["th", {}, "Header 2"]
-    ]
-  ],
-  ["tbody", {},
-    ["tr", {},
-      ["td", {}, "Cell 1"],
-      ["td", {}, "Cell 2"]
-    ]
-  ]
+[
+  "table",
+  {},
+  ["thead", {}, ["tr", {}, ["th", {}, "Header 1"], ["th", {}, "Header 2"]]],
+  ["tbody", {}, ["tr", {}, ["td", {}, "Cell 1"], ["td", {}, "Cell 2"]]]
 ]
 ```
 
@@ -258,9 +241,7 @@ This is an alert message
 ```
 
 ```json
-["alert", { "type": "info" },
-  ["p", {}, "This is an alert message"]
-]
+["alert", { "type": "info" }, ["p", {}, "This is an alert message"]]
 ```
 
 ### Inline Components
@@ -270,11 +251,7 @@ Check out this :badge[New]{color="blue"} feature
 ```
 
 ```json
-["p", {},
-  "Check out this ",
-  ["badge", { "color": "blue" }, "New"],
-  " feature"
-]
+["p", {}, "Check out this ", ["badge", { "color": "blue" }, "New"], " feature"]
 ```
 
 ### Components with Slots
@@ -290,13 +267,15 @@ Main content here
 ```
 
 ```json
-["card", {},
-  ["template", { "name": "header" },
+[
+  "card",
+  {},
+  [
+    "template",
+    { "name": "header" },
     ["h2", { "id": "card-title" }, "Card Title"]
   ],
-  ["template", { "name": "content" },
-    ["p", {}, "Main content here"]
-  ]
+  ["template", { "name": "content" }, ["p", {}, "Main content here"]]
 ]
 ```
 
@@ -311,11 +290,7 @@ Content
 ```
 
 ```json
-["outer", {},
-  ["inner", {},
-    ["p", {}, "Content"]
-  ]
-]
+["outer", {}, ["inner", {}, ["p", {}, "Content"]]]
 ```
 
 ---
@@ -371,10 +346,13 @@ Content
 ```
 
 ```json
-["component", {
-  "id": "my-id",
-  "class": "class-one class-two"
-}]
+[
+  "component",
+  {
+    "id": "my-id",
+    "class": "class-one class-two"
+  }
+]
 ```
 
 ---
@@ -411,21 +389,21 @@ console.log("Hello")
   "type": "comark",
   "value": [
     ["h1", { "id": "welcome" }, "Welcome"],
-    ["p", {},
+    [
+      "p",
+      {},
       "This is a ",
       ["strong", {}, "sample"],
       " document with ",
       ["a", { "href": "https://example.com" }, "links"],
       "."
     ],
-    ["alert", { "type": "info" },
-      ["p", {}, "Important notice"]
-    ],
+    ["alert", { "type": "info" }, ["p", {}, "Important notice"]],
     ["h2", { "id": "code-example" }, "Code Example"],
-    ["pre", { "language": "javascript", "filename": "demo.js" },
-      ["code", { "class": "language-javascript" },
-        "console.log(\"Hello\")"
-      ]
+    [
+      "pre",
+      { "language": "javascript", "filename": "demo.js" },
+      ["code", { "class": "language-javascript" }, "console.log(\"Hello\")"]
     ]
   ]
 }
@@ -447,51 +425,51 @@ console.log("Hello")
 ### Traversing Nodes
 
 ```typescript
-import type { ComarkNode, ComarkTree } from 'comark'
+import type { ComarkNode, ComarkTree } from "comark";
 
 function traverse(node: ComarkNode, callback: (node: ComarkNode) => void) {
-  callback(node)
+  callback(node);
 
   if (Array.isArray(node)) {
-    const children = node.slice(2)
+    const children = node.slice(2);
     for (const child of children) {
-      traverse(child, callback)
+      traverse(child, callback);
     }
   }
 }
 
 // Usage
-const result = parse(content)
+const result = parse(content);
 traverse(result.body.value[0], (node) => {
   if (Array.isArray(node)) {
-    console.log('Element:', node[0])
+    console.log("Element:", node[0]);
   } else {
-    console.log('Text:', node)
+    console.log("Text:", node);
   }
-})
+});
 ```
 
 ### Finding Elements
 
 ```typescript
 function findByTag(tree: ComarkTree, tag: string): ComarkNode[] {
-  const results: ComarkNode[] = []
+  const results: ComarkNode[] = [];
 
   function search(node: ComarkNode) {
     if (Array.isArray(node) && node[0] === tag) {
-      results.push(node)
+      results.push(node);
     }
     if (Array.isArray(node)) {
-      node.slice(2).forEach(search)
+      node.slice(2).forEach(search);
     }
   }
 
-  tree.value.forEach(search)
-  return results
+  tree.value.forEach(search);
+  return results;
 }
 
 // Find all headings
-const headings = findByTag(result.body, 'h1')
+const headings = findByTag(result.body, "h1");
 ```
 
 ### Modifying AST
@@ -499,43 +477,43 @@ const headings = findByTag(result.body, 'h1')
 ```typescript
 function addClassToLinks(node: ComarkNode): ComarkNode {
   if (Array.isArray(node)) {
-    const [tag, props, ...children] = node
+    const [tag, props, ...children] = node;
 
-    if (tag === 'a') {
-      return [tag, { ...props, class: 'external-link' }, ...children]
+    if (tag === "a") {
+      return [tag, { ...props, class: "external-link" }, ...children];
     }
 
-    return [tag, props, ...children.map(addClassToLinks)]
+    return [tag, props, ...children.map(addClassToLinks)];
   }
 
-  return node
+  return node;
 }
 
 // Transform all links
 const transformed: ComarkTree = {
-  type: 'comark',
-  value: result.body.value.map(addClassToLinks)
-}
+  type: "comark",
+  value: result.body.value.map(addClassToLinks),
+};
 ```
 
 ### Extracting Text Content
 
 ```typescript
 function extractText(node: ComarkNode): string {
-  if (typeof node === 'string') {
-    return node
+  if (typeof node === "string") {
+    return node;
   }
 
   if (Array.isArray(node)) {
-    return node.slice(2).map(extractText).join('')
+    return node.slice(2).map(extractText).join("");
   }
 
-  return ''
+  return "";
 }
 
 // Get all text from a heading
-const heading = ['h1', { id: 'hello' }, 'Hello ', ['strong', {}, 'World']]
-console.log(extractText(heading)) // "Hello World"
+const heading = ["h1", { id: "hello" }, "Hello ", ["strong", {}, "World"]];
+console.log(extractText(heading)); // "Hello World"
 ```
 
 ---
@@ -545,20 +523,20 @@ console.log(extractText(heading)) // "Hello World"
 ### To HTML
 
 ```typescript
-import { renderHTML } from 'comark'
+import { renderHTML } from "comark";
 
-const result = parse('# Hello **World**')
-const html = renderHTML(result.body)
+const result = parse("# Hello **World**");
+const html = renderHTML(result.body);
 // <h1 id="hello-world">Hello <strong>World</strong></h1>
 ```
 
 ### To Markdown
 
 ```typescript
-import { renderMarkdown } from 'comark'
+import { renderMarkdown } from "comark";
 
-const result = parse('# Hello **World**')
-const markdown = renderMarkdown(result.body)
+const result = parse("# Hello **World**");
+const markdown = renderMarkdown(result.body);
 // # Hello **World**
 ```
 
@@ -566,30 +544,30 @@ const markdown = renderMarkdown(result.body)
 
 ```typescript
 function renderToPlainText(node: ComarkNode): string {
-  if (typeof node === 'string') {
-    return node
+  if (typeof node === "string") {
+    return node;
   }
 
   if (Array.isArray(node)) {
-    const [tag, props, ...children] = node
-    const content = children.map(renderToPlainText).join('')
+    const [tag, props, ...children] = node;
+    const content = children.map(renderToPlainText).join("");
 
     // Add formatting based on tag
     switch (tag) {
-      case 'h1':
-      case 'h2':
-      case 'h3':
-        return `${content}\n\n`
-      case 'p':
-        return `${content}\n\n`
-      case 'li':
-        return `• ${content}\n`
+      case "h1":
+      case "h2":
+      case "h3":
+        return `${content}\n\n`;
+      case "p":
+        return `${content}\n\n`;
+      case "li":
+        return `• ${content}\n`;
       default:
-        return content
+        return content;
     }
   }
 
-  return ''
+  return "";
 }
 ```
 
@@ -606,26 +584,26 @@ import type {
   ComarkElement,
   ComarkText,
   ComarkElementAttributes,
-  ParseResult
-} from 'comark'
+  ParseResult,
+} from "comark";
 
 // Type guard for element nodes
 function isElement(node: ComarkNode): node is ComarkElement {
-  return Array.isArray(node) && typeof node[0] === 'string'
+  return Array.isArray(node) && typeof node[0] === "string";
 }
 
 // Type guard for text nodes
 function isText(node: ComarkNode): node is ComarkText {
-  return typeof node === 'string'
+  return typeof node === "string";
 }
 
 // Usage
 function processNode(node: ComarkNode) {
   if (isText(node)) {
-    console.log('Text:', node)
+    console.log("Text:", node);
   } else if (isElement(node)) {
-    const [tag, props, ...children] = node
-    console.log('Element:', tag, props)
+    const [tag, props, ...children] = node;
+    console.log("Element:", tag, props);
   }
 }
 ```

@@ -36,9 +36,10 @@ All headings automatically get ID attributes generated from their content for li
 ```
 
 **Renders as:**
+
 - **Bold text**
-- *Italic text*
-- ***Bold and italic***
+- _Italic text_
+- **_Bold and italic_**
 - ~~Strikethrough~~
 - `Inline code`
 
@@ -87,7 +88,7 @@ All headings automatically get ID attributes generated from their content for li
 > This is a blockquote
 > It can span multiple lines
 >
-> And contain other markdown elements like **bold** and *italic*
+> And contain other markdown elements like **bold** and _italic_
 
 ### Horizontal Rules
 
@@ -132,16 +133,16 @@ Your markdown content here...
 
 ### Special Fields
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| `title` | Used in table of contents generation | - |
-| `depth` | Maximum heading level for TOC | `2` |
-| `searchDepth` | Depth for TOC search | `2` |
+| Field         | Description                          | Default |
+| ------------- | ------------------------------------ | ------- |
+| `title`       | Used in table of contents generation | -       |
+| `depth`       | Maximum heading level for TOC        | `2`     |
+| `searchDepth` | Depth for TOC search                 | `2`     |
 
 ### Example Usage
 
 ```typescript
-import { parse } from 'comark'
+import { parse } from "comark";
 
 const content = `---
 title: My Article
@@ -151,10 +152,10 @@ depth: 3
 
 # Introduction
 Content here...
-`
+`;
 
-const result = parse(content)
-console.log(result.data)
+const result = parse(content);
+console.log(result.data);
 // { title: 'My Article', author: 'Jane Doe', depth: 3 }
 ```
 
@@ -213,12 +214,12 @@ The status is :badge[Active]{color="green"} right now.
 
 **Syntax variations:**
 
-| Syntax | Description |
-|--------|-------------|
-| `:icon-check` | Standalone inline component |
-| `:badge[New]` | Inline component with content |
-| `:badge[New]{color="blue"}` | Inline component with content and properties |
-| `:tooltip{text="Hover text"}` | Inline component with properties only |
+| Syntax                        | Description                                  |
+| ----------------------------- | -------------------------------------------- |
+| `:icon-check`                 | Standalone inline component                  |
+| `:badge[New]`                 | Inline component with content                |
+| `:badge[New]{color="blue"}`   | Inline component with content and properties |
+| `:tooltip{text="Hover text"}` | Inline component with properties only        |
 
 ### Component Properties
 
@@ -284,21 +285,13 @@ Footer text here
     [
       "card",
       {},
-      [
-        "template",
-        { "name": "header" },
-        ["h2", {}, "Card Title"]
-      ],
+      ["template", { "name": "header" }, ["h2", {}, "Card Title"]],
       [
         "template",
         { "name": "content" },
         ["p", {}, "This is the main content of the card"]
       ],
-      [
-        "template",
-        { "name": "footer" },
-        ["p", {}, "Footer text here"]
-      ]
+      ["template", { "name": "footer" }, ["p", {}, "Footer text here"]]
     ]
   ]
 }
@@ -385,12 +378,12 @@ This is [highlighted text]{.highlight .yellow} in a paragraph.
 
 ### Attribute Types Summary
 
-| Syntax | Output | Description |
-|--------|--------|-------------|
-| `{bool}` | `:bool="true"` | Boolean attribute |
-| `{#my-id}` | `id="my-id"` | ID attribute |
-| `{.my-class}` | `class="my-class"` | Class attribute |
-| `{key="value"}` | `key="value"` | Key-value attribute |
+| Syntax                     | Output                | Description           |
+| -------------------------- | --------------------- | --------------------- |
+| `{bool}`                   | `:bool="true"`        | Boolean attribute     |
+| `{#my-id}`                 | `id="my-id"`          | ID attribute          |
+| `{.my-class}`              | `class="my-class"`    | Class attribute       |
+| `{key="value"}`            | `key="value"`         | Key-value attribute   |
 | `{:data='{"key": "val"}'}` | `data={"key": "val"}` | JSON object attribute |
 
 ---
@@ -448,11 +441,11 @@ function example() {
 
 **Highlighting syntax:**
 
-| Syntax | Description |
-|--------|-------------|
-| `{3}` | Single line |
-| `{1-5}` | Range of lines |
-| `{1,3,5}` | Multiple specific lines |
+| Syntax          | Description               |
+| --------------- | ------------------------- |
+| `{3}`           | Single line               |
+| `{1-5}`         | Range of lines            |
+| `{1,3,5}`       | Multiple specific lines   |
 | `{1-3,7,10-12}` | Combined ranges and lines |
 
 ### Combined Metadata
@@ -494,11 +487,7 @@ Code blocks produce this AST structure:
         "highlights": [1, 2, 3],
         "meta": "meta=value"
       },
-      [
-        "code",
-        { "class": "language-javascript" },
-        "code content here"
-      ]
+      ["code", { "class": "language-javascript" }, "code content here"]
     ]
   ]
 }
@@ -538,11 +527,11 @@ Comark supports GitHub Flavored Markdown task lists:
 ```html
 <ul class="contains-task-list">
   <li class="task-list-item">
-    <input type="checkbox" disabled checked class="task-list-item-checkbox">
+    <input type="checkbox" disabled checked class="task-list-item-checkbox" />
     Completed task
   </li>
   <li class="task-list-item">
-    <input type="checkbox" disabled class="task-list-item-checkbox">
+    <input type="checkbox" disabled class="task-list-item-checkbox" />
     Pending task
   </li>
 </ul>
@@ -572,11 +561,11 @@ Comark supports GitHub Flavored Markdown tables:
 
 **Alignment syntax:**
 
-| Syntax | Alignment |
-|--------|-----------|
-| `:---` | Left |
-| `:---:` | Center |
-| `---:` | Right |
+| Syntax  | Alignment |
+| ------- | --------- |
+| `:---`  | Left      |
+| `:---:` | Center    |
+| `---:`  | Right     |
 
 ### Inline Markdown in Tables
 
@@ -662,9 +651,9 @@ This is the full article content that won't appear in the excerpt.
 ```
 
 ```typescript
-const result = parse(content)
-console.log(result.excerpt) // Contains content before <!-- more -->
-console.log(result.body)    // Contains full content
+const result = parse(content);
+console.log(result.excerpt); // Contains content before <!-- more -->
+console.log(result.body); // Contains full content
 ```
 
 ---

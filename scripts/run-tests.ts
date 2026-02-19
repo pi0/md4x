@@ -17,11 +17,10 @@ const testSuites = readdirSync(testDir)
 for (const suite of testSuites) {
   console.log(`Testing ${suite}`);
   try {
-    execFileSync(
-      "python3",
-      ["run-testsuite.py", "-s", suite, "-p", program],
-      { cwd: testDir, stdio: "inherit" },
-    );
+    execFileSync("python3", ["run-testsuite.py", "-s", suite, "-p", program], {
+      cwd: testDir,
+      stdio: "inherit",
+    });
   } catch {
     errCount++;
   }
