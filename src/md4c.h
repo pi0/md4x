@@ -99,7 +99,12 @@ typedef enum MD_BLOCKTYPE {
     MD_BLOCK_TBODY,
     MD_BLOCK_TR,
     MD_BLOCK_TH,
-    MD_BLOCK_TD
+    MD_BLOCK_TD,
+
+    /* Frontmatter block (e.g. YAML metadata delimited by ---).
+     * Note: Recognized only when MD_FLAG_FRONTMATTER is enabled.
+     * Content is provided verbatim as MD_TEXT_NORMAL. */
+    MD_BLOCK_FRONTMATTER
 } MD_BLOCKTYPE;
 
 /* Span represents an in-line piece of a document which should be rendered with
@@ -318,6 +323,7 @@ typedef struct MD_SPAN_WIKILINK {
 #define MD_FLAG_WIKILINKS                   0x2000  /* Enable wiki links extension. */
 #define MD_FLAG_UNDERLINE                   0x4000  /* Enable underline extension (and disables '_' for normal emphasis). */
 #define MD_FLAG_HARD_SOFT_BREAKS            0x8000  /* Force all soft breaks to act as hard breaks. */
+#define MD_FLAG_FRONTMATTER                 0x10000 /* Enable frontmatter extension. */
 
 #define MD_FLAG_PERMISSIVEAUTOLINKS         (MD_FLAG_PERMISSIVEEMAILAUTOLINKS | MD_FLAG_PERMISSIVEURLAUTOLINKS | MD_FLAG_PERMISSIVEWWWAUTOLINKS)
 #define MD_FLAG_NOHTML                      (MD_FLAG_NOHTMLBLOCKS | MD_FLAG_NOHTMLSPANS)

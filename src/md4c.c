@@ -262,6 +262,7 @@ struct MD_CTX_tag {
     /* Contextual info for line analysis. */
     SZ code_fence_length;   /* For checking closing fence length. */
     int html_block_type;    /* For checking closing raw HTML condition. */
+    int frontmatter_state;  /* 0: looking for opener, 1: inside, 2: done/disabled */
     int last_line_has_list_loosening_effect;
     int last_list_item_starts_with_two_blank_lines;
 };
@@ -277,7 +278,8 @@ enum MD_LINETYPE_tag {
     MD_LINE_HTML,
     MD_LINE_TEXT,
     MD_LINE_TABLE,
-    MD_LINE_TABLEUNDERLINE
+    MD_LINE_TABLEUNDERLINE,
+    MD_LINE_FRONTMATTER
 };
 typedef enum MD_LINETYPE_tag MD_LINETYPE;
 
@@ -4866,6 +4868,13 @@ md_process_leaf_block(MD_CTX* ctx, const MD_BLOCK* block)
                             (const MD_VERBATIMLINE*)(block + 1), block->n_lines));
             break;
 
+        case MD_BLOCK_FRONTMATTER:
+            /* Skip the opening fence line (first line is the --- opener). */
+            MD_CHECK(md_process_verbatim_block_contents(ctx, MD_TEXT_NORMAL,
+                            (const MD_VERBATIMLINE*)(block + 1) + 1,
+                            block->n_lines - 1));
+            break;
+
         case MD_BLOCK_TABLE:
             MD_CHECK(md_process_table_block_contents(ctx, block->data,
                             (const MD_LINE*)(block + 1), block->n_lines));
@@ -4956,7 +4965,7 @@ md_process_all_blocks(MD_CTX* ctx)
         } else {
             MD_CHECK(md_process_leaf_block(ctx, block));
 
-            if(block->type == MD_BLOCK_CODE || block->type == MD_BLOCK_HTML)
+            if(block->type == MD_BLOCK_CODE || block->type == MD_BLOCK_HTML || block->type == MD_BLOCK_FRONTMATTER)
                 byte_off += block->n_lines * sizeof(MD_VERBATIMLINE);
             else
                 byte_off += block->n_lines * sizeof(MD_LINE);
@@ -5039,6 +5048,10 @@ md_start_new_block(MD_CTX* ctx, const MD_LINE_ANALYSIS* line)
 
         case MD_LINE_HTML:
             block->type = MD_BLOCK_HTML;
+            break;
+
+        case MD_LINE_FRONTMATTER:
+            block->type = MD_BLOCK_FRONTMATTER;
             break;
 
         case MD_LINE_BLANK:
@@ -5157,7 +5170,8 @@ md_add_line_into_current_block(MD_CTX* ctx, const MD_LINE_ANALYSIS* analysis)
 {
     MD_ASSERT(ctx->current_block != NULL);
 
-    if(ctx->current_block->type == MD_BLOCK_CODE || ctx->current_block->type == MD_BLOCK_HTML) {
+    if(ctx->current_block->type == MD_BLOCK_CODE || ctx->current_block->type == MD_BLOCK_HTML
+            || ctx->current_block->type == MD_BLOCK_FRONTMATTER) {
         MD_VERBATIMLINE* line;
 
         line = (MD_VERBATIMLINE*) md_push_block_bytes(ctx, sizeof(MD_VERBATIMLINE));
@@ -5877,6 +5891,34 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
     }
 
     while(TRUE) {
+        /* Check whether we are frontmatter continuation. */
+        if(pivot_line->type == MD_LINE_FRONTMATTER) {
+            line->beg = off;
+
+            /* Check for closing --- fence. */
+            if(line->indent < ctx->code_indent_offset  &&
+               off < ctx->size  &&  CH(off) == _T('-'))
+            {
+                OFF tmp = off;
+                while(tmp < ctx->size  &&  CH(tmp) == _T('-'))
+                    tmp++;
+                if(tmp - off >= 3) {
+                    /* Only spaces allowed after the dashes. */
+                    while(tmp < ctx->size  &&  CH(tmp) == _T(' '))
+                        tmp++;
+                    if(tmp >= ctx->size  ||  ISNEWLINE(tmp)) {
+                        line->type = MD_LINE_BLANK;
+                        ctx->frontmatter_state = 2;
+                        break;
+                    }
+                }
+            }
+
+            line->type = MD_LINE_FRONTMATTER;
+            n_parents = ctx->n_containers;
+            break;
+        }
+
         /* Check whether we are fenced code continuation. */
         if(pivot_line->type == MD_LINE_FENCEDCODE) {
             line->beg = off;
@@ -6012,6 +6054,35 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 break;
             }
         }
+
+        /* Check for frontmatter opening at the very start of the document. */
+        if((ctx->parser.flags & MD_FLAG_FRONTMATTER)  &&
+            ctx->frontmatter_state == 0  &&
+            line->indent == 0  &&  n_parents == 0  &&
+            off < ctx->size  &&  CH(off) == _T('-'))
+        {
+            OFF tmp = off;
+            while(tmp < ctx->size  &&  CH(tmp) == _T('-'))
+                tmp++;
+            if(tmp - off >= 3) {
+                while(tmp < ctx->size  &&  CH(tmp) == _T(' '))
+                    tmp++;
+                if(tmp >= ctx->size  ||  ISNEWLINE(tmp)) {
+                    if(beg == 0) {
+                        line->type = MD_LINE_FRONTMATTER;
+                        line->enforce_new_block = TRUE;
+                        line->data = 1;
+                        ctx->frontmatter_state = 1;
+                        break;
+                    }
+                }
+            }
+            ctx->frontmatter_state = 2;
+        }
+
+        /* Disable frontmatter detection after first non-blank line. */
+        if(ctx->frontmatter_state == 0)
+            ctx->frontmatter_state = 2;
 
         /* Check for thematic break line. */
         if(line->indent < ctx->code_indent_offset

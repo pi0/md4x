@@ -1,6 +1,7 @@
 # MD4C
 
 > **Always keep this file (`AGENTS.md`) updated when making changes to the project.**
+> **Also update `CHANGELOG.md` when adding or changing user-facing features.**
 
 > C Markdown parser library by [Martin Mitáš](https://github.com/mity/md4c)
 
@@ -31,7 +32,7 @@ md2html/
   CMakeLists.txt       # Builds md2html executable
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
-  spec-*.txt           # Extension-specific tests
+  spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
   regressions.txt      # Bug regression tests
   coverage.txt         # Code coverage tests
   run-testsuite.py     # Individual test suite runner
@@ -91,7 +92,7 @@ python3 test/pathological-tests.py -p build/md2html/md2html
 
 Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md2html` and compares normalized output.
 
-Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `regressions.txt`, `coverage.txt`
+Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `regressions.txt`, `coverage.txt`
 
 ## Parser API (`md4c.h`)
 
@@ -187,6 +188,7 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 | `MD_BLOCK_TR` | `<tr>` | — |
 | `MD_BLOCK_TH` | `<th>` | `MD_BLOCK_TD_DETAIL` |
 | `MD_BLOCK_TD` | `<td>` | `MD_BLOCK_TD_DETAIL` |
+| `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | — |
 
 ### Span Types (`MD_SPANTYPE`)
 
@@ -306,6 +308,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 | `MD_FLAG_WIKILINKS` | `0x2000` | Enable `[[wiki links]]` |
 | `MD_FLAG_UNDERLINE` | `0x4000` | Enable underline (disables `_` emphasis) |
 | `MD_FLAG_HARD_SOFT_BREAKS` | `0x8000` | Force all soft breaks to act as hard breaks |
+| `MD_FLAG_FRONTMATTER` | `0x10000` | Enable frontmatter extension |
 
 **Compound flags:**
 
@@ -365,7 +368,7 @@ md2html [OPTION]... [FILE]
 
 **Dialect presets:** `--commonmark` (default), `--github`
 
-**Extension flags:** `--fcollapse-whitespace`, `--flatex-math`, `--fpermissive-atx-headers`, `--fpermissive-autolinks`, `--fpermissive-url-autolinks`, `--fpermissive-www-autolinks`, `--fpermissive-email-autolinks`, `--fhard-soft-breaks`, `--fstrikethrough`, `--ftables`, `--ftasklists`, `--funderline`, `--fwiki-links`
+**Extension flags:** `--fcollapse-whitespace`, `--flatex-math`, `--fpermissive-atx-headers`, `--fpermissive-autolinks`, `--fpermissive-url-autolinks`, `--fpermissive-www-autolinks`, `--fpermissive-email-autolinks`, `--fhard-soft-breaks`, `--fstrikethrough`, `--ftables`, `--ftasklists`, `--funderline`, `--fwiki-links`, `--ffrontmatter`
 
 **Suppression flags:** `--fno-html-blocks`, `--fno-html-spans`, `--fno-html`, `--fno-indented-code`
 
@@ -420,6 +423,10 @@ Inline `$...$` and display `$$...$$`. Opener must not be preceded by alphanumeri
 ### Extension: Underline (`MD_FLAG_UNDERLINE`)
 
 `_text_` renders as underline instead of emphasis (disables `_` for emphasis).
+
+### Extension: Frontmatter (`MD_FLAG_FRONTMATTER`)
+
+YAML-style frontmatter delimited by `---` at the very start of the document. The opening `---` must be on the first line (no leading blank lines). Content is exposed as verbatim text via `MD_BLOCK_FRONTMATTER`. HTML renderer outputs `<x-frontmatter>...</x-frontmatter>`. If unclosed, the rest of the document is treated as frontmatter content.
 
 ## Code Generation Scripts
 

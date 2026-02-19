@@ -1,0 +1,171 @@
+
+# Frontmatter
+
+With the flag `MD_FLAG_FRONTMATTER`, MD4C enables recognition of YAML-style
+frontmatter blocks delimited by `---` at the very beginning of the document.
+
+The frontmatter block must start with a line of three or more dashes as the
+very first line of the document.
+
+```````````````````````````````` example
+---
+title: Hello
+date: 2024-01-01
+---
+.
+<x-frontmatter>title: Hello
+date: 2024-01-01
+</x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+The content after the closing fence is parsed normally.
+
+```````````````````````````````` example
+---
+title: Hello
+---
+Hello, world!
+.
+<x-frontmatter>title: Hello
+</x-frontmatter>
+<p>Hello, world!</p>
+.
+--ffrontmatter
+````````````````````````````````
+
+Empty frontmatter is allowed.
+
+```````````````````````````````` example
+---
+---
+.
+<x-frontmatter></x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+More than three dashes can be used.
+
+```````````````````````````````` example
+-----
+title: Hello
+-----
+.
+<x-frontmatter>title: Hello
+</x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+Trailing spaces after dashes are allowed.
+
+```````````````````````````````` example
+---
+title: Hello
+---
+.
+<x-frontmatter>title: Hello
+</x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+Frontmatter must be on the very first line. A leading blank line disables it.
+
+```````````````````````````````` example
+
+---
+title: Hello
+---
+.
+<hr>
+<h2>title: Hello</h2>
+.
+--ffrontmatter
+````````````````````````````````
+
+Frontmatter is not recognized without the flag. The `---` lines are parsed
+as thematic breaks instead.
+
+```````````````````````````````` example
+---
+title: Hello
+---
+.
+<hr>
+<h2>title: Hello</h2>
+````````````````````````````````
+
+If the frontmatter is not closed, the rest of the document is consumed as
+frontmatter content.
+
+```````````````````````````````` example
+---
+title: Hello
+date: 2024-01-01
+.
+<x-frontmatter>title: Hello
+date: 2024-01-01
+</x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+The closing fence must not have any non-space content after the dashes.
+
+```````````````````````````````` example
+---
+title: Hello
+--- not a closing fence
+---
+.
+<x-frontmatter>title: Hello
+--- not a closing fence
+</x-frontmatter>
+.
+--ffrontmatter
+````````````````````````````````
+
+Frontmatter cannot appear after other content.
+
+```````````````````````````````` example
+Hello
+---
+title: value
+---
+.
+<h2>Hello</h2>
+<h2>title: value</h2>
+.
+--ffrontmatter
+````````````````````````````````
+
+Frontmatter cannot be indented.
+
+```````````````````````````````` example
+  ---
+title: Hello
+---
+.
+<hr>
+<h2>title: Hello</h2>
+.
+--ffrontmatter
+````````````````````````````````
+
+Frontmatter cannot appear inside a container block.
+
+```````````````````````````````` example
+> ---
+> title: Hello
+> ---
+.
+<blockquote>
+<hr>
+<h2>title: Hello</h2>
+</blockquote>
+.
+--ffrontmatter
+````````````````````````````````
