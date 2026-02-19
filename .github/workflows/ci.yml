@@ -17,19 +17,13 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.1
+          version: 0.15.2
 
       - name: Install JS dependencies
         run: bun install
 
       - name: Build
         run: zig build
-
-      - name: Build WASM
-        run: zig build wasm
-
-      - name: Build NAPI
-        run: zig build napi -Dnapi-include=node_modules/node-api-headers/include
 
       # - name: Test
       #   run: bun ./scripts/run-tests.ts
