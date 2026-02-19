@@ -33,14 +33,14 @@ jobs:
 
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: bunx vite@7.3.1 build
-        working-directory: packages/md4x
+        run: bun run build
+        working-directory: packages/demo
 
       - name: Upload Pages Artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/md4x/dist
+          path: packages/demo/dist
 
   deploy:
     needs: build

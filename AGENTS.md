@@ -11,6 +11,7 @@
 - **Spec:** CommonMark 0.31.2
 - **Build:** Zig (`zig build`)
 - **JS Runtime:** Bun (do **not** use npm, pnpm, yarn, or npx — use `bun`/`bunx` exclusively)
+- **Formatting:** Always run `bun fmt` after finishing code changes
 
 ## Project Structure
 
@@ -230,14 +231,14 @@ The JSON renderer produces a **Comark AST** — a lightweight, array-based forma
 
 **Property type conventions in AST output:**
 
-| MDC Syntax                     | AST Props                           | Description                  |
-| ------------------------------ | ----------------------------------- | ---------------------------- |
-| `prop="value"`                 | `"prop": "value"`                   | String prop                  |
-| `bool`                         | `":bool": "true"`                   | Boolean (`:` prefix in key)  |
-| `:count="5"`                   | `":count": "5"`                     | Number/bind (`:` prefix)     |
-| `:data='{"k":"v"}'`            | `":data": "{\"k\":\"v\"}"`          | JSON passthrough             |
-| `#my-id`                       | `"id": "my-id"`                     | ID shorthand                 |
-| `.class-one .class-two`        | `"class": "class-one class-two"`    | Class shorthand (merged)     |
+| MDC Syntax              | AST Props                        | Description                 |
+| ----------------------- | -------------------------------- | --------------------------- |
+| `prop="value"`          | `"prop": "value"`                | String prop                 |
+| `bool`                  | `":bool": "true"`                | Boolean (`:` prefix in key) |
+| `:count="5"`            | `":count": "5"`                  | Number/bind (`:` prefix)    |
+| `:data='{"k":"v"}'`     | `":data": "{\"k\":\"v\"}"`       | JSON passthrough            |
+| `#my-id`                | `"id": "my-id"`                  | ID shorthand                |
+| `.class-one .class-two` | `"class": "class-one class-two"` | Class shorthand (merged)    |
 
 **Key AST mappings:**
 
@@ -873,10 +874,11 @@ HTML renderer: attributes rendered on opening tags. JSON renderer: attrs merged 
 
 Fenced code blocks support filename and line highlighting metadata:
 
-```
+````
 ```javascript [app.js] {1-3,5}
 code here
-```
+````
+
 ```
 
 - **Filename**: `[filename]` — stored as `filename` prop in AST
@@ -893,10 +895,15 @@ code here
 `<!-- more -->` comment splits content into excerpt and body:
 
 ```
+
 # Title
+
 Intro paragraph (excerpt)
+
 <!-- more -->
+
 Full content (body only)
+
 ```
 
 Available as `result.excerpt` (content before marker) and `result.body` (full content) from the parse API.
@@ -912,3 +919,4 @@ The `scripts/` directory contains TypeScript generators for lookup tables compil
 - `_unicode-map.ts` — Shared helper for punct/whitespace map generators
 
 These are run manually when updating Unicode compliance (currently Unicode 15.1).
+```

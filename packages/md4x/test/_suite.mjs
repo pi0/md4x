@@ -513,9 +513,7 @@ export function defineSuite({
     });
 
     it("renders single slot HTML", async () => {
-      const html = await renderToHtml(
-        "::card\n#title\nCard Title\n::",
-      );
+      const html = await renderToHtml("::card\n#title\nCard Title\n::");
       expect(html).toContain('<template name="title">');
       expect(html).toContain("</template>");
       expect(html).toContain("<p>Card Title</p>");
@@ -537,9 +535,7 @@ export function defineSuite({
     });
 
     it("parses empty slot AST", async () => {
-      const ast = await parseAST(
-        "::card\n#empty\n#content\nText here\n::",
-      );
+      const ast = await parseAST("::card\n#empty\n#content\nText here\n::");
       const card = ast.value[0];
       const empty = card[2];
       expect(empty[0]).toBe("template");

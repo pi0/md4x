@@ -1,0 +1,33 @@
+---
+title: Extensions Demo
+tags: [math, wiki, frontmatter]
+---
+
+# Extensions
+
+## Frontmatter
+
+This document has YAML frontmatter (see raw HTML or JSON output).
+
+## LaTeX Math
+
+Inline math: $E = mc^2$ and $\alpha + \beta = \gamma$.
+
+Display math:
+
+$$
+\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+
+## Wiki Links
+
+Link to [[another page]] using wiki-style syntax.
+
+## HTML (Raw)
+
+<details>
+<summary>Click to expand</summary>
+
+Raw HTML is passed through by the parser.
+
+</details>
