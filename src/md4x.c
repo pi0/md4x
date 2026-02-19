@@ -4766,14 +4766,83 @@ md_process_code_block_contents(MD_CTX* ctx, int is_fenced, const MD_VERBATIMLINE
     return md_process_verbatim_block_contents(ctx, MD_TEXT_CODE, lines, n_lines);
 }
 
+/* Parse highlight ranges string (e.g. "1-3,5,7") into an expanded array.
+ * Returns heap-allocated array and sets *out_count. Returns NULL on empty/error. */
+static unsigned*
+md_parse_highlights(const CHAR* str, SZ size, unsigned* out_count)
+{
+    unsigned* arr = NULL;
+    unsigned capacity = 0;
+    unsigned count = 0;
+    SZ pos = 0;
+
+    *out_count = 0;
+
+    while(pos < size) {
+        unsigned start_num = 0;
+        unsigned end_num = 0;
+        unsigned n;
+
+        /* Skip whitespace and commas. */
+        while(pos < size && (str[pos] == _T(',') || str[pos] == _T(' ')))
+            pos++;
+        if(pos >= size)
+            break;
+
+        /* Parse number. */
+        if(str[pos] < _T('0') || str[pos] > _T('9'))
+            break;
+        while(pos < size && str[pos] >= _T('0') && str[pos] <= _T('9')) {
+            start_num = start_num * 10 + (unsigned)(str[pos] - _T('0'));
+            pos++;
+        }
+        end_num = start_num;
+
+        /* Range? */
+        if(pos < size && str[pos] == _T('-')) {
+            pos++;
+            end_num = 0;
+            if(pos >= size || str[pos] < _T('0') || str[pos] > _T('9'))
+                break;
+            while(pos < size && str[pos] >= _T('0') && str[pos] <= _T('9')) {
+                end_num = end_num * 10 + (unsigned)(str[pos] - _T('0'));
+                pos++;
+            }
+        }
+
+        /* Safety limit. */
+        if(end_num < start_num || (end_num - start_num) > 10000)
+            break;
+        for(n = start_num; n <= end_num; n++) {
+            if(count >= capacity) {
+                unsigned new_cap = (capacity == 0) ? 16 : capacity * 2;
+                unsigned* tmp = (unsigned*) realloc(arr, new_cap * sizeof(unsigned));
+                if(tmp == NULL) { free(arr); return NULL; }
+                arr = tmp;
+                capacity = new_cap;
+            }
+            arr[count++] = n;
+        }
+    }
+
+    if(count == 0) {
+        free(arr);
+        return NULL;
+    }
+    *out_count = count;
+    return arr;
+}
+
 static int
 md_setup_fenced_code_detail(MD_CTX* ctx, const MD_BLOCK* block, MD_BLOCK_CODE_DETAIL* det,
-                            MD_ATTRIBUTE_BUILD* info_build, MD_ATTRIBUTE_BUILD* lang_build)
+                            MD_ATTRIBUTE_BUILD* info_build, MD_ATTRIBUTE_BUILD* lang_build,
+                            MD_ATTRIBUTE_BUILD* filename_build)
 {
     const MD_VERBATIMLINE* fence_line = (const MD_VERBATIMLINE*)(block + 1);
     OFF beg = fence_line->beg;
     OFF end = fence_line->end;
     OFF lang_end;
+    OFF rest_beg;
     CHAR fence_ch = CH(fence_line->beg);
     int ret = 0;
 
@@ -4788,16 +4857,147 @@ md_setup_fenced_code_detail(MD_CTX* ctx, const MD_BLOCK* block, MD_BLOCK_CODE_DE
     while(end > beg  &&  CH(end-1) == _T(' '))
         end--;
 
-    /* Build info string attribute. */
+    /* Build info string attribute (full info string). */
     MD_CHECK(md_build_attribute(ctx, STR(beg), end - beg, 0, &det->info, info_build));
 
-    /* Build info string attribute. */
+    /* Build lang attribute (first word of info string). */
     lang_end = beg;
     while(lang_end < end  &&  !ISWHITESPACE(lang_end))
         lang_end++;
     MD_CHECK(md_build_attribute(ctx, STR(beg), lang_end - beg, 0, &det->lang, lang_build));
 
     det->fence_char = fence_ch;
+
+    /* Parse extended metadata from the rest of the info string (after lang).
+     * We look for [filename] and {highlights} in any order.
+     * Whatever remains after extraction becomes meta. */
+    rest_beg = lang_end;
+    while(rest_beg < end && ISWHITESPACE(rest_beg))
+        rest_beg++;
+
+    if(rest_beg < end) {
+        /* We'll scan the rest region [rest_beg, end) for [...] and {...}.
+         * Track which ranges to exclude when building meta. */
+        OFF fn_open = 0, fn_close = 0;   /* bracket positions (in ctx->text offsets) */
+        OFF fn_beg = 0, fn_end = 0;      /* filename content positions */
+        OFF hl_open = 0, hl_close = 0;   /* brace positions */
+        OFF hl_beg = 0, hl_end = 0;      /* highlight content positions */
+        int has_filename = 0;
+        int has_highlights = 0;
+        OFF i;
+
+        /* Find [filename] — scan for '[', then find matching ']' with backslash escapes. */
+        for(i = rest_beg; i < end; i++) {
+            if(CH(i) == _T('[')) {
+                OFF j;
+                fn_open = i;
+                for(j = i + 1; j < end; j++) {
+                    if(CH(j) == _T('\\') && j + 1 < end) {
+                        j++;  /* skip escaped char */
+                    } else if(CH(j) == _T(']')) {
+                        fn_close = j + 1;
+                        fn_beg = i + 1;
+                        fn_end = j;
+                        has_filename = 1;
+                        break;
+                    }
+                }
+                break;  /* only match first '[' */
+            }
+        }
+
+        /* Find {highlights}. */
+        for(i = rest_beg; i < end; i++) {
+            if(CH(i) == _T('{')) {
+                OFF j;
+                hl_open = i;
+                for(j = i + 1; j < end; j++) {
+                    if(CH(j) == _T('}')) {
+                        hl_close = j + 1;
+                        hl_beg = i + 1;
+                        hl_end = j;
+                        has_highlights = 1;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        /* Build filename attribute (handling backslash escapes via md_build_attribute). */
+        if(has_filename && fn_end > fn_beg) {
+            MD_CHECK(md_build_attribute(ctx, STR(fn_beg), fn_end - fn_beg,
+                                        0, &det->filename, filename_build));
+        }
+
+        /* Parse highlights into expanded integer array. */
+        if(has_highlights && hl_end > hl_beg) {
+            det->highlights = md_parse_highlights(STR(hl_beg), hl_end - hl_beg,
+                                                  &det->highlight_count);
+        }
+
+        /* Build meta from remaining text (exclude [..] and {..} regions).
+         * Collect non-excluded spans into a temporary buffer. */
+        {
+            CHAR* meta_buf;
+            SZ meta_len = 0;
+            OFF pos;
+
+            meta_buf = (CHAR*) malloc((end - rest_beg + 1) * sizeof(CHAR));
+            if(meta_buf == NULL) {
+                MD_LOG("malloc() failed.");
+                ret = -1;
+                goto abort;
+            }
+
+            pos = rest_beg;
+            while(pos < end) {
+                /* Skip bracket region. */
+                if(has_filename && pos == fn_open) {
+                    pos = fn_close;
+                    continue;
+                }
+                /* Skip brace region. */
+                if(has_highlights && pos == hl_open) {
+                    pos = hl_close;
+                    continue;
+                }
+                meta_buf[meta_len++] = CH(pos);
+                pos++;
+            }
+
+            /* Trim whitespace. */
+            while(meta_len > 0 && (meta_buf[meta_len - 1] == _T(' ') || meta_buf[meta_len - 1] == _T('\t')))
+                meta_len--;
+            {
+                SZ trim_start = 0;
+                while(trim_start < meta_len && (meta_buf[trim_start] == _T(' ') || meta_buf[trim_start] == _T('\t')))
+                    trim_start++;
+                if(trim_start > 0) {
+                    meta_len -= trim_start;
+                    memmove(meta_buf, meta_buf + trim_start, meta_len * sizeof(CHAR));
+                }
+            }
+
+            if(meta_len > 0) {
+                /* Store meta as a heap-allocated buffer on the detail.
+                 * Caller is responsible for freeing it. */
+                CHAR* meta_copy = (CHAR*) malloc((meta_len + 1) * sizeof(CHAR));
+                if(meta_copy == NULL) {
+                    free(meta_buf);
+                    MD_LOG("malloc() failed.");
+                    ret = -1;
+                    goto abort;
+                }
+                memcpy(meta_copy, meta_buf, meta_len * sizeof(CHAR));
+                meta_copy[meta_len] = _T('\0');
+                det->meta = meta_copy;
+                det->meta_size = (MD_SIZE) meta_len;
+            }
+
+            free(meta_buf);
+        }
+    }
 
 abort:
     return ret;
@@ -4813,11 +5013,13 @@ md_process_leaf_block(MD_CTX* ctx, const MD_BLOCK* block)
     } det;
     MD_ATTRIBUTE_BUILD info_build;
     MD_ATTRIBUTE_BUILD lang_build;
+    MD_ATTRIBUTE_BUILD filename_build;
     int is_in_tight_list;
     int clean_fence_code_detail = FALSE;
     int ret = 0;
 
     memset(&det, 0, sizeof(det));
+    memset(&filename_build, 0, sizeof(filename_build));
 
     if(ctx->n_containers == 0)
         is_in_tight_list = FALSE;
@@ -4834,7 +5036,8 @@ md_process_leaf_block(MD_CTX* ctx, const MD_BLOCK* block)
             if(block->data != 0) {
                 memset(&det.code, 0, sizeof(MD_BLOCK_CODE_DETAIL));
                 clean_fence_code_detail = TRUE;
-                MD_CHECK(md_setup_fenced_code_detail(ctx, block, &det.code, &info_build, &lang_build));
+                MD_CHECK(md_setup_fenced_code_detail(ctx, block, &det.code,
+                            &info_build, &lang_build, &filename_build));
             }
             break;
 
@@ -4893,6 +5096,9 @@ abort:
     if(clean_fence_code_detail) {
         md_free_attribute(ctx, &info_build);
         md_free_attribute(ctx, &lang_build);
+        md_free_attribute(ctx, &filename_build);
+        free((void*)det.code.meta);
+        free((void*)det.code.highlights);
     }
     return ret;
 }

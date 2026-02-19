@@ -26,29 +26,22 @@ The MD4X parser supports CommonMark 0.31.2 + GFM extensions (tables, strikethrou
 
 ---
 
+> **Architecture rule:** All syntax features (parsing, metadata extraction) belong in the **core parser** (`md4x.c` / `md4x.h`). Renderers consume parsed data via detail structs — they should NOT re-parse info strings or do their own syntax analysis.
+
 ## Implementation Steps
 
-### Phase 1: Code Block Metadata (JSON renderer only — no parser changes)
+### Phase 1: Code Block Metadata (core parser + renderers)
 
-The parser already exposes `MD_BLOCK_CODE_DETAIL.info` which contains the full info string (e.g. `javascript [app.js] {1-3}`). We parse filename and highlights in the JSON renderer from the existing info string.
+Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, and meta from the info string. Renderers then read these fields from the detail struct.
 
-- [ ] **1.1** Parse `[filename]` from code block info string in JSON renderer (`md4x-json.c`)
-  - Extract `[...]` from `info` string, store as `filename` in code detail
-  - Handle escaped chars: `[@[...slug\].ts]`
-  - Emit `"filename":"..."` in JSON props for `pre` nodes
-
-- [ ] **1.2** Parse `{highlights}` from code block info string in JSON renderer
-  - Extract `{...}` from `info` string
-  - Parse ranges like `1-3`, individual lines `5`, and combos `1-3,5,7`
-  - Emit `"highlights":[1,2,3,5,7]` as expanded integer array in JSON props
-
-- [ ] **1.3** Parse remaining meta key-value pairs from info string
-  - After extracting language, filename, highlights — remaining text is `meta`
-  - Emit `"meta":"..."` in JSON props if non-empty
-
-- [ ] **1.4** Add test cases for code block metadata
-  - Add `test/spec-codeblock-meta.txt` with HTML test cases (HTML renderer should pass through)
-  - Add JS test cases in `packages/md4x/test/_suite.mjs` for JSON/AST output
+- [x] **1.1** Extend `MD_BLOCK_CODE_DETAIL` in `md4x.h` with `filename`, `highlights`, `highlight_count`, `meta` fields
+- [x] **1.2** Implement info string parsing in `md4x.c` — extract `[filename]`, `{highlights}`, and remaining meta
+  - Handle escaped chars in filename: `[@[...slug\].ts]`
+  - Parse highlight ranges: `1-3,5,7` → expanded array
+- [x] **1.3** Update JSON renderer to emit new fields from detail struct (no parsing in renderer)
+- [x] **1.4** HTML/ANSI renderers — no changes needed (metadata is structural, consumed via JSON/AST)
+- [x] **1.5** Add test cases for code block metadata
+  - JS test cases in `packages/md4x/test/_suite.mjs` for JSON/AST output (5 new tests, WASM+NAPI)
 
 ### Phase 2: Heading IDs
 

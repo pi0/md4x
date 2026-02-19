@@ -271,6 +271,11 @@ typedef struct MD_BLOCK_CODE_DETAIL {
     MD_ATTRIBUTE info;
     MD_ATTRIBUTE lang;
     MD_CHAR fence_char;     /* The character used for fenced code block; or zero for indented code block. */
+    MD_ATTRIBUTE filename;  /* Filename extracted from [filename] in info string. */
+    const MD_CHAR* meta;    /* Remaining text after lang, [filename], {highlights} are removed. Not null-terminated. */
+    MD_SIZE meta_size;      /* Size of meta string. */
+    const unsigned* highlights;   /* Expanded array of highlighted line numbers, or NULL. */
+    unsigned highlight_count;     /* Number of entries in highlights array. */
 } MD_BLOCK_CODE_DETAIL;
 
 /* Detailed info for MD_BLOCK_TABLE. */

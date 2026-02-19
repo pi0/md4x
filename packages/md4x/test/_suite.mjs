@@ -144,6 +144,43 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       expect(typeof p[2]).toBe("string");
       expect(p[2]).toBe("hello");
     });
+
+    it("parses code block filename", async () => {
+      const ast = await parseAST("```js [app.js]\nconsole.log(1)\n```");
+      const pre = ast.value[0];
+      expect(pre[0]).toBe("pre");
+      expect(pre[1].language).toBe("js");
+      expect(pre[1].filename).toBe("app.js");
+    });
+
+    it("parses code block highlights", async () => {
+      const ast = await parseAST("```js {1-3,5}\na\nb\nc\nd\ne\n```");
+      const pre = ast.value[0];
+      expect(pre[1].highlights).toEqual([1, 2, 3, 5]);
+    });
+
+    it("parses code block with filename, highlights and meta", async () => {
+      const ast = await parseAST("```ts {1-2} [utils.ts] meta=value\ncode\n```");
+      const pre = ast.value[0];
+      expect(pre[1].language).toBe("ts");
+      expect(pre[1].filename).toBe("utils.ts");
+      expect(pre[1].highlights).toEqual([1, 2]);
+      expect(pre[1].meta).toBe("meta=value");
+    });
+
+    it("parses code block with escaped filename", async () => {
+      const ast = await parseAST("```ts [@[...slug\\].ts]\ncode\n```");
+      const pre = ast.value[0];
+      expect(pre[1].filename).toBe("@[...slug].ts");
+    });
+
+    it("code block without metadata has no extra props", async () => {
+      const ast = await parseAST("```js\ncode\n```");
+      const pre = ast.value[0];
+      expect(pre[1].filename).toBeUndefined();
+      expect(pre[1].highlights).toBeUndefined();
+      expect(pre[1].meta).toBeUndefined();
+    });
   });
 
   describe("renderToAnsi", () => {

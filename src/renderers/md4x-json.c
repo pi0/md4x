@@ -67,7 +67,7 @@ struct JSON_NODE {
         struct { int is_tight; unsigned start; char delimiter; } ol;
         struct { int is_tight; } ul;
         struct { int is_task; char task_mark; } li;
-        struct { char* info; char* lang; char fence_char; } code;
+        struct { char* info; char* lang; char fence_char; char* filename; char* meta; unsigned* highlights; unsigned highlight_count; } code;
         struct { unsigned col_count; } table;
         struct { int align; } td;
         struct { char* href; char* title; } a;
@@ -129,6 +129,9 @@ json_node_free(JSON_NODE* node)
         if(strcmp(node->tag, "pre") == 0) {
             if(node->detail.code.info) free(node->detail.code.info);
             if(node->detail.code.lang) free(node->detail.code.lang);
+            if(node->detail.code.filename) free(node->detail.code.filename);
+            if(node->detail.code.meta) free(node->detail.code.meta);
+            if(node->detail.code.highlights) free(node->detail.code.highlights);
         } else if(strcmp(node->tag, "a") == 0) {
             if(node->detail.a.href) free(node->detail.a.href);
             if(node->detail.a.title) free(node->detail.a.title);
@@ -289,6 +292,21 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
             node->detail.code.info = json_attr_to_str(&d->info);
             node->detail.code.lang = json_attr_to_str(&d->lang);
             node->detail.code.fence_char = d->fence_char;
+            node->detail.code.filename = json_attr_to_str(&d->filename);
+            if(d->meta != NULL && d->meta_size > 0) {
+                node->detail.code.meta = (char*) malloc(d->meta_size + 1);
+                if(node->detail.code.meta != NULL) {
+                    memcpy(node->detail.code.meta, d->meta, d->meta_size);
+                    node->detail.code.meta[d->meta_size] = '\0';
+                }
+            }
+            if(d->highlights != NULL && d->highlight_count > 0) {
+                node->detail.code.highlights = (unsigned*) malloc(d->highlight_count * sizeof(unsigned));
+                if(node->detail.code.highlights != NULL) {
+                    memcpy(node->detail.code.highlights, d->highlights, d->highlight_count * sizeof(unsigned));
+                    node->detail.code.highlight_count = d->highlight_count;
+                }
+            }
             break;
         }
         case MD_BLOCK_TABLE: {
@@ -623,6 +641,31 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
         if(node->detail.code.lang != NULL && node->detail.code.lang[0] != '\0') {
             json_write_str(w, "\"language\":");
             json_write_string(w, node->detail.code.lang, (MD_SIZE) strlen(node->detail.code.lang));
+            has_prop = 1;
+        }
+        if(node->detail.code.filename != NULL && node->detail.code.filename[0] != '\0') {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"filename\":");
+            json_write_string(w, node->detail.code.filename, (MD_SIZE) strlen(node->detail.code.filename));
+            has_prop = 1;
+        }
+        if(node->detail.code.highlights != NULL && node->detail.code.highlight_count > 0) {
+            unsigned hi;
+            char buf[16];
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"highlights\":[");
+            for(hi = 0; hi < node->detail.code.highlight_count; hi++) {
+                if(hi > 0) json_write(w, ",", 1);
+                json_snprintf(buf, sizeof(buf), "%u", node->detail.code.highlights[hi]);
+                json_write_str(w, buf);
+            }
+            json_write(w, "]", 1);
+            has_prop = 1;
+        }
+        if(node->detail.code.meta != NULL && node->detail.code.meta[0] != '\0') {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"meta\":");
+            json_write_string(w, node->detail.code.meta, (MD_SIZE) strlen(node->detail.code.meta));
             has_prop = 1;
         }
     }
