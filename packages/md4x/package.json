@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "md4x": "./lib/cli.mjs"
+  },
   "exports": {
     ".": {
       "types": "./lib/napi.d.mts",

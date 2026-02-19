@@ -32,10 +32,11 @@ const ansi = await renderToAnsi("# Hello, **world**!");
 ### CLI
 
 ```sh
-md4x [FILE]                    # HTML output (default)
-md4x --format=json [FILE]     # JSON AST output
-md4x --format=ansi [FILE]     # ANSI terminal output
-echo "# Hi" | md4x            # Read from stdin
+npx md4x [FILE]                    # ANSI output (default in TTY)
+npx md4x -t html [FILE]           # HTML output
+npx md4x -t json [FILE]           # JSON AST output
+echo "# Hi" | npx md4x            # Read from stdin (HTML when piped)
+npx md4x -f --html-title="My Doc" file.md  # Full HTML document
 ```
 
 ### Zig Package
