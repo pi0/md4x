@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <yaml.h>
 
 #include "md4x-json.h"
 #include "md4x-props.h"
@@ -829,118 +830,213 @@ yaml_is_number(const char* s, MD_SIZE len)
     return has_digit;
 }
 
-/* Write parsed YAML frontmatter as JSON props.
- * Supports flat key: value pairs with type coercion.
- * Returns number of props written. */
-static int
-json_write_yaml_props(JSON_WRITER* w, const char* text, MD_SIZE size)
+/* Write a YAML scalar as a typed JSON value.
+ * Applies YAML 1.1 type resolution for plain scalars. */
+static void
+json_write_yaml_scalar(JSON_WRITER* w, const yaml_event_t* event)
 {
-    const char* p = text;
-    const char* end = text + size;
-    int n_written = 0;
+    const char* val = (const char*) event->data.scalar.value;
+    MD_SIZE len = (MD_SIZE) event->data.scalar.length;
+    yaml_scalar_style_t style = event->data.scalar.style;
 
-    while(p < end) {
-        const char* line_start = p;
-        const char* line_end;
-        const char* key_start;
-        const char* key_end;
-        const char* val_start;
-        const char* val_end;
-        const char* colon;
+    /* Quoted scalars are always strings. */
+    if(style == YAML_SINGLE_QUOTED_SCALAR_STYLE
+       || style == YAML_DOUBLE_QUOTED_SCALAR_STYLE) {
+        json_write_string(w, val, len);
+        return;
+    }
 
-        /* Find end of line. */
-        line_end = p;
-        while(line_end < end && *line_end != '\n')
-            line_end++;
+    /* Plain scalars: apply type coercion. */
+    if(len == 0) {
+        json_write_str(w, "null");
+        return;
+    }
+    if(yaml_streq_ci(val, len, "null", 4) || (len == 1 && val[0] == '~')) {
+        json_write_str(w, "null");
+        return;
+    }
+    if(yaml_streq_ci(val, len, "true", 4) || yaml_streq_ci(val, len, "yes", 3)
+       || yaml_streq_ci(val, len, "on", 2)) {
+        json_write_str(w, "true");
+        return;
+    }
+    if(yaml_streq_ci(val, len, "false", 5) || yaml_streq_ci(val, len, "no", 2)
+       || yaml_streq_ci(val, len, "off", 3)) {
+        json_write_str(w, "false");
+        return;
+    }
+    if(yaml_is_number(val, len)) {
+        json_write(w, val, len);
+        return;
+    }
 
-        /* Advance past newline for next iteration. */
-        p = (line_end < end) ? line_end + 1 : line_end;
+    /* Default: string (also covers literal/folded block scalars). */
+    json_write_string(w, val, len);
+}
 
-        /* Trim leading whitespace. */
-        key_start = line_start;
-        while(key_start < line_end && (*key_start == ' ' || *key_start == '\t'))
-            key_start++;
+/* Forward declarations for recursive YAML-to-JSON writing. */
+static int json_write_yaml_value(JSON_WRITER* w, yaml_parser_t* yp);
 
-        /* Skip blank lines and comments. */
-        if(key_start >= line_end || *key_start == '#')
-            continue;
+/* Write a YAML mapping as JSON object key-value pairs (without outer braces).
+ * Assumes MAPPING_START has been consumed. Returns number of pairs, or -1 on error. */
+static int
+json_write_yaml_mapping(JSON_WRITER* w, yaml_parser_t* yp)
+{
+    yaml_event_t event;
+    int n = 0;
 
-        /* Find colon separator. */
-        colon = key_start;
-        while(colon < line_end && *colon != ':')
-            colon++;
-        if(colon >= line_end)
-            continue;
+    while(1) {
+        if(!yaml_parser_parse(yp, &event))
+            return -1;
 
-        /* Trim key (from key_start to colon). */
-        key_end = colon;
-        while(key_end > key_start && (*(key_end - 1) == ' ' || *(key_end - 1) == '\t'))
-            key_end--;
-        if(key_end <= key_start)
-            continue;
+        if(event.type == YAML_MAPPING_END_EVENT) {
+            yaml_event_delete(&event);
+            break;
+        }
 
-        /* Value: everything after colon. */
-        val_start = colon + 1;
-        while(val_start < line_end && (*val_start == ' ' || *val_start == '\t'))
-            val_start++;
+        if(event.type != YAML_SCALAR_EVENT) {
+            yaml_event_delete(&event);
+            return -1;
+        }
 
-        /* Trim trailing whitespace (including \r). */
-        val_end = line_end;
-        while(val_end > val_start && (*(val_end - 1) == ' ' || *(val_end - 1) == '\t' || *(val_end - 1) == '\r'))
-            val_end--;
-
-        /* Write comma separator between props. */
-        if(n_written > 0)
+        if(n > 0)
             json_write(w, ",", 1);
 
         /* Write key. */
         json_write(w, "\"", 1);
-        json_write_escaped(w, key_start, (MD_SIZE)(key_end - key_start));
+        json_write_escaped(w, (const char*) event.data.scalar.value,
+                           (MD_SIZE) event.data.scalar.length);
         json_write_str(w, "\":");
+        yaml_event_delete(&event);
 
-        /* Determine value type and write. */
-        {
-            MD_SIZE val_len = (MD_SIZE)(val_end - val_start);
+        /* Write value (recursive). */
+        if(json_write_yaml_value(w, yp) < 0)
+            return -1;
 
-            /* Empty value → null. */
-            if(val_len == 0) {
-                json_write_str(w, "null");
-            }
-            /* Null literals: null, ~. */
-            else if(yaml_streq_ci(val_start, val_len, "null", 4)
-                    || (val_len == 1 && val_start[0] == '~')) {
-                json_write_str(w, "null");
-            }
-            /* Boolean true: true, yes, on. */
-            else if(yaml_streq_ci(val_start, val_len, "true", 4)
-                    || yaml_streq_ci(val_start, val_len, "yes", 3)
-                    || yaml_streq_ci(val_start, val_len, "on", 2)) {
-                json_write_str(w, "true");
-            }
-            /* Boolean false: false, no, off. */
-            else if(yaml_streq_ci(val_start, val_len, "false", 5)
-                    || yaml_streq_ci(val_start, val_len, "no", 2)
-                    || yaml_streq_ci(val_start, val_len, "off", 3)) {
-                json_write_str(w, "false");
-            }
-            /* Number. */
-            else if(yaml_is_number(val_start, val_len)) {
-                json_write(w, val_start, val_len);
-            }
-            /* Quoted string (single or double). */
-            else if(val_len >= 2
-                    && ((val_start[0] == '"' && val_end[-1] == '"')
-                        || (val_start[0] == '\'' && val_end[-1] == '\''))) {
-                json_write_string(w, val_start + 1, val_len - 2);
-            }
-            /* Plain string. */
-            else {
-                json_write_string(w, val_start, val_len);
-            }
+        n++;
+    }
+    return n;
+}
+
+/* Write a YAML sequence as a JSON array.
+ * Assumes SEQUENCE_START has been consumed. Returns 0 on success, -1 on error. */
+static int
+json_write_yaml_sequence(JSON_WRITER* w, yaml_parser_t* yp)
+{
+    yaml_event_t event;
+    int n = 0;
+
+    json_write(w, "[", 1);
+
+    while(1) {
+        if(!yaml_parser_parse(yp, &event))
+            return -1;
+
+        if(event.type == YAML_SEQUENCE_END_EVENT) {
+            yaml_event_delete(&event);
+            break;
         }
-        n_written++;
+
+        if(n > 0)
+            json_write(w, ",", 1);
+
+        if(event.type == YAML_SCALAR_EVENT) {
+            json_write_yaml_scalar(w, &event);
+            yaml_event_delete(&event);
+        } else if(event.type == YAML_MAPPING_START_EVENT) {
+            yaml_event_delete(&event);
+            json_write(w, "{", 1);
+            if(json_write_yaml_mapping(w, yp) < 0)
+                return -1;
+            json_write(w, "}", 1);
+        } else if(event.type == YAML_SEQUENCE_START_EVENT) {
+            yaml_event_delete(&event);
+            if(json_write_yaml_sequence(w, yp) < 0)
+                return -1;
+        } else {
+            yaml_event_delete(&event);
+            return -1;
+        }
+
+        n++;
     }
 
+    json_write(w, "]", 1);
+    return 0;
+}
+
+/* Write the next YAML value (scalar, mapping, or sequence) as JSON.
+ * Returns 0 on success, -1 on error. */
+static int
+json_write_yaml_value(JSON_WRITER* w, yaml_parser_t* yp)
+{
+    yaml_event_t event;
+
+    if(!yaml_parser_parse(yp, &event))
+        return -1;
+
+    if(event.type == YAML_SCALAR_EVENT) {
+        json_write_yaml_scalar(w, &event);
+        yaml_event_delete(&event);
+        return 0;
+    }
+    if(event.type == YAML_MAPPING_START_EVENT) {
+        yaml_event_delete(&event);
+        json_write(w, "{", 1);
+        if(json_write_yaml_mapping(w, yp) < 0)
+            return -1;
+        json_write(w, "}", 1);
+        return 0;
+    }
+    if(event.type == YAML_SEQUENCE_START_EVENT) {
+        yaml_event_delete(&event);
+        return json_write_yaml_sequence(w, yp);
+    }
+    if(event.type == YAML_ALIAS_EVENT) {
+        yaml_event_delete(&event);
+        json_write_str(w, "null");
+        return 0;
+    }
+
+    yaml_event_delete(&event);
+    return -1;
+}
+
+/* Write parsed YAML frontmatter as JSON props using libyaml.
+ * Supports nested objects, arrays, and all YAML scalar types.
+ * Returns number of top-level props written. */
+static int
+json_write_yaml_props(JSON_WRITER* w, const char* text, MD_SIZE size)
+{
+    yaml_parser_t yp;
+    yaml_event_t event;
+    int n_written = 0;
+
+    if(!yaml_parser_initialize(&yp))
+        return 0;
+
+    yaml_parser_set_input_string(&yp, (const unsigned char*) text, size);
+
+    /* Consume STREAM_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_STREAM_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Consume DOCUMENT_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_DOCUMENT_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Expect top-level MAPPING_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_MAPPING_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    n_written = json_write_yaml_mapping(w, &yp);
+    if(n_written < 0) n_written = 0;
+
+done:
+    yaml_parser_delete(&yp);
     return n_written;
 }
 

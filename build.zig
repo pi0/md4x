@@ -19,6 +19,23 @@ pub fn build(b: *std.Build) void {
 
     const strip = optimize != .Debug;
 
+    // --- libyaml (YAML parser for JSON renderer frontmatter) ---
+
+    const libyaml = b.dependency("libyaml", .{});
+    const libyaml_c_flags: []const []const u8 = &.{
+        "-DYAML_DECLARE_STATIC",
+        "-DYAML_VERSION_MAJOR=0",
+        "-DYAML_VERSION_MINOR=2",
+        "-DYAML_VERSION_PATCH=5",
+        "-DYAML_VERSION_STRING=\"0.2.5\"",
+    };
+    const libyaml_src: std.Build.Module.AddCSourceFilesOptions = .{
+        .root = libyaml.path(""),
+        .files = &.{ "src/api.c", "src/reader.c", "src/scanner.c", "src/parser.c" },
+        .flags = libyaml_c_flags,
+    };
+    const libyaml_include = libyaml.path("include");
+
     // --- Libraries ---
 
     const md4x = b.addLibrary(.{
@@ -65,8 +82,10 @@ pub fn build(b: *std.Build) void {
         .version = version,
     });
     md4x_json.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-json.c"}, .flags = c_flags });
+    md4x_json.addCSourceFiles(libyaml_src);
     md4x_json.addIncludePath(b.path("src"));
     md4x_json.addIncludePath(b.path("src/renderers"));
+    md4x_json.addIncludePath(libyaml_include);
     md4x_json.linkLibrary(md4x);
     md4x_json.installHeader(b.path("src/renderers/md4x-json.h"), "md4x-json.h");
 
@@ -143,8 +162,10 @@ pub fn build(b: *std.Build) void {
         .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-wasm.c" },
         .flags = c_flags,
     });
+    md4x_wasm.addCSourceFiles(libyaml_src);
     md4x_wasm.addIncludePath(b.path("src"));
     md4x_wasm.addIncludePath(b.path("src/renderers"));
+    md4x_wasm.addIncludePath(libyaml_include);
     md4x_wasm.root_module.export_symbol_names = &.{
         "md4x_alloc",
         "md4x_free",
@@ -214,8 +235,10 @@ pub fn build(b: *std.Build) void {
             .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
             .flags = napi_c_flags,
         });
+        napi_lib.addCSourceFiles(libyaml_src);
         napi_lib.addIncludePath(b.path("src"));
         napi_lib.addIncludePath(b.path("src/renderers"));
+        napi_lib.addIncludePath(libyaml_include);
         napi_lib.addIncludePath(.{ .cwd_relative = napi_include });
 
         if (nt.dlltool_machine) |machine| {

@@ -84,7 +84,7 @@ build.zig.zon            # Zig package manifest
 
 ## Building
 
-No external dependencies beyond the C standard library. Uses Zig build system.
+Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/libyaml) 0.2.5 (YAML parser for JSON renderer frontmatter, fetched automatically via `build.zig.zon`).
 
 ```sh
 zig build                          # build all (defaults to ReleaseFast)
@@ -761,7 +761,7 @@ Inline `$...$` and display `$$...$$`. Opener must not be preceded by alphanumeri
 
 YAML-style frontmatter delimited by `---` at the very start of the document. The opening `---` must be on the first line (no leading blank lines). Content is exposed as verbatim text via `MD_BLOCK_FRONTMATTER`. HTML renderer outputs `<x-frontmatter>...</x-frontmatter>`. If unclosed, the rest of the document is treated as frontmatter content. Special fields: `depth` (max heading level for TOC, default 2), `searchDepth` (TOC search depth, default 2).
 
-**JSON renderer YAML parsing:** The JSON renderer parses basic YAML frontmatter into the element's props object. Flat `key: value` pairs are supported with type coercion: numbers (int/float), booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty), and strings (bare or quoted with `"`/`'`). Comments (`#`) and blank lines are skipped. Nested objects, arrays, and multi-line values are not supported. The raw text is preserved as a child string: `["frontmatter", {"title": "Hello", "count": 42}, "title: Hello\ncount: 42\n"]`.
+**JSON renderer YAML parsing:** The JSON renderer uses [libyaml](https://github.com/yaml/libyaml) to parse frontmatter into the element's props object. Full YAML 1.1 is supported including nested objects, arrays (block and flow), and multi-line values (literal `|` and folded `>`). Plain scalars have type coercion: numbers (int/float), booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty). Quoted scalars (`""`/`''`) are always strings. The raw text is preserved as a child string: `["frontmatter", {"title": "Hello", "count": 42}, "title: Hello\ncount: 42\n"]`.
 
 ### Extension: Inline Components (`MD_FLAG_COMPONENTS`)
 

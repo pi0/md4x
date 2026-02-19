@@ -416,6 +416,56 @@ export function defineSuite({
       expect(props.empty).toBe(null);
     });
 
+    it("parses frontmatter with nested objects", async () => {
+      const ast = await parseAST(
+        "---\nauthor:\n  name: John\n  email: john@example.com\n---",
+      );
+      const props = ast.value[0][1];
+      expect(props.author).toEqual({
+        name: "John",
+        email: "john@example.com",
+      });
+    });
+
+    it("parses frontmatter with arrays", async () => {
+      const ast = await parseAST(
+        "---\ntags:\n  - javascript\n  - typescript\n---",
+      );
+      const props = ast.value[0][1];
+      expect(props.tags).toEqual(["javascript", "typescript"]);
+    });
+
+    it("parses frontmatter with inline flow sequence", async () => {
+      const ast = await parseAST("---\ntags: [javascript, typescript]\n---");
+      const props = ast.value[0][1];
+      expect(props.tags).toEqual(["javascript", "typescript"]);
+    });
+
+    it("parses frontmatter with mixed types in array", async () => {
+      const ast = await parseAST(
+        "---\ndata:\n  - hello\n  - 42\n  - true\n---",
+      );
+      const props = ast.value[0][1];
+      expect(props.data).toEqual(["hello", 42, true]);
+    });
+
+    it("parses frontmatter with deeply nested structure", async () => {
+      const ast = await parseAST(
+        "---\nmeta:\n  author:\n    name: John\n  date: 2024\n---",
+      );
+      const props = ast.value[0][1];
+      expect(props.meta).toEqual({ author: { name: "John" }, date: 2024 });
+    });
+
+    it("parses frontmatter with multi-line literal block", async () => {
+      const ast = await parseAST(
+        "---\ndescription: |\n  Line 1\n  Line 2\n---",
+      );
+      const props = ast.value[0][1];
+      expect(props.description).toContain("Line 1");
+      expect(props.description).toContain("Line 2");
+    });
+
     it.skip("parses excerpt with <!-- more --> separator", async () => {
       const ast = await parseAST(
         "# Title\n\nIntro paragraph\n\n<!-- more -->\n\nFull content",

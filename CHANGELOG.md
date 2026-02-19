@@ -2,12 +2,11 @@
 
 ## Next
 
-### Frontmatter YAML parsing in JSON renderer
+### Full YAML frontmatter parsing with libyaml
 
-The JSON renderer now parses basic YAML frontmatter into the props object instead of leaving it as raw text only. Flat `key: value` pairs are parsed with type coercion: numbers, booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty), and strings (bare or quoted). The raw text is still preserved as a child string.
+The JSON renderer now uses [libyaml](https://github.com/yaml/libyaml) (0.2.5) for frontmatter parsing, replacing the previous hand-written flat parser. This adds support for nested objects, arrays (block and flow), and multi-line values (literal `|` and folded `>`). Plain scalar type coercion is preserved: numbers, booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty). Quoted scalars are always strings. The raw text is still preserved as a child string.
 
-Before: `["frontmatter", {}, "title: Hello\ncount: 42"]`
-After: `["frontmatter", {"title": "Hello", "count": 42}, "title: Hello\ncount: 42\n"]`
+Example: `["frontmatter", {"title": "Hello", "tags": ["js", "ts"], "author": {"name": "John"}}, "..."]`
 
 ### Component slots (`MD_FLAG_COMPONENTS`)
 
