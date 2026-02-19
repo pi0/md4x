@@ -382,6 +382,18 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_FRONTMATTER:
             render_ansi(r, ANSI_DIM);
             break;
+
+        case MD_BLOCK_COMPONENT:
+            if(r->need_newline) {
+                render_newline(r);
+                r->need_newline = 0;
+            }
+            render_ansi(r, ANSI_COLOR_CYAN);
+            break;
+
+        case MD_BLOCK_TEMPLATE:
+            /* Transparent — content renders normally within parent component. */
+            break;
     }
 
     return 0;
@@ -472,6 +484,15 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             render_ansi(r, ANSI_DIM_OFF);
             r->need_newline = 1;
             break;
+
+        case MD_BLOCK_COMPONENT:
+            render_ansi(r, ANSI_COLOR_DEFAULT);
+            r->need_newline = 1;
+            break;
+
+        case MD_BLOCK_TEMPLATE:
+            /* Transparent — no output needed. */
+            break;
     }
 
     return 0;
@@ -512,6 +533,8 @@ enter_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH:         render_ansi(r, ANSI_COLOR_YELLOW); break;
         case MD_SPAN_LATEXMATH_DISPLAY: render_ansi(r, ANSI_COLOR_YELLOW); break;
         case MD_SPAN_WIKILINK:          render_ansi(r, ANSI_LINK); break;
+        case MD_SPAN_COMPONENT:         render_ansi(r, ANSI_COLOR_CYAN); break;
+        case MD_SPAN_SPAN:              break;  /* Transparent: no special styling */
     }
 
     return 0;
@@ -557,6 +580,8 @@ leave_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH:         render_ansi(r, ANSI_COLOR_DEFAULT); break;
         case MD_SPAN_LATEXMATH_DISPLAY: render_ansi(r, ANSI_COLOR_DEFAULT); break;
         case MD_SPAN_WIKILINK:          render_ansi(r, ANSI_RESET); break;
+        case MD_SPAN_COMPONENT:         render_ansi(r, ANSI_COLOR_DEFAULT); break;
+        case MD_SPAN_SPAN:              break;  /* Transparent: no special styling */
     }
 
     return 0;

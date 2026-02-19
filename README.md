@@ -1,4 +1,3 @@
-
 # 📄 MD4X
 
 Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
@@ -177,21 +176,20 @@ MD_PARSER parser = {
 md_parse(input, input_size, &parser, NULL);
 ```
 
-
 ## Extensions
 
 All extensions are enabled by default in the JS and CLI interfaces (`MD_DIALECT_ALL`).
 
-| Extension | Flag |
-|---|---|
-| Tables | `MD_FLAG_TABLES` |
-| Strikethrough | `MD_FLAG_STRIKETHROUGH` |
-| Task lists | `MD_FLAG_TASKLISTS` |
-| Autolinks | `MD_FLAG_PERMISSIVEAUTOLINKS` |
-| LaTeX math | `MD_FLAG_LATEXMATHSPANS` |
-| Wiki links | `MD_FLAG_WIKILINKS` |
-| Underline | `MD_FLAG_UNDERLINE` |
-| Frontmatter | `MD_FLAG_FRONTMATTER` |
+| Extension     | Flag                          |
+| ------------- | ----------------------------- |
+| Tables        | `MD_FLAG_TABLES`              |
+| Strikethrough | `MD_FLAG_STRIKETHROUGH`       |
+| Task lists    | `MD_FLAG_TASKLISTS`           |
+| Autolinks     | `MD_FLAG_PERMISSIVEAUTOLINKS` |
+| LaTeX math    | `MD_FLAG_LATEXMATHSPANS`      |
+| Wiki links    | `MD_FLAG_WIKILINKS`           |
+| Underline     | `MD_FLAG_UNDERLINE`           |
+| Frontmatter   | `MD_FLAG_FRONTMATTER`         |
 
 Dialect presets: `MD_DIALECT_COMMONMARK` (strict), `MD_DIALECT_GITHUB`, `MD_DIALECT_ALL`.
 

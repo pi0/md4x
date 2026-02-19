@@ -1,0 +1,178 @@
+
+# Attributes on Native Elements
+
+## Strong with class attribute
+
+```````````````````````````````` example
+**bold**{.highlight}
+.
+<p><strong class="highlight">bold</strong></p>
+````````````````````````````````
+
+## Emphasis with id attribute
+
+```````````````````````````````` example
+*italic*{#myid}
+.
+<p><em id="myid">italic</em></p>
+````````````````````````````````
+
+## Code span with class attribute
+
+```````````````````````````````` example
+`code`{.lang}
+.
+<p><code class="lang">code</code></p>
+````````````````````````````````
+
+## Strikethrough with class attribute
+
+```````````````````````````````` example
+~~deleted~~{.red}
+.
+<p><del class="red">deleted</del></p>
+````````````````````````````````
+
+## Underline with class attribute
+
+```````````````````````````````` example
+_underline_{.accent}
+.
+<p><u class="accent">underline</u></p>
+````````````````````````````````
+
+## Link with target attribute
+
+```````````````````````````````` example
+[Link](https://example.com){target="_blank"}
+.
+<p><a href="https://example.com" target="_blank">Link</a></p>
+````````````````````````````````
+
+## Image with class attribute
+
+```````````````````````````````` example
+![alt text](image.png){.responsive}
+.
+<p><img src="image.png" alt="alt text" class="responsive"></p>
+````````````````````````````````
+
+## Span syntax with class
+
+```````````````````````````````` example
+[text]{.class}
+.
+<p><span class="class">text</span></p>
+````````````````````````````````
+
+## Span syntax with id
+
+```````````````````````````````` example
+[text]{#myid}
+.
+<p><span id="myid">text</span></p>
+````````````````````````````````
+
+## Span with multiple classes
+
+```````````````````````````````` example
+[text]{.foo .bar .baz}
+.
+<p><span class="foo bar baz">text</span></p>
+````````````````````````````````
+
+## Span with mixed attributes
+
+```````````````````````````````` example
+[text]{#myid .cls key="val" flag}
+.
+<p><span id="myid" class="cls" key="val" flag>text</span></p>
+````````````````````````````````
+
+## Strong with multiple attributes
+
+```````````````````````````````` example
+**bold**{#id .cls1 .cls2}
+.
+<p><strong id="id" class="cls1 cls2">bold</strong></p>
+````````````````````````````````
+
+## Empty attributes (no effect)
+
+```````````````````````````````` example
+**bold**{}
+.
+<p><strong>bold</strong></p>
+````````````````````````````````
+
+## Emphasis and strong combined with attrs
+
+```````````````````````````````` example
+***bold italic***{.both}
+.
+<p><em class="both"><strong>bold italic</strong></em></p>
+````````````````````````````````
+
+## Attributes do not affect plain text
+
+```````````````````````````````` example
+hello{.class}
+.
+<p>hello{.class}</p>
+````````````````````````````````
+
+## Multiple inline elements with separate attrs
+
+```````````````````````````````` example
+**bold**{.a} and *italic*{.b}
+.
+<p><strong class="a">bold</strong> and <em class="b">italic</em></p>
+````````````````````````````````
+
+## Link with multiple attributes
+
+```````````````````````````````` example
+[Link](url){target="_blank" rel="noopener"}
+.
+<p><a href="url" target="_blank" rel="noopener">Link</a></p>
+````````````````````````````````
+
+## Image with multiple attributes
+
+```````````````````````````````` example
+![photo](pic.jpg){.thumb width="200"}
+.
+<p><img src="pic.jpg" alt="photo" class="thumb" width="200"></p>
+````````````````````````````````
+
+## Span with inline markdown content
+
+```````````````````````````````` example
+[**bold** and *italic*]{.styled}
+.
+<p><span class="styled"><strong>bold</strong> and <em>italic</em></span></p>
+````````````````````````````````
+
+## Attrs on code span do not consume inner backticks
+
+```````````````````````````````` example
+``code with `backtick` ``{.lang}
+.
+<p><code class="lang">code with `backtick` </code></p>
+````````````````````````````````
+
+## Span does not conflict with real links
+
+```````````````````````````````` example
+[Link](https://example.com)
+.
+<p><a href="https://example.com">Link</a></p>
+````````````````````````````````
+
+## Boolean attribute on strong
+
+```````````````````````````````` example
+**important**{highlighted}
+.
+<p><strong highlighted>important</strong></p>
+````````````````````````````````

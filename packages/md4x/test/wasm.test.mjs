@@ -1,5 +1,11 @@
 import { beforeAll } from "vitest";
-import { initWasm, renderToHtml, renderToJson, renderToAnsi, parseAST } from "../lib/wasm.mjs";
+import {
+  initWasm,
+  renderToHtml,
+  renderToJson,
+  renderToAnsi,
+  parseAST,
+} from "../lib/wasm.mjs";
 import { defineSuite } from "./_suite.mjs";
 
 beforeAll(async () => {

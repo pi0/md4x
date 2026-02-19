@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST }) {
+export function defineSuite({
+  renderToHtml,
+  renderToJson,
+  renderToAnsi,
+  parseAST,
+}) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
       expect(await renderToHtml("# Hello")).toBe("<h1>Hello</h1>\n");
@@ -57,6 +62,100 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
 
     it("supports latex math", async () => {
       expect(await renderToHtml("$E=mc^2$")).toContain("E=mc^2");
+    });
+
+    it("renders inline component", async () => {
+      expect(await renderToHtml(":icon-star")).toContain("<icon-star>");
+    });
+
+    it("renders inline component with content", async () => {
+      const html = await renderToHtml(":badge[New]");
+      expect(html).toContain("<badge>New</badge>");
+    });
+
+    it("renders inline component with props", async () => {
+      const html = await renderToHtml(':badge[New]{color="blue"}');
+      expect(html).toContain('color="blue"');
+      expect(html).toContain("<badge");
+      expect(html).toContain("New</badge>");
+    });
+
+    it("renders bold and italic combined", async () => {
+      const html = await renderToHtml("***Bold and italic***");
+      expect(html).toContain("<strong>");
+      expect(html).toContain("<em>");
+      expect(html).toContain("Bold and italic");
+    });
+
+    it("renders a basic image", async () => {
+      const html = await renderToHtml("![Alt text](image.png)");
+      expect(html).toContain('<img src="image.png" alt="Alt text"');
+    });
+
+    it("renders image with title", async () => {
+      const html = await renderToHtml('![Alt](image.png "Image title")');
+      expect(html).toContain('title="Image title"');
+      expect(html).toContain('src="image.png"');
+    });
+
+    it("renders link with title", async () => {
+      const html = await renderToHtml(
+        '[Link](https://example.com "Link title")',
+      );
+      expect(html).toContain('title="Link title"');
+      expect(html).toContain('href="https://example.com"');
+    });
+
+    it("renders a blockquote", async () => {
+      const html = await renderToHtml("> This is a blockquote");
+      expect(html).toContain("<blockquote>");
+      expect(html).toContain("This is a blockquote");
+    });
+
+    it("renders horizontal rule", async () => {
+      expect(await renderToHtml("***")).toContain("<hr");
+    });
+
+    it("renders ordered list", async () => {
+      const html = await renderToHtml("1. First\n2. Second\n3. Third");
+      expect(html).toContain("<ol>");
+      expect(html).toContain("<li>First</li>");
+    });
+
+    it("renders unordered list with nesting", async () => {
+      const html = await renderToHtml("- Item 1\n  - Nested\n- Item 2");
+      expect(html).toContain("<ul>");
+      expect(html).toContain("Nested");
+    });
+
+    it("renders frontmatter", async () => {
+      const html = await renderToHtml("---\ntitle: Test\n---\n\n# Content");
+      expect(html).toContain("<x-frontmatter>");
+      expect(html).toContain("<h1>Content</h1>");
+    });
+
+    it("renders aligned table", async () => {
+      const html = await renderToHtml(
+        "| Left | Right |\n|:-----|------:|\n| a    | b     |",
+      );
+      expect(html).toContain("<table>");
+      expect(html).toContain("align");
+    });
+
+    it("renders inline markdown in table cells", async () => {
+      const html = await renderToHtml("| a |\n|---|\n| **bold** |");
+      expect(html).toContain("<strong>bold</strong>");
+      expect(html).toContain("<td>");
+    });
+
+    it("renders deep nested block components", async () => {
+      const html = await renderToHtml(
+        "::::outer\n\n:::middle\n\n::inner\nContent\n::\n\n:::\n\n::::",
+      );
+      expect(html).toContain("<outer>");
+      expect(html).toContain("<middle>");
+      expect(html).toContain("<inner>");
+      expect(html).toContain("Content");
     });
   });
 
@@ -143,6 +242,574 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
       const p = ast.value[0];
       expect(typeof p[2]).toBe("string");
       expect(p[2]).toBe("hello");
+    });
+
+    it("parses code block filename", async () => {
+      const ast = await parseAST("```js [app.js]\nconsole.log(1)\n```");
+      const pre = ast.value[0];
+      expect(pre[0]).toBe("pre");
+      expect(pre[1].language).toBe("js");
+      expect(pre[1].filename).toBe("app.js");
+    });
+
+    it("parses code block highlights", async () => {
+      const ast = await parseAST("```js {1-3,5}\na\nb\nc\nd\ne\n```");
+      const pre = ast.value[0];
+      expect(pre[1].highlights).toEqual([1, 2, 3, 5]);
+    });
+
+    it("parses code block with filename, highlights and meta", async () => {
+      const ast = await parseAST(
+        "```ts {1-2} [utils.ts] meta=value\ncode\n```",
+      );
+      const pre = ast.value[0];
+      expect(pre[1].language).toBe("ts");
+      expect(pre[1].filename).toBe("utils.ts");
+      expect(pre[1].highlights).toEqual([1, 2]);
+      expect(pre[1].meta).toBe("meta=value");
+    });
+
+    it("parses code block with escaped filename", async () => {
+      const ast = await parseAST("```ts [@[...slug\\].ts]\ncode\n```");
+      const pre = ast.value[0];
+      expect(pre[1].filename).toBe("@[...slug].ts");
+    });
+
+    it("code block without metadata has no extra props", async () => {
+      const ast = await parseAST("```js\ncode\n```");
+      const pre = ast.value[0];
+      expect(pre[1].filename).toBeUndefined();
+      expect(pre[1].highlights).toBeUndefined();
+      expect(pre[1].meta).toBeUndefined();
+    });
+
+    it("parses standalone inline component", async () => {
+      const ast = await parseAST(":icon-star");
+      const p = ast.value[0];
+      expect(p[0]).toBe("p");
+      const comp = p[2];
+      expect(comp[0]).toBe("icon-star");
+      expect(comp[1]).toEqual({});
+    });
+
+    it("parses inline component with content", async () => {
+      const ast = await parseAST(":badge[New]");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[2]).toBe("New");
+    });
+
+    it("parses inline component with content and props", async () => {
+      const ast = await parseAST(':badge[New]{color="blue"}');
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].color).toBe("blue");
+      expect(comp[2]).toBe("New");
+    });
+
+    it("parses inline component with props only", async () => {
+      const ast = await parseAST(':tooltip{text="Hover"}');
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("tooltip");
+      expect(comp[1].text).toBe("Hover");
+    });
+
+    it("parses inline component with id and class props", async () => {
+      const ast = await parseAST(":badge[Text]{#my-id .highlight}");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].id).toBe("my-id");
+      expect(comp[1].class).toBe("highlight");
+      expect(comp[2]).toBe("Text");
+    });
+
+    it("parses inline component with boolean prop", async () => {
+      const ast = await parseAST(":alert{dismissible}");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].dismissible).toBe(true);
+    });
+
+    it("inline component with markdown content", async () => {
+      const ast = await parseAST(":badge[**bold** text]");
+      const p = ast.value[0];
+      const comp = p[2];
+      expect(comp[0]).toBe("badge");
+      // First child is strong element
+      expect(comp[2][0]).toBe("strong");
+      expect(comp[2][2]).toBe("bold");
+      // Second child is text
+      expect(comp[3]).toBe(" text");
+    });
+
+    it("parses basic image AST", async () => {
+      const ast = await parseAST("![Alt text](image.png)");
+      const p = ast.value[0];
+      const img = p[2];
+      expect(img[0]).toBe("img");
+      expect(img[1].src).toBe("image.png");
+      expect(img[1].alt).toBe("Alt text");
+    });
+
+    it("parses link with title AST", async () => {
+      const ast = await parseAST('[Link](https://example.com "title")');
+      const p = ast.value[0];
+      const a = p[2];
+      expect(a[0]).toBe("a");
+      expect(a[1].href).toBe("https://example.com");
+      expect(a[1].title).toBe("title");
+    });
+
+    it("parses blockquote AST", async () => {
+      const ast = await parseAST("> Quote text");
+      const bq = ast.value[0];
+      expect(bq[0]).toBe("blockquote");
+    });
+
+    it("parses horizontal rule AST", async () => {
+      const ast = await parseAST("***");
+      const hr = ast.value[0];
+      expect(hr[0]).toBe("hr");
+    });
+
+    it("parses ordered list AST", async () => {
+      const ast = await parseAST("1. First\n2. Second");
+      const ol = ast.value[0];
+      expect(ol[0]).toBe("ol");
+    });
+
+    it("parses unordered list AST", async () => {
+      const ast = await parseAST("- Item 1\n- Item 2");
+      const ul = ast.value[0];
+      expect(ul[0]).toBe("ul");
+    });
+
+    it("parses frontmatter AST", async () => {
+      const ast = await parseAST("---\ntitle: Test\n---\n\n# Content");
+      expect(ast.value[0][0]).toBe("frontmatter");
+      expect(ast.value[1][0]).toBe("h1");
+    });
+
+    it.skip("parses excerpt with <!-- more --> separator", async () => {
+      const ast = await parseAST(
+        "# Title\n\nIntro paragraph\n\n<!-- more -->\n\nFull content",
+      );
+      expect(ast.excerpt).toBeDefined();
+    });
+  });
+
+  describe("block components", () => {
+    it("renders block component HTML", async () => {
+      const html = await renderToHtml("::alert\nHello world\n::");
+      expect(html).toContain("<alert>");
+      expect(html).toContain("<p>Hello world</p>");
+      expect(html).toContain("</alert>");
+    });
+
+    it("renders block component with props HTML", async () => {
+      const html = await renderToHtml('::alert{type="info"}\nMessage\n::');
+      expect(html).toContain('<alert type="info">');
+      expect(html).toContain("</alert>");
+    });
+
+    it("parses block component AST", async () => {
+      const ast = await parseAST("::alert\nHello\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1]).toEqual({});
+      // Child is a paragraph
+      const p = comp[2];
+      expect(p[0]).toBe("p");
+      expect(p[2]).toBe("Hello");
+    });
+
+    it("parses block component with props AST", async () => {
+      const ast = await parseAST('::alert{type="info"}\nMessage\n::');
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].type).toBe("info");
+    });
+
+    it("parses nested block components AST", async () => {
+      const ast = await parseAST(
+        ":::outer\nOuter\n\n::inner\nInner\n::\n\n:::",
+      );
+      const outer = ast.value[0];
+      expect(outer[0]).toBe("outer");
+      // First child: paragraph "Outer"
+      expect(outer[2][0]).toBe("p");
+      expect(outer[2][2]).toBe("Outer");
+      // Second child: inner component
+      const inner = outer[3];
+      expect(inner[0]).toBe("inner");
+      expect(inner[2][0]).toBe("p");
+      expect(inner[2][2]).toBe("Inner");
+    });
+
+    it("parses empty block component AST", async () => {
+      const ast = await parseAST("::divider\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("divider");
+      expect(comp.length).toBe(2); // [tag, props] with no children
+    });
+
+    it("block component with markdown content AST", async () => {
+      const ast = await parseAST("::card\n# Title\n\nParagraph\n::");
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      expect(card[2][0]).toBe("h1");
+      expect(card[2][2]).toBe("Title");
+      expect(card[3][0]).toBe("p");
+      expect(card[3][2]).toBe("Paragraph");
+    });
+
+    it("parses block component with id and class AST", async () => {
+      const ast = await parseAST("::alert{#my-id .highlight}\nText\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].id).toBe("my-id");
+      expect(comp[1].class).toBe("highlight");
+    });
+
+    it("parses block component with boolean prop AST", async () => {
+      const ast = await parseAST("::alert{dismissible}\nText\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].dismissible).toBe(true);
+    });
+
+    it("parses deep nested block components AST", async () => {
+      const ast = await parseAST(
+        "::::l1\n\n:::l2\n\n::l3\nDeep\n::\n\n:::\n\n::::",
+      );
+      const l1 = ast.value[0];
+      expect(l1[0]).toBe("l1");
+      const l2 = l1[2];
+      expect(l2[0]).toBe("l2");
+      const l3 = l2[2];
+      expect(l3[0]).toBe("l3");
+    });
+
+    it("parses block component with named slots AST", async () => {
+      const ast = await parseAST(
+        "::card\n#header\n## Card Title\n\n#content\nMain content\n\n#footer\nFooter text\n::",
+      );
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      const header = card[2];
+      expect(header[0]).toBe("template");
+      expect(header[1].name).toBe("header");
+      const content = card[3];
+      expect(content[0]).toBe("template");
+      expect(content[1].name).toBe("content");
+      const footer = card[4];
+      expect(footer[0]).toBe("template");
+      expect(footer[1].name).toBe("footer");
+    });
+
+    it("renders single slot HTML", async () => {
+      const html = await renderToHtml(
+        "::card\n#title\nCard Title\n::",
+      );
+      expect(html).toContain('<template name="title">');
+      expect(html).toContain("</template>");
+      expect(html).toContain("<p>Card Title</p>");
+    });
+
+    it("parses default content before named slot AST", async () => {
+      const ast = await parseAST(
+        "::card\nDefault content\n\n#title\nCard Title\n::",
+      );
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      // Default content is a direct child (paragraph)
+      expect(card[2][0]).toBe("p");
+      expect(card[2][2]).toBe("Default content");
+      // Named slot follows
+      const tmpl = card[3];
+      expect(tmpl[0]).toBe("template");
+      expect(tmpl[1].name).toBe("title");
+    });
+
+    it("parses empty slot AST", async () => {
+      const ast = await parseAST(
+        "::card\n#empty\n#content\nText here\n::",
+      );
+      const card = ast.value[0];
+      const empty = card[2];
+      expect(empty[0]).toBe("template");
+      expect(empty[1].name).toBe("empty");
+      expect(empty.length).toBe(2); // no children
+      const content = card[3];
+      expect(content[0]).toBe("template");
+      expect(content[1].name).toBe("content");
+    });
+  });
+
+  describe("component property parsing", () => {
+    it("merges multiple classes", async () => {
+      const ast = await parseAST(":badge[Text]{.foo .bar .baz}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1].class).toBe("foo bar baz");
+    });
+
+    it("merges multiple classes on block component", async () => {
+      const ast = await parseAST("::alert{.warning .large}\nMsg\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].class).toBe("warning large");
+    });
+
+    it("handles single-quoted string values", async () => {
+      const ast = await parseAST(":badge[Text]{color='blue'}");
+      const comp = ast.value[0][2];
+      expect(comp[1].color).toBe("blue");
+    });
+
+    it("handles mixed props with id, classes, key-value, and boolean", async () => {
+      const ast = await parseAST(':badge[T]{#myid .cls1 .cls2 key="val" flag}');
+      const comp = ast.value[0][2];
+      expect(comp[1].id).toBe("myid");
+      expect(comp[1].class).toBe("cls1 cls2");
+      expect(comp[1].key).toBe("val");
+      expect(comp[1].flag).toBe(true);
+    });
+
+    it("handles empty props object", async () => {
+      const ast = await parseAST(":badge[Text]{}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("badge");
+      expect(comp[1]).toEqual({});
+    });
+
+    it("handles bind syntax in props", async () => {
+      const ast = await parseAST(":widget{:data='{\"x\":1}'}");
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("widget");
+      expect(comp[1][":data"]).toEqual({ x: 1 });
+    });
+
+    it("renders merged classes in HTML", async () => {
+      const html = await renderToHtml(":badge[Text]{.foo .bar .baz}");
+      expect(html).toContain('class="foo bar baz"');
+    });
+
+    it("renders mixed props in HTML", async () => {
+      const html = await renderToHtml(
+        ':badge[T]{#myid .cls1 .cls2 key="val" flag}',
+      );
+      expect(html).toContain('id="myid"');
+      expect(html).toContain('class="cls1 cls2"');
+      expect(html).toContain('key="val"');
+      expect(html).toContain("flag");
+    });
+
+    it("handles array/JSON prop value", async () => {
+      const ast = await parseAST(':widget{:items=\'["a","b"]\'}');
+      const comp = ast.value[0][2];
+      expect(comp[0]).toBe("widget");
+      expect(comp[1][":items"]).toEqual(["a", "b"]);
+    });
+  });
+
+  describe("inline attributes", () => {
+    it("renders strong with class HTML", async () => {
+      const html = await renderToHtml("**bold**{.highlight}");
+      expect(html).toContain('<strong class="highlight">bold</strong>');
+    });
+
+    it("renders emphasis with id HTML", async () => {
+      const html = await renderToHtml("*italic*{#myid}");
+      expect(html).toContain('<em id="myid">italic</em>');
+    });
+
+    it("renders code span with class HTML", async () => {
+      const html = await renderToHtml("`code`{.lang}");
+      expect(html).toContain('<code class="lang">code</code>');
+    });
+
+    it("renders link with target HTML", async () => {
+      const html = await renderToHtml(
+        '[Link](https://example.com){target="_blank"}',
+      );
+      expect(html).toContain('target="_blank"');
+      expect(html).toContain('<a href="https://example.com"');
+    });
+
+    it("renders image with class HTML", async () => {
+      const html = await renderToHtml("![alt](img.png){.responsive}");
+      expect(html).toContain(
+        '<img src="img.png" alt="alt" class="responsive">',
+      );
+    });
+
+    it("renders span syntax HTML", async () => {
+      const html = await renderToHtml("[text]{.class}");
+      expect(html).toContain('<span class="class">text</span>');
+    });
+
+    it("renders span with mixed attrs HTML", async () => {
+      const html = await renderToHtml('[text]{#myid .cls key="val"}');
+      expect(html).toContain('id="myid"');
+      expect(html).toContain('class="cls"');
+      expect(html).toContain('key="val"');
+      expect(html).toContain("<span");
+    });
+
+    it("parses strong with attrs AST", async () => {
+      const ast = await parseAST("**bold**{.highlight}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1].class).toBe("highlight");
+      expect(strong[2]).toBe("bold");
+    });
+
+    it("parses emphasis with attrs AST", async () => {
+      const ast = await parseAST("*italic*{#myid}");
+      const p = ast.value[0];
+      const em = p[2];
+      expect(em[0]).toBe("em");
+      expect(em[1].id).toBe("myid");
+      expect(em[2]).toBe("italic");
+    });
+
+    it("parses code span with attrs AST", async () => {
+      const ast = await parseAST("`code`{.lang}");
+      const p = ast.value[0];
+      const code = p[2];
+      expect(code[0]).toBe("code");
+      expect(code[1].class).toBe("lang");
+      expect(code[2]).toBe("code");
+    });
+
+    it("parses link with attrs AST", async () => {
+      const ast = await parseAST(
+        '[Link](https://example.com){target="_blank"}',
+      );
+      const p = ast.value[0];
+      const a = p[2];
+      expect(a[0]).toBe("a");
+      expect(a[1].href).toBe("https://example.com");
+      expect(a[1].target).toBe("_blank");
+      expect(a[2]).toBe("Link");
+    });
+
+    it("parses image with attrs AST", async () => {
+      const ast = await parseAST("![alt](img.png){.responsive}");
+      const p = ast.value[0];
+      const img = p[2];
+      expect(img[0]).toBe("img");
+      expect(img[1].src).toBe("img.png");
+      expect(img[1].class).toBe("responsive");
+    });
+
+    it("parses span syntax AST", async () => {
+      const ast = await parseAST("[text]{.class}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("class");
+      expect(span[2]).toBe("text");
+    });
+
+    it("parses span with multiple classes AST", async () => {
+      const ast = await parseAST("[text]{.foo .bar .baz}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("foo bar baz");
+    });
+
+    it("span with inline markdown AST", async () => {
+      const ast = await parseAST("[**bold** text]{.styled}");
+      const p = ast.value[0];
+      const span = p[2];
+      expect(span[0]).toBe("span");
+      expect(span[1].class).toBe("styled");
+      expect(span[2][0]).toBe("strong");
+      expect(span[2][2]).toBe("bold");
+      expect(span[3]).toBe(" text");
+    });
+
+    it("element without attrs has no extra props", async () => {
+      const ast = await parseAST("**bold**");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]).toEqual({});
+    });
+
+    it("empty attrs have no effect AST", async () => {
+      const ast = await parseAST("**bold**{}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]).toEqual({});
+    });
+
+    it("plain text followed by braces is not attrs", async () => {
+      const html = await renderToHtml("hello{.class}");
+      expect(html).toContain("hello{.class}");
+      expect(html).not.toContain("<span");
+    });
+
+    it("renders strikethrough with attrs HTML", async () => {
+      const html = await renderToHtml("~~del~~{.red}");
+      expect(html).toContain('<del class="red">del</del>');
+    });
+
+    it("renders strong with boolean attr HTML", async () => {
+      const html = await renderToHtml("**bold**{flag}");
+      expect(html).toContain("<strong");
+      expect(html).toContain("flag");
+      expect(html).toContain(">bold</strong>");
+    });
+
+    it("renders strong with data attr HTML", async () => {
+      const html = await renderToHtml('**bold**{data-value="custom"}');
+      expect(html).toContain('data-value="custom"');
+      expect(html).toContain(">bold</strong>");
+    });
+
+    it("parses strikethrough with attrs AST", async () => {
+      const ast = await parseAST("~~del~~{.red}");
+      const p = ast.value[0];
+      const del = p[2];
+      expect(del[0]).toBe("del");
+      expect(del[1].class).toBe("red");
+    });
+
+    it("parses strong with boolean attr AST", async () => {
+      const ast = await parseAST("**bold**{flag}");
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1].flag).toBe(true);
+    });
+
+    it("parses strong with data attr AST", async () => {
+      const ast = await parseAST('**bold**{data-value="custom"}');
+      const p = ast.value[0];
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[1]["data-value"]).toBe("custom");
+    });
+
+    it.skip("renders heading with auto-id", async () => {
+      const html = await renderToHtml("# Hello World");
+      expect(html).toContain('id="hello-world"');
+    });
+
+    it.skip("renders emoji", async () => {
+      const html = await renderToHtml("Hello :wave:");
+      expect(html).toContain("\u{1F44B}");
     });
   });
 

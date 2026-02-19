@@ -2,7 +2,9 @@ let _instance;
 
 function getExports() {
   if (!_instance) {
-    throw new Error("md4x: WASM not initialized. Call `await initWasm()` first.");
+    throw new Error(
+      "md4x: WASM not initialized. Call `await initWasm()` first.",
+    );
   }
   return _instance.exports;
 }
@@ -18,7 +20,10 @@ export async function initWasm(input) {
     });
     _instance = instance;
     return;
-  } else if (input instanceof Response || (typeof input === "object" && typeof input.then === "function")) {
+  } else if (
+    input instanceof Response ||
+    (typeof input === "object" && typeof input.then === "function")
+  ) {
     const response = await input;
     if (response instanceof Response) {
       bytes = await response.arrayBuffer();
@@ -26,12 +31,14 @@ export async function initWasm(input) {
       bytes = response;
     }
   } else {
-    const fsp = globalThis.process?.getBuiltinModule?.("fs/promises")
+    const fsp = globalThis.process?.getBuiltinModule?.("fs/promises");
     if (fsp) {
       const wasmPath = new URL("../build/md4x.wasm", import.meta.url);
-    bytes = await fsp.readFile(wasmPath);
+      bytes = await fsp.readFile(wasmPath);
     } else {
-      bytes = await fetch(await import("../build/md4x.wasm?url").then(m => m.default)).then(r => r.arrayBuffer())
+      bytes = await fetch(
+        await import("../build/md4x.wasm?url").then((m) => m.default),
+      ).then((r) => r.arrayBuffer());
     }
   }
   const { instance } = await WebAssembly.instantiate(bytes, {

@@ -68,11 +68,7 @@ function hex(n: number): string {
   return `0x${n.toString(16).padStart(4, "0")}`;
 }
 
-export function wrapLines(
-  text: string,
-  width: number,
-  indent: string,
-): string {
+export function wrapLines(text: string, width: number, indent: string): string {
   // Emulate Python's textwrap.wrap: break at spaces in "item1, item2, item3"
   // Each "word" is "item," (with comma attached), except the last item
   const words = text.split(" ");

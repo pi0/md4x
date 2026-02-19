@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "md4x-html.h"
+#include "md4x-props.h"
 #include "entity.h"
 
 
@@ -323,6 +324,9 @@ render_open_td_block(MD_HTML* r, const MD_CHAR* cell_type, const MD_BLOCK_TD_DET
     }
 }
 
+/* Forward declaration. */
+static void render_html_component_props(MD_HTML* r, const MD_CHAR* raw, MD_SIZE size);
+
 static void
 render_open_a_span(MD_HTML* r, const MD_SPAN_A_DETAIL* det)
 {
@@ -334,7 +338,10 @@ render_open_a_span(MD_HTML* r, const MD_SPAN_A_DETAIL* det)
         render_attribute(r, &det->title, render_html_escaped);
     }
 
-    RENDER_VERBATIM(r, "\">");
+    RENDER_VERBATIM(r, "\"");
+    if(det->raw_attrs != NULL && det->raw_attrs_size > 0)
+        render_html_component_props(r, det->raw_attrs, det->raw_attrs_size);
+    RENDER_VERBATIM(r, ">");
 }
 
 static void
@@ -354,7 +361,10 @@ render_close_img_span(MD_HTML* r, const MD_SPAN_IMG_DETAIL* det)
         render_attribute(r, &det->title, render_html_escaped);
     }
 
-    RENDER_VERBATIM(r, "\">");
+    RENDER_VERBATIM(r, "\"");
+    if(det->raw_attrs != NULL && det->raw_attrs_size > 0)
+        render_html_component_props(r, det->raw_attrs, det->raw_attrs_size);
+    RENDER_VERBATIM(r, ">");
 }
 
 static void
@@ -364,6 +374,109 @@ render_open_wikilink_span(MD_HTML* r, const MD_SPAN_WIKILINK_DETAIL* det)
     render_attribute(r, &det->target, render_html_escaped);
 
     RENDER_VERBATIM(r, "\">");
+}
+
+/* Render parsed component props as HTML attributes.
+ * Uses the shared md_parse_props() parser from md4x-props.h. */
+static void
+render_html_component_props(MD_HTML* r, const MD_CHAR* raw, MD_SIZE size)
+{
+    MD_PARSED_PROPS parsed;
+    int i;
+
+    md_parse_props(raw, size, &parsed);
+
+    /* Write #id. */
+    if(parsed.id != NULL && parsed.id_size > 0) {
+        RENDER_VERBATIM(r, " id=\"");
+        render_html_escaped(r, parsed.id, parsed.id_size);
+        RENDER_VERBATIM(r, "\"");
+    }
+
+    /* Write regular props. */
+    for(i = 0; i < parsed.n_props; i++) {
+        const MD_PROP* p = &parsed.props[i];
+
+        RENDER_VERBATIM(r, " ");
+        render_html_escaped(r, p->key, p->key_size);
+
+        switch(p->type) {
+            case MD_PROP_STRING:
+            case MD_PROP_BIND:
+                RENDER_VERBATIM(r, "=\"");
+                render_html_escaped(r, p->value, p->value_size);
+                RENDER_VERBATIM(r, "\"");
+                break;
+
+            case MD_PROP_BOOLEAN:
+                /* Bare attribute (no value). */
+                break;
+        }
+    }
+
+    /* Write merged class. */
+    if(parsed.class_len > 0) {
+        RENDER_VERBATIM(r, " class=\"");
+        render_html_escaped(r, parsed.class_buf, parsed.class_len);
+        RENDER_VERBATIM(r, "\"");
+    }
+}
+
+/* Render opening tag for a simple span with optional trailing attrs. */
+static void
+render_open_tag_with_attrs(MD_HTML* r, const char* tag, const MD_SPAN_ATTRS_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<");
+    RENDER_VERBATIM(r, tag);
+    if(det != NULL && det->raw_attrs != NULL && det->raw_attrs_size > 0)
+        render_html_component_props(r, det->raw_attrs, det->raw_attrs_size);
+    RENDER_VERBATIM(r, ">");
+}
+
+/* Render opening tag for [text]{attrs} span. */
+static void
+render_open_span_span(MD_HTML* r, const MD_SPAN_SPAN_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<span");
+    if(det != NULL && det->raw_attrs != NULL && det->raw_attrs_size > 0)
+        render_html_component_props(r, det->raw_attrs, det->raw_attrs_size);
+    RENDER_VERBATIM(r, ">");
+}
+
+static void
+render_open_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    if(det->raw_props != NULL && det->raw_props_size > 0)
+        render_html_component_props(r, det->raw_props, det->raw_props_size);
+    RENDER_VERBATIM(r, ">");
+}
+
+static void
+render_close_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "</");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    RENDER_VERBATIM(r, ">");
+}
+
+static void
+render_open_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    if(det->raw_props != NULL && det->raw_props_size > 0)
+        render_html_component_props(r, det->raw_props, det->raw_props_size);
+    RENDER_VERBATIM(r, ">\n");
+}
+
+static void
+render_close_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "</");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    RENDER_VERBATIM(r, ">\n");
 }
 
 
@@ -395,6 +508,14 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       render_open_td_block(r, "th", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "<x-frontmatter>"); break;
+        case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_TEMPLATE: {
+            const MD_BLOCK_TEMPLATE_DETAIL* det = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
+            RENDER_VERBATIM(r, "<template name=\"");
+            render_attribute(r, &det->name, render_html_escaped);
+            RENDER_VERBATIM(r, "\">\n");
+            break;
+        }
     }
 
     return 0;
@@ -424,6 +545,8 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       RENDER_VERBATIM(r, "</th>\n"); break;
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "</x-frontmatter>\n"); break;
+        case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_TEMPLATE:     RENDER_VERBATIM(r, "</template>\n"); break;
     }
 
     return 0;
@@ -455,16 +578,43 @@ enter_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         return 0;
 
     switch(type) {
-        case MD_SPAN_EM:                RENDER_VERBATIM(r, "<em>"); break;
-        case MD_SPAN_STRONG:            RENDER_VERBATIM(r, "<strong>"); break;
-        case MD_SPAN_U:                 RENDER_VERBATIM(r, "<u>"); break;
+        case MD_SPAN_EM:
+            if(detail != NULL)
+                render_open_tag_with_attrs(r, "em", (MD_SPAN_ATTRS_DETAIL*) detail);
+            else
+                RENDER_VERBATIM(r, "<em>");
+            break;
+        case MD_SPAN_STRONG:
+            if(detail != NULL)
+                render_open_tag_with_attrs(r, "strong", (MD_SPAN_ATTRS_DETAIL*) detail);
+            else
+                RENDER_VERBATIM(r, "<strong>");
+            break;
+        case MD_SPAN_U:
+            if(detail != NULL)
+                render_open_tag_with_attrs(r, "u", (MD_SPAN_ATTRS_DETAIL*) detail);
+            else
+                RENDER_VERBATIM(r, "<u>");
+            break;
         case MD_SPAN_A:                 render_open_a_span(r, (MD_SPAN_A_DETAIL*) detail); break;
         case MD_SPAN_IMG:               render_open_img_span(r, (MD_SPAN_IMG_DETAIL*) detail); break;
-        case MD_SPAN_CODE:              RENDER_VERBATIM(r, "<code>"); break;
-        case MD_SPAN_DEL:               RENDER_VERBATIM(r, "<del>"); break;
+        case MD_SPAN_CODE:
+            if(detail != NULL)
+                render_open_tag_with_attrs(r, "code", (MD_SPAN_ATTRS_DETAIL*) detail);
+            else
+                RENDER_VERBATIM(r, "<code>");
+            break;
+        case MD_SPAN_DEL:
+            if(detail != NULL)
+                render_open_tag_with_attrs(r, "del", (MD_SPAN_ATTRS_DETAIL*) detail);
+            else
+                RENDER_VERBATIM(r, "<del>");
+            break;
         case MD_SPAN_LATEXMATH:         RENDER_VERBATIM(r, "<x-equation>"); break;
         case MD_SPAN_LATEXMATH_DISPLAY: RENDER_VERBATIM(r, "<x-equation type=\"display\">"); break;
         case MD_SPAN_WIKILINK:          render_open_wikilink_span(r, (MD_SPAN_WIKILINK_DETAIL*) detail); break;
+        case MD_SPAN_COMPONENT:         render_open_component_span(r, (MD_SPAN_COMPONENT_DETAIL*) detail); break;
+        case MD_SPAN_SPAN:              render_open_span_span(r, (MD_SPAN_SPAN_DETAIL*) detail); break;
     }
 
     return 0;
@@ -491,6 +641,8 @@ leave_span_callback(MD_SPANTYPE type, void* detail, void* userdata)
         case MD_SPAN_LATEXMATH:         /*fall through*/
         case MD_SPAN_LATEXMATH_DISPLAY: RENDER_VERBATIM(r, "</x-equation>"); break;
         case MD_SPAN_WIKILINK:          RENDER_VERBATIM(r, "</x-wikilink>"); break;
+        case MD_SPAN_COMPONENT:         render_close_component_span(r, (MD_SPAN_COMPONENT_DETAIL*) detail); break;
+        case MD_SPAN_SPAN:              RENDER_VERBATIM(r, "</span>"); break;
     }
 
     return 0;

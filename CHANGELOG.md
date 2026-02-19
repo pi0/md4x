@@ -1,7 +1,16 @@
-
 # MD4X Change Log
 
 ## Next
+
+### Component slots (`MD_FLAG_COMPONENTS`)
+
+Added named slot syntax inside block components: `#slot-name` at line start creates a `MD_BLOCK_TEMPLATE` container. Content after `#slot-name` until the next slot or component closer becomes the slot body. HTML renderer outputs `<template name="slot-name">...content...</template>`. JSON renderer outputs `["template", {"name": "slot-name"}, ...children]`.
+
+### Inline attributes (`MD_FLAG_ATTRIBUTES`)
+
+Added `{...}` attribute syntax on native inline elements: `**bold**{.class}`, `*italic*{#id}`, `` `code`{.lang} ``, `~~del~~{.class}`, `_underline_{.class}`, `[Link](url){target="_blank"}`, `![img](src){.responsive}`. The `[text]{.class}` syntax (brackets not followed by `(url)`) creates a generic `<span>`.
+
+New parser types: `MD_SPAN_SPAN` (for `[text]{attrs}`), `MD_SPAN_ATTRS_DETAIL` (for em/strong/code/del/u with attrs), `MD_SPAN_SPAN_DETAIL`. Extended `MD_SPAN_A_DETAIL` and `MD_SPAN_IMG_DETAIL` with `raw_attrs`/`raw_attrs_size` fields. New flag: `MD_FLAG_ATTRIBUTES` (`0x40000`), included in `MD_DIALECT_ALL`.
 
 ### `renderToJson` returns raw string, new `parseAST` function
 
@@ -12,6 +21,7 @@
 **Breaking:** The JSON renderer (`md_json` / `renderToJson`) now outputs the Comark AST format instead of the previous mdast/unist-like format. The root is `{"type":"comark","value":[...]}` where each node is either a plain string (text) or a tuple array `["tag", {props}, ...children]`.
 
 Key changes:
+
 - Tags use HTML element names (`h1`–`h6`, `p`, `blockquote`, `em`, `strong`, `a`, `img`, `pre`/`code`, etc.)
 - Text nodes are plain JSON strings (no `{type:"text",literal:"..."}` wrappers)
 - Code blocks serialize as `["pre", {language}, ["code", {class}, literal]]`

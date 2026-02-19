@@ -1,0 +1,459 @@
+
+# Inline Components
+
+## Standalone inline component
+
+```````````````````````````````` example
+:icon-star
+.
+<p><icon-star></icon-star></p>
+````````````````````````````````
+
+## Inline component with content
+
+```````````````````````````````` example
+:badge[New]
+.
+<p><badge>New</badge></p>
+````````````````````````````````
+
+## Inline component with content and properties
+
+```````````````````````````````` example
+:badge[New]{color="blue"}
+.
+<p><badge color="blue">New</badge></p>
+````````````````````````````````
+
+## Inline component with properties only (no content)
+
+```````````````````````````````` example
+:tooltip{text="Hover text"}
+.
+<p><tooltip text="Hover text"></tooltip></p>
+````````````````````````````````
+
+## Inline component within text
+
+```````````````````````````````` example
+Click the :button[Submit]{type="primary"} to continue.
+.
+<p>Click the <button type="primary">Submit</button> to continue.</p>
+````````````````````````````````
+
+## Multiple inline components in same paragraph
+
+```````````````````````````````` example
+Status: :badge[Active]{color="green"} and :icon-check
+.
+<p>Status: <badge color="green">Active</badge> and <icon-check></icon-check></p>
+````````````````````````````````
+
+## Inline component with markdown content
+
+```````````````````````````````` example
+:badge[**bold** text]
+.
+<p><badge><strong>bold</strong> text</badge></p>
+````````````````````````````````
+
+## Inline component with boolean prop
+
+```````````````````````````````` example
+:alert{dismissible}
+.
+<p><alert dismissible></alert></p>
+````````````````````````````````
+
+## Inline component with id and class
+
+```````````````````````````````` example
+:badge[Text]{#my-id .highlight}
+.
+<p><badge id="my-id" class="highlight">Text</badge></p>
+````````````````````````````````
+
+## Inline component with multiple properties
+
+```````````````````````````````` example
+:button[Click]{type="primary" size="lg" disabled}
+.
+<p><button type="primary" size="lg" disabled>Click</button></p>
+````````````````````````````````
+
+## Single-word component name
+
+```````````````````````````````` example
+:alert[Warning!]
+.
+<p><alert>Warning!</alert></p>
+````````````````````````````````
+
+## Component does not interfere with URLs
+
+```````````````````````````````` example
+Visit https://example.com for more.
+.
+<p>Visit <a href="https://example.com">https://example.com</a> for more.</p>
+````````````````````````````````
+
+
+# Block Components
+
+## Basic block component
+
+```````````````````````````````` example
+::alert
+Hello world
+::
+.
+<alert>
+<p>Hello world</p>
+</alert>
+````````````````````````````````
+
+## Block component with properties
+
+```````````````````````````````` example
+::alert{type="info"}
+This is important!
+::
+.
+<alert type="info">
+<p>This is important!</p>
+</alert>
+````````````````````````````````
+
+## Block component with markdown content
+
+```````````````````````````````` example
+::card{title="My Card"}
+Card content with **markdown** support
+::
+.
+<card title="My Card">
+<p>Card content with <strong>markdown</strong> support</p>
+</card>
+````````````````````````````````
+
+## Empty block component
+
+```````````````````````````````` example
+::divider
+::
+.
+<divider>
+</divider>
+````````````````````````````````
+
+## Nested block components
+
+```````````````````````````````` example
+:::outer
+Outer content
+
+::inner
+Inner content
+::
+
+More outer
+:::
+.
+<outer>
+<p>Outer content</p>
+<inner>
+<p>Inner content</p>
+</inner>
+<p>More outer</p>
+</outer>
+````````````````````````````````
+
+## Deep nesting
+
+```````````````````````````````` example
+::level-1
+:::level-2
+::::level-3
+Content
+::::
+:::
+::
+.
+<level-1>
+<level-2>
+<level-3>
+<p>Content</p>
+</level-3>
+</level-2>
+</level-1>
+````````````````````````````````
+
+## Block component with id and class
+
+```````````````````````````````` example
+::alert{#my-alert .warning}
+Warning message
+::
+.
+<alert id="my-alert" class="warning">
+<p>Warning message</p>
+</alert>
+````````````````````````````````
+
+## Block component with multiple props
+
+```````````````````````````````` example
+::card{title="Card" size="lg" dismissible}
+Content here
+::
+.
+<card title="Card" size="lg" dismissible>
+<p>Content here</p>
+</card>
+````````````````````````````````
+
+## Block component cannot interrupt paragraph
+
+```````````````````````````````` example
+Some text
+::alert
+Hello
+::
+.
+<p>Some text
+::alert
+Hello
+::</p>
+````````````````````````````````
+
+## Block component after blank line
+
+```````````````````````````````` example
+Some text
+
+::alert
+Hello
+::
+.
+<p>Some text</p>
+<alert>
+<p>Hello</p>
+</alert>
+````````````````````````````````
+
+## Block component inside blockquote
+
+```````````````````````````````` example
+> ::alert
+> Hello
+> ::
+.
+<blockquote>
+<alert>
+<p>Hello</p>
+</alert>
+</blockquote>
+````````````````````````````````
+
+## Block component with multiple blocks inside
+
+```````````````````````````````` example
+::card
+# Title
+
+Paragraph one
+
+Paragraph two
+::
+.
+<card>
+<h1>Title</h1>
+<p>Paragraph one</p>
+<p>Paragraph two</p>
+</card>
+````````````````````````````````
+
+
+# Component Property Parsing
+
+## Multiple classes are merged
+
+```````````````````````````````` example
+:badge[Text]{.foo .bar .baz}
+.
+<p><badge class="foo bar baz">Text</badge></p>
+````````````````````````````````
+
+## Multiple classes merged on block component
+
+```````````````````````````````` example
+::alert{.warning .large .bold}
+Message
+::
+.
+<alert class="warning large bold">
+<p>Message</p>
+</alert>
+````````````````````````````````
+
+## Single-quoted string values
+
+```````````````````````````````` example
+:badge[Text]{color='blue'}
+.
+<p><badge color="blue">Text</badge></p>
+````````````````````````````````
+
+## Mixed props with id, classes, key-value, and boolean
+
+```````````````````````````````` example
+:badge[Text]{#myid .cls1 .cls2 key="val" flag}
+.
+<p><badge id="myid" key="val" flag class="cls1 cls2">Text</badge></p>
+````````````````````````````````
+
+## Empty props object
+
+```````````````````````````````` example
+:badge[Text]{}
+.
+<p><badge>Text</badge></p>
+````````````````````````````````
+
+## Bind syntax in props
+
+```````````````````````````````` example
+:widget{:data='{"x":1}'}
+.
+<p><widget data="{&quot;x&quot;:1}"></widget></p>
+````````````````````````````````
+
+
+# Component Slots
+
+## Single named slot
+
+```````````````````````````````` example
+::card
+#title
+Card Title
+::
+.
+<card>
+<template name="title">
+<p>Card Title</p>
+</template>
+</card>
+````````````````````````````````
+
+## Multiple named slots
+
+```````````````````````````````` example
+::card
+#header
+## Card Title
+
+#content
+This is the main content
+
+#footer
+Footer text
+::
+.
+<card>
+<template name="header">
+<h2>Card Title</h2>
+</template>
+<template name="content">
+<p>This is the main content</p>
+</template>
+<template name="footer">
+<p>Footer text</p>
+</template>
+</card>
+````````````````````````````````
+
+## Default content before named slot
+
+```````````````````````````````` example
+::card
+Default content
+
+#title
+Card Title
+::
+.
+<card>
+<p>Default content</p>
+<template name="title">
+<p>Card Title</p>
+</template>
+</card>
+````````````````````````````````
+
+## Slot with rich markdown content
+
+```````````````````````````````` example
+::card
+#body
+This has **bold** and *italic* text.
+
+- Item one
+- Item two
+::
+.
+<card>
+<template name="body">
+<p>This has <strong>bold</strong> and <em>italic</em> text.</p>
+<ul>
+<li>Item one</li>
+<li>Item two</li>
+</ul>
+</template>
+</card>
+````````````````````````````````
+
+## Empty slot
+
+```````````````````````````````` example
+::card
+#empty
+#content
+Text here
+::
+.
+<card>
+<template name="empty">
+</template>
+<template name="content">
+<p>Text here</p>
+</template>
+</card>
+````````````````````````````````
+
+## Slot name outside component is literal text
+
+```````````````````````````````` example
+#not-a-slot
+.
+<p>#not-a-slot</p>
+````````````````````````````````
+
+## Slot in nested component
+
+```````````````````````````````` example
+:::outer
+::inner
+#title
+Inner Title
+::
+:::
+.
+<outer>
+<inner>
+<template name="title">
+<p>Inner Title</p>
+</template>
+</inner>
+</outer>
+````````````````````````````````

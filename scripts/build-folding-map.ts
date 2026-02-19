@@ -7,11 +7,7 @@ const selfPath = dirname(fileURLToPath(import.meta.url));
 const input = readFileSync(join(selfPath, "unicode/CaseFolding.txt"), "utf8");
 
 const statusList = new Set(["C", "F"]);
-const foldingList: Map<number, number[]>[] = [
-  new Map(),
-  new Map(),
-  new Map(),
-];
+const foldingList: Map<number, number[]>[] = [new Map(), new Map(), new Map()];
 
 // Filter the foldings for "full" folding.
 for (let line of input.split("\n")) {
@@ -123,9 +119,7 @@ for (let mappingLen = 1; mappingLen <= 3; mappingLen++) {
     }
   }
 
-  process.stdout.write(
-    `static const unsigned FOLD_MAP_${mappingLen}[] = {\n`,
-  );
+  process.stdout.write(`static const unsigned FOLD_MAP_${mappingLen}[] = {\n`);
   process.stdout.write(wrapLines(records.join(", "), 110, "    "));
   process.stdout.write("\n};\n");
 

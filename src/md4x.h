@@ -104,7 +104,17 @@ typedef enum MD_BLOCKTYPE {
     /* Frontmatter block (e.g. YAML metadata delimited by ---).
      * Note: Recognized only when MD_FLAG_FRONTMATTER is enabled.
      * Content is provided verbatim as MD_TEXT_NORMAL. */
-    MD_BLOCK_FRONTMATTER
+    MD_BLOCK_FRONTMATTER,
+
+    /* Block component (::component-name{props} ... ::).
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_BLOCK_COMPONENT_DETAIL. */
+    MD_BLOCK_COMPONENT,
+
+    /* Template/slot within a block component (#slot-name).
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_BLOCK_TEMPLATE_DETAIL. */
+    MD_BLOCK_TEMPLATE
 } MD_BLOCKTYPE;
 
 /* Span represents an in-line piece of a document which should be rendered with
@@ -150,7 +160,18 @@ typedef enum MD_SPANTYPE {
 
     /* <u>...</u>
      * Note: Recognized only when MD_FLAG_UNDERLINE is enabled. */
-    MD_SPAN_U
+    MD_SPAN_U,
+
+    /* Inline component :component-name[content]{props}
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_SPAN_COMPONENT_DETAIL. */
+    MD_SPAN_COMPONENT,
+
+    /* <span ...attrs>...</span>
+     * Created from [text]{.class} syntax (brackets + attrs, no link destination).
+     * Note: Recognized only when MD_FLAG_ATTRIBUTES is enabled.
+     * Detail: Structure MD_SPAN_SPAN_DETAIL. */
+    MD_SPAN_SPAN
 } MD_SPANTYPE;
 
 /* Text is the actual textual contents of span. */
@@ -271,6 +292,11 @@ typedef struct MD_BLOCK_CODE_DETAIL {
     MD_ATTRIBUTE info;
     MD_ATTRIBUTE lang;
     MD_CHAR fence_char;     /* The character used for fenced code block; or zero for indented code block. */
+    MD_ATTRIBUTE filename;  /* Filename extracted from [filename] in info string. */
+    const MD_CHAR* meta;    /* Remaining text after lang, [filename], {highlights} are removed. Not null-terminated. */
+    MD_SIZE meta_size;      /* Size of meta string. */
+    const unsigned* highlights;   /* Expanded array of highlighted line numbers, or NULL. */
+    unsigned highlight_count;     /* Number of entries in highlights array. */
 } MD_BLOCK_CODE_DETAIL;
 
 /* Detailed info for MD_BLOCK_TABLE. */
@@ -285,10 +311,13 @@ typedef struct MD_BLOCK_TD_DETAIL {
     MD_ALIGN align;
 } MD_BLOCK_TD_DETAIL;
 
-/* Detailed info for MD_SPAN_A. */
+/* Detailed info for MD_SPAN_A.
+ * Note: fields up to raw_attrs_size are binary-compatible with MD_SPAN_IMG_DETAIL. */
 typedef struct MD_SPAN_A_DETAIL {
     MD_ATTRIBUTE href;
     MD_ATTRIBUTE title;
+    const MD_CHAR* raw_attrs;       /* Raw attrs string from trailing {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs. */
     int is_autolink;            /* nonzero if this is an autolink */
 } MD_SPAN_A_DETAIL;
 
@@ -296,12 +325,48 @@ typedef struct MD_SPAN_A_DETAIL {
 typedef struct MD_SPAN_IMG_DETAIL {
     MD_ATTRIBUTE src;
     MD_ATTRIBUTE title;
+    const MD_CHAR* raw_attrs;       /* Raw attrs string from trailing {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs. */
 } MD_SPAN_IMG_DETAIL;
 
 /* Detailed info for MD_SPAN_WIKILINK. */
 typedef struct MD_SPAN_WIKILINK {
     MD_ATTRIBUTE target;
 } MD_SPAN_WIKILINK_DETAIL;
+
+/* Detailed info for MD_SPAN_COMPONENT. */
+typedef struct MD_SPAN_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "badge", "icon-star"). */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_props_size;         /* Size of raw_props. */
+} MD_SPAN_COMPONENT_DETAIL;
+
+/* Detailed info for MD_BLOCK_COMPONENT. */
+typedef struct MD_BLOCK_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "alert", "card"). */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_props_size;         /* Size of raw_props. */
+} MD_BLOCK_COMPONENT_DETAIL;
+
+/* Detailed info for MD_BLOCK_TEMPLATE (component slot). */
+typedef struct MD_BLOCK_TEMPLATE_DETAIL {
+    MD_ATTRIBUTE name;              /* Slot name (e.g. "header", "footer"). */
+} MD_BLOCK_TEMPLATE_DETAIL;
+
+/* Detailed info for inline spans with trailing attributes {.class #id key="value"}.
+ * Used for MD_SPAN_EM, MD_SPAN_STRONG, MD_SPAN_CODE, MD_SPAN_DEL, MD_SPAN_U
+ * when followed by {...}. NULL is passed when no attributes are present. */
+typedef struct MD_SPAN_ATTRS_DETAIL {
+    const MD_CHAR* raw_attrs;       /* Raw attrs string (inside braces), or NULL. Not null-terminated. */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs. */
+} MD_SPAN_ATTRS_DETAIL;
+
+/* Detailed info for MD_SPAN_SPAN.
+ * Created from [text]{.class} syntax. */
+typedef struct MD_SPAN_SPAN_DETAIL {
+    const MD_CHAR* raw_attrs;       /* Raw attrs string (inside braces). Not null-terminated. */
+    MD_SIZE raw_attrs_size;         /* Size of raw_attrs. */
+} MD_SPAN_SPAN_DETAIL;
 
 /* Flags specifying extensions/deviations from CommonMark specification.
  *
@@ -324,6 +389,8 @@ typedef struct MD_SPAN_WIKILINK {
 #define MD_FLAG_UNDERLINE                   0x4000  /* Enable underline extension (and disables '_' for normal emphasis). */
 #define MD_FLAG_HARD_SOFT_BREAKS            0x8000  /* Force all soft breaks to act as hard breaks. */
 #define MD_FLAG_FRONTMATTER                 0x10000 /* Enable frontmatter extension. */
+#define MD_FLAG_COMPONENTS                  0x20000 /* Enable inline/block component syntax. */
+#define MD_FLAG_ATTRIBUTES                  0x40000 /* Enable trailing {attrs} on inline elements. */
 
 #define MD_FLAG_PERMISSIVEAUTOLINKS         (MD_FLAG_PERMISSIVEEMAILAUTOLINKS | MD_FLAG_PERMISSIVEURLAUTOLINKS | MD_FLAG_PERMISSIVEWWWAUTOLINKS)
 #define MD_FLAG_NOHTML                      (MD_FLAG_NOHTMLBLOCKS | MD_FLAG_NOHTMLSPANS)
@@ -339,7 +406,7 @@ typedef struct MD_SPAN_WIKILINK {
  */
 #define MD_DIALECT_COMMONMARK               0
 #define MD_DIALECT_GITHUB                   (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS)
-#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER)
+#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER | MD_FLAG_COMPONENTS | MD_FLAG_ATTRIBUTES)
 
 /* Parser structure.
  */
