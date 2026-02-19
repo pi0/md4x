@@ -3,11 +3,11 @@ exec_prefix=@CMAKE_INSTALL_PREFIX@
 libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
-Name: @PROJECT_NAME@ ANSI renderer
-Description: Markdown to ANSI terminal output converter library.
+Name: @PROJECT_NAME@ JSON renderer
+Description: Markdown to JSON AST converter library.
 Version: @PROJECT_VERSION@
 URL: @PROJECT_URL@
 
-Requires: md4c = @PROJECT_VERSION@
-Libs: -L${libdir} -lmd4c-ansi
+Requires: md4x = @PROJECT_VERSION@
+Libs: -L${libdir} -lmd4x-json
 Cflags: -I${includedir}

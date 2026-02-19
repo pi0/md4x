@@ -1,7 +1,7 @@
 
 # Coverage
 
-This file is just a collection of tests designed to activate code in MD4C
+This file is just a collection of tests designed to activate code in MD4X
 which may otherwise be hard to hit. It's to improve our test coverage.
 
 

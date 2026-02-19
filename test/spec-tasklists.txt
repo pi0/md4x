@@ -1,7 +1,7 @@
 
 # Tasklists
 
-With the flag `MD_FLAG_TASKLISTS`, MD4C enables extension for recognition of
+With the flag `MD_FLAG_TASKLISTS`, MD4X enables extension for recognition of
 task lists.
 
 Basic task list may look as follows:

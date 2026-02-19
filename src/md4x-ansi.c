@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
  *
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "md4c-ansi.h"
+#include "md4x-ansi.h"
 #include "entity.h"
 
 
@@ -630,7 +630,7 @@ debug_log_callback(const char* msg, void* userdata)
 {
     MD_ANSI* r = (MD_ANSI*) userdata;
     if(r->flags & MD_ANSI_FLAG_DEBUG)
-        fprintf(stderr, "MD4C: %s\n", msg);
+        fprintf(stderr, "MD4X: %s\n", msg);
 }
 
 int

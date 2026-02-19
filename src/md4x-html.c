@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "md4c-html.h"
+#include "md4x-html.h"
 #include "entity.h"
 
 
@@ -521,7 +521,7 @@ debug_log_callback(const char* msg, void* userdata)
 {
     MD_HTML* r = (MD_HTML*) userdata;
     if(r->flags & MD_HTML_FLAG_DEBUG)
-        fprintf(stderr, "MD4C: %s\n", msg);
+        fprintf(stderr, "MD4X: %s\n", msg);
 }
 
 int

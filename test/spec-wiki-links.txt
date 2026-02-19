@@ -1,7 +1,7 @@
 
 # Wiki Links
 
-With the flag `MD_FLAG_WIKILINKS`, MD4C recognizes wiki links.
+With the flag `MD_FLAG_WIKILINKS`, MD4X recognizes wiki links.
 
 The simple wiki-link is a wiki-link destination enclosed in `[[` followed with
 `]]`.

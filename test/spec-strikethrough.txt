@@ -1,7 +1,7 @@
 
 # Strike-Through
 
-With the flag `MD_FLAG_STRIKETHROUGH`, MD4C enables extension for recognition
+With the flag `MD_FLAG_STRIKETHROUGH`, MD4X enables extension for recognition
 of strike-through spans.
 
 Strike-through text is any text wrapped in one or two tildes (`~`).

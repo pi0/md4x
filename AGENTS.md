@@ -1,9 +1,9 @@
-# MD4C
+# MD4X
 
 > **Always keep this file (`AGENTS.md`) updated when making changes to the project.**
 > **Also update `CHANGELOG.md` when adding or changing user-facing features.**
 
-> C Markdown parser library by [Martin Mitáš](https://github.com/mity/md4c)
+> C Markdown parser library (fork of [mity/md4c](https://github.com/mity/md4c))
 
 - **Version:** 0.5.2 (next: 0.5.3 WIP)
 - **License:** MIT
@@ -14,27 +14,27 @@
 
 ```
 src/
-  md4c.c              # Core parser (~6500 LoC)
-  md4c.h              # Parser public API
-  md4c-html.c          # HTML renderer library (~570 LoC)
-  md4c-html.h          # HTML renderer public API
+  md4x.c              # Core parser (~6500 LoC)
+  md4x.h              # Parser public API
+  md4x-html.c          # HTML renderer library (~570 LoC)
+  md4x-html.h          # HTML renderer public API
   entity.c             # HTML entity lookup table (generated)
   entity.h             # Entity header
-  md4c.pc.in           # pkg-config for libmd4c
-  md4c-html.pc.in      # pkg-config for libmd4c-html
-  md4c-json.c          # JSON AST renderer library (~580 LoC)
-  md4c-json.h          # JSON renderer public API
-  md4c-json.pc.in      # pkg-config for libmd4c-json
-  md4c-ansi.c          # ANSI terminal renderer library (~450 LoC)
-  md4c-ansi.h          # ANSI renderer public API
-  md4c-ansi.pc.in      # pkg-config for libmd4c-ansi
-  CMakeLists.txt       # Builds libmd4c + libmd4c-html + libmd4c-json + libmd4c-ansi
+  md4x.pc.in           # pkg-config for libmd4x
+  md4x-html.pc.in      # pkg-config for libmd4x-html
+  md4x-json.c          # JSON AST renderer library (~580 LoC)
+  md4x-json.h          # JSON renderer public API
+  md4x-json.pc.in      # pkg-config for libmd4x-json
+  md4x-ansi.c          # ANSI terminal renderer library (~450 LoC)
+  md4x-ansi.h          # ANSI renderer public API
+  md4x-ansi.pc.in      # pkg-config for libmd4x-ansi
+  CMakeLists.txt       # Builds libmd4x + libmd4x-html + libmd4x-json + libmd4x-ansi
 cli/
-  md4c-cli.c           # CLI utility (multi-format: html, text, json, ansi)
+  md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
   cmdline.c            # Command-line parser (from c-reusables)
   cmdline.h            # Command-line parser API
-  md4c.1               # Man page
-  CMakeLists.txt       # Builds md4c executable
+  md4x.1               # Man page
+  CMakeLists.txt       # Builds md4x executable
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
   spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
@@ -69,20 +69,20 @@ make
 ```
 
 Produces four libraries and one executable:
-- **libmd4c** — Parser library (compiled with `-DMD4C_USE_UTF8`)
-- **libmd4c-html** — HTML renderer (links against libmd4c)
-- **libmd4c-json** — JSON AST renderer (links against libmd4c)
-- **libmd4c-ansi** — ANSI terminal renderer (links against libmd4c)
-- **md4c** — CLI utility (supports `--format=html|text|json|ansi`)
+- **libmd4x** — Parser library (compiled with `-DMD4X_USE_UTF8`)
+- **libmd4x-html** — HTML renderer (links against libmd4x)
+- **libmd4x-json** — JSON AST renderer (links against libmd4x)
+- **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
+- **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 
 CMake options:
 - `BUILD_SHARED_LIBS=ON|OFF` — Shared (default Linux) vs static (default Windows)
-- `BUILD_MD4C_CLI=ON|OFF` — Whether to build the CLI (default ON, `BUILD_MD2HTML_EXECUTABLE` is a backward-compat alias)
+- `BUILD_MD4X_CLI=ON|OFF` — Whether to build the CLI (default ON, `BUILD_MD2HTML_EXECUTABLE` is a backward-compat alias)
 - Default build type is `Release` (Debug is ~2x slower)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement` (GCC/Clang), `/W3` (MSVC)
 
-CMake exports `md4c::md4c`, `md4c::md4c-html`, `md4c::md4c-json`, and `md4c::md4c-ansi` targets for `find_package(md4c)`.
+CMake exports `md4x::md4x`, `md4x::md4x-html`, `md4x::md4x-json`, and `md4x::md4x-ansi` targets for `find_package(md4x)`.
 
 ## Testing
 
@@ -91,17 +91,17 @@ CMake exports `md4c::md4c`, `md4c::md4c-html`, `md4c::md4c-json`, and `md4c::md4
 python3 ../scripts/run-tests.py
 
 # Individual test suite:
-python3 test/run-testsuite.py -s test/spec.txt -p build/cli/md4c
+python3 test/run-testsuite.py -s test/spec.txt -p build/cli/md4x
 
 # Pathological inputs only:
-python3 test/pathological-tests.py -p build/cli/md4c
+python3 test/pathological-tests.py -p build/cli/md4x
 ```
 
-Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4c` and compares normalized output.
+Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4x` and compares normalized output.
 
 Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `regressions.txt`, `coverage.txt`
 
-## Parser API (`md4c.h`)
+## Parser API (`md4x.h`)
 
 Core function:
 
@@ -111,7 +111,7 @@ int md_parse(const MD_CHAR* text, MD_SIZE size, const MD_PARSER* parser, void* u
 
 Returns `0` on success, `-1` on runtime error (e.g. memory failure), or the non-zero return value of any callback that aborted parsing.
 
-`MD_CHAR` is `char` by default, or `WCHAR` when `MD4C_USE_UTF16` is defined on Windows.
+`MD_CHAR` is `char` by default, or `WCHAR` when `MD4X_USE_UTF16` is defined on Windows.
 
 The `MD_PARSER` struct holds callbacks and flags:
 
@@ -165,13 +165,13 @@ leave_block(MD_BLOCK_DOC)
 
 ### Encoding
 
-MD4C assumes ASCII-compatible encoding. Preprocessor macros:
+MD4X assumes ASCII-compatible encoding. Preprocessor macros:
 
 | Macro | Effect |
 |---|---|
 | _(default)_ | UTF-8 support enabled (since v0.4.3, UTF-8 is default) |
-| `MD4C_USE_ASCII` | Force ASCII-only mode |
-| `MD4C_USE_UTF16` | Windows UTF-16 via `WCHAR` (Windows only) |
+| `MD4X_USE_ASCII` | Force ASCII-only mode |
+| `MD4X_USE_UTF16` | Windows UTF-16 via `WCHAR` (Windows only) |
 
 Unicode matters for: word boundary classification (emphasis), case-insensitive link reference matching (case-folding), entity translation (left to renderer).
 
@@ -324,7 +324,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 - `MD_DIALECT_COMMONMARK` = `0` (strict CommonMark)
 - `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists
 
-## HTML Renderer API (`md4c-html.h`)
+## HTML Renderer API (`md4x-html.h`)
 
 Convenience library that wraps `md_parse()` and produces HTML output:
 
@@ -353,7 +353,7 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
 
-## JSON Renderer API (`md4c-json.h`)
+## JSON Renderer API (`md4x-json.h`)
 
 Renders Markdown into a nested JSON AST tree (mdast/unist-like):
 
@@ -370,7 +370,7 @@ int md_json(const MD_CHAR* input, MD_SIZE input_size,
 | `MD_JSON_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
 | `MD_JSON_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start |
 
-## ANSI Renderer API (`md4c-ansi.h`)
+## ANSI Renderer API (`md4x-ansi.h`)
 
 Renders Markdown into ANSI terminal output with escape codes for styling:
 
@@ -407,10 +407,10 @@ int md_ansi(const MD_CHAR* input, MD_SIZE input_size,
 
 Uses streaming renderer pattern (like HTML renderer), no AST construction.
 
-## `md4c` CLI
+## `md4x` CLI
 
 ```sh
-md4c [OPTION]... [FILE]
+md4x [OPTION]... [FILE]
 # Reads from stdin if no FILE given
 ```
 
@@ -456,7 +456,7 @@ Text type mappings: `text` (literal), `linebreak`, `softbreak`, `html_inline` (l
 
 Leaf nodes (`code_block`, `html_block`, `code`, `text`, `html_inline`) store content in `literal`. Container nodes (`document`, `block_quote`, `list`, `item`, `paragraph`, `heading`, `emph`, `strong`, `link`, `image`, etc.) have `children` arrays.
 
-The JSON renderer is implemented as a library in `src/md4c-json.c` (public API in `src/md4c-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
+The JSON renderer is implemented as a library in `src/md4x-json.c` (public API in `src/md4x-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
 
 ## Markdown Syntax Reference
 
@@ -514,7 +514,7 @@ YAML-style frontmatter delimited by `---` at the very start of the document. The
 
 ## Code Generation Scripts
 
-The `scripts/` directory contains Python generators for lookup tables compiled into `md4c.c`:
+The `scripts/` directory contains Python generators for lookup tables compiled into `md4x.c`:
 
 - `build_entity_map.py` — Fetches [WHATWG entities.json](https://html.spec.whatwg.org/entities.json), generates `entity.c`
 - `build_folding_map.py` — Unicode case folding from `scripts/unicode/CaseFolding.txt`

@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -23,22 +23,22 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef MD4C_H
-#define MD4C_H
+#ifndef MD4X_H
+#define MD4X_H
 
 #ifdef __cplusplus
     extern "C" {
 #endif
 
-#if defined MD4C_USE_UTF16
+#if defined MD4X_USE_UTF16
     /* Magic to support UTF-16. Note that in order to use it, you have to define
-     * the macro MD4C_USE_UTF16 both when building MD4C as well as when
+     * the macro MD4X_USE_UTF16 both when building MD4X as well as when
      * including this header in your code. */
     #ifdef _WIN32
         #include <windows.h>
         typedef WCHAR       MD_CHAR;
     #else
-        #error MD4C_USE_UTF16 is only supported on Windows.
+        #error MD4X_USE_UTF16 is only supported on Windows.
     #endif
 #else
     typedef char            MD_CHAR;
@@ -169,14 +169,14 @@ typedef enum MD_TEXTTYPE {
     MD_TEXT_SOFTBR,     /* '\n' in source text where it is not semantically meaningful (soft break) */
 
     /* Entity.
-     * (a) Named entity, e.g. &nbsp; 
-     *     (Note MD4C does not have a list of known entities.
+     * (a) Named entity, e.g. &nbsp;
+     *     (Note MD4X does not have a list of known entities.
      *     Anything matching the regexp /&[A-Za-z][A-Za-z0-9]{1,47};/ is
      *     treated as a named entity.)
      * (b) Numerical entity, e.g. &#1234;
      * (c) Hexadecimal entity, e.g. &#x12AB;
      *
-     * As MD4C is mostly encoding agnostic, application gets the verbatim
+     * As MD4X is mostly encoding agnostic, application gets the verbatim
      * entity text into the MD_PARSER::text_callback(). */
     MD_TEXT_ENTITY,
 
@@ -410,4 +410,4 @@ int md_parse(const MD_CHAR* text, MD_SIZE size, const MD_PARSER* parser, void* u
     }  /* extern "C" { */
 #endif
 
-#endif  /* MD4C_H */
+#endif  /* MD4X_H */

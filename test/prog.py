@@ -11,7 +11,7 @@ def pipe_through_prog(argv, text):
     return [p1.returncode, result.decode('utf-8'), err]
 
 class Prog:
-    def __init__(self, cmdline="md4c", default_options=[]):
+    def __init__(self, cmdline="md4x", default_options=[]):
         self.cmdline = cmdline.split()
         if len(self.cmdline) <= 1:
             # cmdline provided no command line options. Use default ones.

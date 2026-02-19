@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -23,8 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef MD4C_ENTITY_H
-#define MD4C_ENTITY_H
+#ifndef MD4X_ENTITY_H
+#define MD4X_ENTITY_H
 
 #include <stdlib.h>
 
@@ -40,4 +40,4 @@ struct ENTITY_tag {
 const ENTITY* entity_lookup(const char* name, size_t name_size);
 
 
-#endif  /* MD4C_ENTITY_H */
+#endif  /* MD4X_ENTITY_H */

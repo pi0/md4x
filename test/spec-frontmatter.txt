@@ -1,7 +1,7 @@
 
 # Frontmatter
 
-With the flag `MD_FLAG_FRONTMATTER`, MD4C enables recognition of YAML-style
+With the flag `MD_FLAG_FRONTMATTER`, MD4X enables recognition of YAML-style
 frontmatter blocks delimited by `---` at the very beginning of the document.
 
 The frontmatter block must start with a line of three or more dashes as the

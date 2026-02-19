@@ -1,7 +1,7 @@
 
 # Tables
 
-With the flag `MD_FLAG_TABLES`, MD4C enables extension for recognition of
+With the flag `MD_FLAG_TABLES`, MD4X enables extension for recognition of
 tables.
 
 Basic table example of a table with two columns and three lines (when not

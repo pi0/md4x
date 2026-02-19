@@ -13,7 +13,7 @@ Standard autolinks (as per CommonMark specification) have to be decorated with
 ````````````````````````````````
 
 With flags `MD_FLAG_PERMISSIVEURLAUTOLINKS`, `MD_FLAG_PERMISSIVEWWWAUTOLINKS`
-and `MD_FLAG_PERMISSIVEEMAILAUTOLINKS`, MD4C is able also to recognize autolinks
+and `MD_FLAG_PERMISSIVEEMAILAUTOLINKS`, MD4X is able also to recognize autolinks
 without those marks.
 
 Example of permissive autolinks follows:

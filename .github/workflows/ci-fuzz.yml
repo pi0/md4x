@@ -14,12 +14,12 @@ jobs:
       id: build
       uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
       with:
-        oss-fuzz-project-name: 'md4c'
+        oss-fuzz-project-name: 'md4x'
         language: c
     - name: Run Fuzzers
       uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
       with:
-        oss-fuzz-project-name: 'md4c'
+        oss-fuzz-project-name: 'md4x'
         fuzz-seconds: 600
         output-sarif: true
     - name: Upload Crash

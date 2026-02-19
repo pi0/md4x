@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "md4c.h"
+#include "md4x.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -48,15 +48,15 @@
 #endif
 
 /* Make the UTF-8 support the default. */
-#if !defined MD4C_USE_ASCII && !defined MD4C_USE_UTF8 && !defined MD4C_USE_UTF16
-    #define MD4C_USE_UTF8
+#if !defined MD4X_USE_ASCII && !defined MD4X_USE_UTF8 && !defined MD4X_USE_UTF16
+    #define MD4X_USE_UTF8
 #endif
 
-/* Magic for making wide literals with MD4C_USE_UTF16. */
+/* Magic for making wide literals with MD4X_USE_UTF16. */
 #ifdef _T
     #undef _T
 #endif
-#if defined MD4C_USE_UTF16
+#if defined MD4X_USE_UTF16
     #define _T(x)           L##x
 #else
     #define _T(x)           x
@@ -194,7 +194,7 @@ struct MD_CTX_tag {
     int n_marks;
     int alloc_marks;
 
-#if defined MD4C_USE_UTF16
+#if defined MD4X_USE_UTF16
     char mark_char_map[128];
 #else
     char mark_char_map[256];
@@ -351,7 +351,7 @@ struct MD_VERBATIMLINE_tag {
 #define ISALNUM(off)                    ISALNUM_(CH(off))
 
 
-#if defined MD4C_USE_UTF16
+#if defined MD4X_USE_UTF16
     #define md_strchr wcschr
 #else
     #define md_strchr strchr
@@ -546,7 +546,7 @@ struct MD_UNICODE_FOLD_INFO_tag {
 };
 
 
-#if defined MD4C_USE_UTF16 || defined MD4C_USE_UTF8
+#if defined MD4X_USE_UTF16 || defined MD4X_USE_UTF8
     /* Binary search over sorted "map" of codepoints. Consecutive sequences
      * of codepoints may be encoded in the map by just using the
      * (MIN_CODEPOINT | 0x40000000) and (MAX_CODEPOINT | 0x80000000).
@@ -830,7 +830,7 @@ struct MD_UNICODE_FOLD_INFO_tag {
 #endif
 
 
-#if defined MD4C_USE_UTF16
+#if defined MD4X_USE_UTF16
     #define IS_UTF16_SURROGATE_HI(word)     (((WORD)(word) & 0xfc00) == 0xd800)
     #define IS_UTF16_SURROGATE_LO(word)     (((WORD)(word) & 0xfc00) == 0xdc00)
     #define UTF16_DECODE_SURROGATE(hi, lo)  (0x10000 + ((((unsigned)(hi) & 0x3ff) << 10) | (((unsigned)(lo) & 0x3ff) << 0)))
@@ -873,7 +873,7 @@ struct MD_UNICODE_FOLD_INFO_tag {
     {
         return md_decode_utf16le__(str+off, str_size-off, p_char_size);
     }
-#elif defined MD4C_USE_UTF8
+#elif defined MD4X_USE_UTF8
     #define IS_UTF8_LEAD1(byte)     ((unsigned char)(byte) <= 0x7f)
     #define IS_UTF8_LEAD2(byte)     (((unsigned char)(byte) & 0xe0) == 0xc0)
     #define IS_UTF8_LEAD3(byte)     (((unsigned char)(byte) & 0xf0) == 0xe0)
@@ -3018,7 +3018,7 @@ md_collect_marks(MD_CTX* ctx, const MD_LINE* lines, MD_SIZE n_lines, int table_m
         while(TRUE) {
             CHAR ch;
 
-#ifdef MD4C_USE_UTF16
+#ifdef MD4X_USE_UTF16
     /* For UTF-16, mark_char_map[] covers only ASCII. */
     #define IS_MARK_CHAR(off)   ((CH(off) < SIZEOF_ARRAY(ctx->mark_char_map))  &&  \
                                 (ctx->mark_char_map[(unsigned char) CH(off)]))
@@ -6290,7 +6290,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
      * Note this is quite a bottleneck of the parsing as we here iterate almost
      * over compete document.
      */
-#if defined __linux__ && !defined MD4C_USE_UTF16
+#if defined __linux__ && !defined MD4X_USE_UTF16
     /* Recent glibc versions have superbly optimized strcspn(), even using
      * vectorization if available. */
     if(ctx->doc_ends_with_newline  &&  off < ctx->size) {

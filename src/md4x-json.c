@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
  *
@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "md4c-json.h"
+#include "md4x-json.h"
 
 
 #ifdef _WIN32
@@ -492,7 +492,7 @@ static void
 json_debug_log(const char* msg, void* userdata)
 {
     (void) userdata;
-    fprintf(stderr, "MD4C: %s\n", msg);
+    fprintf(stderr, "MD4X: %s\n", msg);
 }
 
 
@@ -787,7 +787,7 @@ md_json(const MD_CHAR* input, MD_SIZE input_size,
 
     memset(&ctx, 0, sizeof(ctx));
 
-#ifndef MD4C_USE_ASCII
+#ifndef MD4X_USE_ASCII
     /* Skip UTF-8 BOM. */
     if(renderer_flags & MD_JSON_FLAG_SKIP_UTF8_BOM) {
         if(input_size >= 3 && (unsigned char)input[0] == 0xEF

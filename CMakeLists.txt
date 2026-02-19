@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.5)
-project(MD4C C)
+project(MD4X C)
 
 set(MD_VERSION_MAJOR 0)
 set(MD_VERSION_MINOR 5)
@@ -8,14 +8,14 @@ set(MD_VERSION_RELEASE 2)
 set(MD_VERSION "${MD_VERSION_MAJOR}.${MD_VERSION_MINOR}.${MD_VERSION_RELEASE}")
 
 set(PROJECT_VERSION "${MD_VERSION}")
-set(PROJECT_URL "https://github.com/mity/md4c")
+set(PROJECT_URL "https://github.com/pi0/md4x")
 
 
-option(BUILD_MD4C_CLI "Whether to compile the md4c CLI executable" ON)
+option(BUILD_MD4X_CLI "Whether to compile the md4x CLI executable" ON)
 
 # Backward compatibility alias
 if(DEFINED BUILD_MD2HTML_EXECUTABLE)
-    set(BUILD_MD4C_CLI ${BUILD_MD2HTML_EXECUTABLE})
+    set(BUILD_MD4X_CLI ${BUILD_MD2HTML_EXECUTABLE})
 endif()
 
 
@@ -24,7 +24,7 @@ if(WIN32)
     # by default build static lib.
     option(BUILD_SHARED_LIBS "help string describing option" OFF)
 else()
-    # On Linux, MD4C is slowly being adding into some distros which prefer
+    # On Linux, MD4X is slowly being adding into some distros which prefer
     # shared lib.
     option(BUILD_SHARED_LIBS "help string describing option" ON)
 endif()
@@ -49,7 +49,7 @@ if(${CMAKE_C_COMPILER_ID} MATCHES GNU|Clang)
     add_compile_options(-Wall -Wextra -Wshadow)
 
     # We enforce -Wdeclaration-after-statement because Qt project needs to
-    # build MD4C with Integrity compiler which chokes whenever a declaration
+    # build MD4X with Integrity compiler which chokes whenever a declaration
     # is not at the beginning of a block.
     add_compile_options(-Wdeclaration-after-statement)
 elseif(MSVC)
@@ -71,6 +71,6 @@ endif()
 include(GNUInstallDirs)
 
 add_subdirectory(src)
-if (BUILD_MD4C_CLI)
+if (BUILD_MD4X_CLI)
     add_subdirectory(cli)
 endif ()

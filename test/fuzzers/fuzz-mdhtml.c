@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "md4c-html.h"
+#include "md4x-html.h"
 
 
 static void

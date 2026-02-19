@@ -1,6 +1,6 @@
 /*
- * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * MD4X: Markdown parser for C
+ * (http://github.com/pi0/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -28,9 +28,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "md4c-html.h"
-#include "md4c-json.h"
-#include "md4c-ansi.h"
+#include "md4x-html.h"
+#include "md4x-json.h"
+#include "md4x-ansi.h"
 #include "cmdline.h"
 
 
@@ -48,7 +48,7 @@ static const char* format_name[] = { "html", "text", "json", "ansi" };
 /* Global options. */
 static OutputFormat output_format = FORMAT_HTML;
 static unsigned parser_flags = 0;
-#ifndef MD4C_USE_ASCII
+#ifndef MD4X_USE_ASCII
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG | MD_HTML_FLAG_SKIP_UTF8_BOM;
 #else
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG;
@@ -68,7 +68,7 @@ static const char* css_path = NULL;
 
 /* We render to a memory buffer instead of directly outputting the rendered
  * documents, as this allows using this utility for evaluating performance
- * of MD4C (--stat option). This allows us to measure just time of the parser,
+ * of MD4X (--stat option). This allows us to measure just time of the parser,
  * without the I/O.
  */
 
@@ -189,7 +189,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
             break;
         case FORMAT_JSON: {
             unsigned j_flags = MD_JSON_FLAG_DEBUG;
-#ifndef MD4C_USE_ASCII
+#ifndef MD4X_USE_ASCII
             j_flags |= MD_JSON_FLAG_SKIP_UTF8_BOM;
 #endif
             ret = md_json(buf_in.data, (MD_SIZE)buf_in.size, process_output,
@@ -198,7 +198,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
         }
         case FORMAT_ANSI: {
             unsigned a_flags = MD_ANSI_FLAG_DEBUG;
-#ifndef MD4C_USE_ASCII
+#ifndef MD4X_USE_ASCII
             a_flags |= MD_ANSI_FLAG_SKIP_UTF8_BOM;
 #endif
             ret = md_ansi(buf_in.data, (MD_SIZE)buf_in.size, process_output,
@@ -231,8 +231,8 @@ process_file(const char* in_path, FILE* in, FILE* out)
         }
         fprintf(out, "<head>\n");
         fprintf(out, "<title>%s</title>\n", html_title ? html_title : "");
-        fprintf(out, "<meta name=\"generator\" content=\"md4c\"%s>\n", want_xhtml ? " /" : "");
-#if !defined MD4C_USE_ASCII && !defined MD4C_USE_UTF16
+        fprintf(out, "<meta name=\"generator\" content=\"md4x\"%s>\n", want_xhtml ? " /" : "");
+#if !defined MD4X_USE_ASCII && !defined MD4X_USE_UTF16
         fprintf(out, "<meta charset=\"UTF-8\"%s>\n", want_xhtml ? " /" : "");
 #endif
         if(css_path != NULL) {
@@ -317,7 +317,7 @@ static void
 usage(void)
 {
     printf(
-        "Usage: md4c [OPTION]... [FILE]\n"
+        "Usage: md4x [OPTION]... [FILE]\n"
         "Convert input FILE (or standard input) in Markdown format.\n"
         "\n"
         "General options:\n"

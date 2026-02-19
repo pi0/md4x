@@ -1,7 +1,7 @@
 
 # LaTeX Math
 
-With the flag `MD_FLAG_LATEXMATHSPANS`, MD4C enables extension for recognition
+With the flag `MD_FLAG_LATEXMATHSPANS`, MD4X enables extension for recognition
 of LaTeX style math spans.
 
 A math span is is any text wrapped in dollars or double dollars (`$...$` or

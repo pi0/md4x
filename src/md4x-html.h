@@ -2,7 +2,7 @@
  * MD4X: Markdown parser for C
  * (http://github.com/pi0/md4x)
  *
- * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
+ * Copyright (c) 2016-2024 Martin Mitáš
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,10 +23,10 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef MD4C_JSON_H
-#define MD4C_JSON_H
+#ifndef MD4X_HTML_H
+#define MD4X_HTML_H
 
-#include "md4c.h"
+#include "md4x.h"
 
 #ifdef __cplusplus
     extern "C" {
@@ -34,26 +34,29 @@
 
 
 /* If set, debug output from md_parse() is sent to stderr. */
-#define MD_JSON_FLAG_DEBUG              0x0001
-#define MD_JSON_FLAG_SKIP_UTF8_BOM     0x0002
+#define MD_HTML_FLAG_DEBUG                  0x0001
+#define MD_HTML_FLAG_VERBATIM_ENTITIES      0x0002
+#define MD_HTML_FLAG_SKIP_UTF8_BOM          0x0004
+#define MD_HTML_FLAG_XHTML                  0x0008
 
 
-/* Render Markdown into a JSON AST tree.
+/* Render Markdown into HTML.
  *
- * Produces a nested JSON object (mdast/unist-like) with "type", type-specific
- * properties, and "children" arrays. Block and span nodes have "children";
- * text leaf nodes have "value".
+ * Note only contents of <body> tag is generated. Caller must generate
+ * HTML header/footer manually before/after calling md_html().
  *
  * Params input and input_size specify the Markdown input.
- * Callback process_output() gets called with chunks of JSON output.
+ * Callback process_output() gets called with chunks of HTML output.
+ * (Typical implementation may just output the bytes to a file or append to
+ * some buffer).
  * Param userdata is just propagated back to process_output() callback.
- * Param parser_flags are flags from md4c.h propagated to md_parse().
- * Param renderer_flags is bitmask of MD_JSON_FLAG_xxxx.
+ * Param parser_flags are flags from md4x.h propagated to md_parse().
+ * Param render_flags is bitmask of MD_HTML_FLAG_xxxx.
  *
- * Returns -1 on error (if md_parse() fails or memory allocation fails.)
+ * Returns -1 on error (if md_parse() fails.)
  * Returns 0 on success.
  */
-int md_json(const MD_CHAR* input, MD_SIZE input_size,
+int md_html(const MD_CHAR* input, MD_SIZE input_size,
             void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
 
@@ -62,4 +65,4 @@ int md_json(const MD_CHAR* input, MD_SIZE input_size,
     }  /* extern "C" { */
 #endif
 
-#endif  /* MD4C_JSON_H */
+#endif  /* MD4X_HTML_H */
