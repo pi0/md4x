@@ -137,22 +137,22 @@ Dialect presets: `MD_DIALECT_COMMONMARK` (strict), `MD_DIALECT_GITHUB`, `MD_DIAL
 Source: [packages/md4x/bench](./packages/md4x/bench)
 
 ```
-clk: ~5.51 GHz
+clk: ~5.50 GHz
 cpu: AMD Ryzen 9 9950X3D 16-Core Processor
-runtime: node 24.13.0 (x64-linux)
+runtime: bun 1.3.9 (x64-linux)
 
 benchmark                   avg (min … max) p75 / p99    (min … top 1%)
 ------------------------------------------- -------------------------------
-md4x-napi                      3.25 µs/iter   3.26 µs   3.46 µs █▆▂▁▂▂▂▁▁▁▁
-md4x-wasm                      5.47 µs/iter   5.39 µs   8.75 µs █▃▁▁▁▁▁▁▁▁▁
-md4w                           6.06 µs/iter   5.97 µs  11.30 µs █▇▂▁▁▁▁▁▁▁▁
-markdown-it                   18.06 µs/iter  18.01 µs  27.10 µs ▁█▅▁▁▁▁▁▁▁▁
+md4x-napi                      3.05 µs/iter   3.11 µs   3.17 µs ▅█▂▂▂▃▆▅▆▂▂
+md4x-wasm                      5.41 µs/iter   5.42 µs   9.75 µs ██▄▂▁▁▁▁▁▁▁
+md4w                           5.84 µs/iter   5.80 µs  10.08 µs ▂█▄▂▁▁▁▁▁▁▁
+markdown-it                   21.53 µs/iter  21.02 µs  41.14 µs ▁█▃▁▁▁▁▁▁▁▁
 
 summary
   md4x-napi
-   1.68x faster than md4x-wasm
-   1.87x faster than md4w
-   5.56x faster than markdown-it
+   1.77x faster than md4x-wasm
+   1.91x faster than md4w
+   7.05x faster than markdown-it
 ```
 
 ## License

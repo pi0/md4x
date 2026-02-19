@@ -22,10 +22,6 @@
     "build",
     "lib"
   ],
-  "scripts": {
-    "build": "zig build",
-    "bench": "node bench/index.mjs"
-  },
   "devDependencies": {
     "markdown-it": "^14.1.1",
     "md4w": "^0.2.7",
