@@ -38,11 +38,10 @@
 #define MD_JSON_FLAG_SKIP_UTF8_BOM     0x0002
 
 
-/* Render Markdown into a JSON AST tree.
+/* Render Markdown into a Comark AST (array-based JSON format).
  *
- * Produces a nested JSON object (mdast/unist-like) with "type", type-specific
- * properties, and "children" arrays. Block and span nodes have "children";
- * text leaf nodes have "value".
+ * Produces {"type":"comark","value":[...]} where each node is either a plain
+ * JSON string (text) or a tuple array ["tag", {props}, ...children].
  *
  * Params input and input_size specify the Markdown input.
  * Callback process_output() gets called with chunks of JSON output.

@@ -61,39 +61,69 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi }) {
   });
 
   describe("renderToJson", () => {
-    it("returns valid JSON", async () => {
+    it("returns comark tree", async () => {
       const ast = await renderToJson("# Hello");
-      expect(ast.type).toBe("document");
-      expect(ast.children).toBeInstanceOf(Array);
+      expect(ast.type).toBe("comark");
+      expect(ast.value).toBeInstanceOf(Array);
     });
 
-    it("parses heading structure", async () => {
+    it("parses heading as h1 tuple", async () => {
       const ast = await renderToJson("# Hello");
-      const heading = ast.children[0];
-      expect(heading.type).toBe("heading");
-      expect(heading.level).toBe(1);
+      const h1 = ast.value[0];
+      expect(h1[0]).toBe("h1");
+      expect(h1[1]).toEqual({});
+      expect(h1[2]).toBe("Hello");
     });
 
-    it("parses paragraph with inline", async () => {
+    it("parses paragraph with inline formatting", async () => {
       const ast = await renderToJson("**bold**");
-      const para = ast.children[0];
-      expect(para.type).toBe("paragraph");
-      const strong = para.children[0];
-      expect(strong.type).toBe("strong");
+      const p = ast.value[0];
+      expect(p[0]).toBe("p");
+      const strong = p[2];
+      expect(strong[0]).toBe("strong");
+      expect(strong[2]).toBe("bold");
     });
 
-    it("parses code block", async () => {
+    it("parses code block as pre > code", async () => {
       const ast = await renderToJson("```js\ncode\n```");
-      const code = ast.children[0];
-      expect(code.type).toBe("code_block");
-      expect(code.info).toBe("js");
-      expect(code.literal).toContain("code");
+      const pre = ast.value[0];
+      expect(pre[0]).toBe("pre");
+      expect(pre[1].language).toBe("js");
+      const code = pre[2];
+      expect(code[0]).toBe("code");
+      expect(code[1].class).toBe("language-js");
+      expect(code[2]).toContain("code");
     });
 
     it("parses empty input", async () => {
       const ast = await renderToJson("");
-      expect(ast.type).toBe("document");
-      expect(ast.children).toHaveLength(0);
+      expect(ast.type).toBe("comark");
+      expect(ast.value).toHaveLength(0);
+    });
+
+    it("parses link as anchor tuple", async () => {
+      const ast = await renderToJson("[text](https://example.com)");
+      const p = ast.value[0];
+      const a = p[2];
+      expect(a[0]).toBe("a");
+      expect(a[1].href).toBe("https://example.com");
+      expect(a[2]).toBe("text");
+    });
+
+    it("parses inline elements", async () => {
+      const ast = await renderToJson("hello **world**");
+      const p = ast.value[0];
+      expect(p[0]).toBe("p");
+      expect(p[2]).toBe("hello ");
+      expect(p[3][0]).toBe("strong");
+      expect(p[3][2]).toBe("world");
+    });
+
+    it("text nodes are plain strings", async () => {
+      const ast = await renderToJson("hello");
+      const p = ast.value[0];
+      expect(typeof p[2]).toBe("string");
+      expect(p[2]).toBe("hello");
     });
   });
 

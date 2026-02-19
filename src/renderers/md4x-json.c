@@ -40,36 +40,38 @@
 
 
 /*************************************
- ***  JSON AST node data structs   ***
+ ***  JSON AST node data structs ***
  *************************************/
 
 typedef enum {
-    JSON_NODE_BLOCK,
-    JSON_NODE_SPAN,
+    JSON_NODE_DOCUMENT,
+    JSON_NODE_ELEMENT,
     JSON_NODE_TEXT
 } JSON_NODE_KIND;
 
 typedef struct JSON_NODE JSON_NODE;
 struct JSON_NODE {
     JSON_NODE_KIND kind;
-    const char* type_name;
+    const char* tag;
 
     JSON_NODE* first_child;
     JSON_NODE* last_child;
     JSON_NODE* next_sibling;
 
+    /* Text value for text nodes, or literal content for leaf containers
+     * (code_block, html_block, inline code). */
     char* text_value;
     MD_SIZE text_size;
 
     union {
-        struct { const char* list_type; int is_tight; unsigned start; char delimiter; } list;
+        struct { int is_tight; unsigned start; char delimiter; } ol;
+        struct { int is_tight; } ul;
         struct { int is_task; char task_mark; } li;
-        struct { unsigned level; } h;
         struct { char* info; char* lang; char fence_char; } code;
-        struct { unsigned col_count; unsigned head_row_count; unsigned body_row_count; } table;
+        struct { unsigned col_count; } table;
         struct { int align; } td;
-        struct { char* destination; char* title; int is_autolink; } a;
-        struct { char* destination; char* title; } img;
+        struct { char* href; char* title; } a;
+        struct { char* src; char* title; } img;
         struct { char* target; } wikilink;
     } detail;
 };
@@ -79,6 +81,7 @@ typedef struct {
     JSON_NODE* current;
     JSON_NODE* stack[JSON_MAX_DEPTH];
     int stack_depth;
+    int image_nesting;
     int error;
 } JSON_CTX;
 
@@ -94,12 +97,12 @@ typedef struct {
  *****************************/
 
 static JSON_NODE*
-json_node_new(const char* type_name, JSON_NODE_KIND kind)
+json_node_new(const char* tag, JSON_NODE_KIND kind)
 {
     JSON_NODE* node = (JSON_NODE*) calloc(1, sizeof(JSON_NODE));
     if(node == NULL)
         return NULL;
-    node->type_name = type_name;
+    node->tag = tag;
     node->kind = kind;
     return node;
 }
@@ -122,17 +125,19 @@ json_node_free(JSON_NODE* node)
         free(node->text_value);
 
     /* Free heap-allocated detail strings. */
-    if(strcmp(node->type_name, "code_block") == 0) {
-        if(node->detail.code.info) free(node->detail.code.info);
-        if(node->detail.code.lang) free(node->detail.code.lang);
-    } else if(strcmp(node->type_name, "link") == 0) {
-        if(node->detail.a.destination) free(node->detail.a.destination);
-        if(node->detail.a.title) free(node->detail.a.title);
-    } else if(strcmp(node->type_name, "image") == 0) {
-        if(node->detail.img.destination) free(node->detail.img.destination);
-        if(node->detail.img.title) free(node->detail.img.title);
-    } else if(strcmp(node->type_name, "wikilink") == 0) {
-        if(node->detail.wikilink.target) free(node->detail.wikilink.target);
+    if(node->tag != NULL) {
+        if(strcmp(node->tag, "pre") == 0) {
+            if(node->detail.code.info) free(node->detail.code.info);
+            if(node->detail.code.lang) free(node->detail.code.lang);
+        } else if(strcmp(node->tag, "a") == 0) {
+            if(node->detail.a.href) free(node->detail.a.href);
+            if(node->detail.a.title) free(node->detail.a.title);
+        } else if(strcmp(node->tag, "img") == 0) {
+            if(node->detail.img.src) free(node->detail.img.src);
+            if(node->detail.img.title) free(node->detail.img.title);
+        } else if(strcmp(node->tag, "wikilink") == 0) {
+            if(node->detail.wikilink.target) free(node->detail.wikilink.target);
+        }
     }
 
     free(node);
@@ -190,67 +195,93 @@ json_pop(JSON_CTX* ctx)
         ctx->current = ctx->stack[--ctx->stack_depth];
 }
 
+/* Append text to a node's text_value buffer. */
+static int
+json_append_text(JSON_NODE* node, const char* src, MD_SIZE src_size)
+{
+    if(node->text_value == NULL) {
+        node->text_value = (char*) malloc(src_size + 1);
+        if(node->text_value == NULL) return -1;
+        memcpy(node->text_value, src, src_size);
+        node->text_value[src_size] = '\0';
+        node->text_size = src_size;
+    } else {
+        char* merged = (char*) realloc(node->text_value, node->text_size + src_size + 1);
+        if(merged == NULL) return -1;
+        memcpy(merged + node->text_size, src, src_size);
+        node->text_size += src_size;
+        merged[node->text_size] = '\0';
+        node->text_value = merged;
+    }
+    return 0;
+}
+
 
 /***********************************
  ***  md_parse() callbacks       ***
  ***********************************/
+
+static const char* heading_tags[] = {
+    "h0", "h1", "h2", "h3", "h4", "h5", "h6"
+};
 
 static int
 json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
 {
     JSON_CTX* ctx = (JSON_CTX*) userdata;
     JSON_NODE* node;
-    const char* type_name;
+    const char* tag;
 
     switch(type) {
-        case MD_BLOCK_DOC:          type_name = "document"; break;
-        case MD_BLOCK_QUOTE:        type_name = "block_quote"; break;
-        case MD_BLOCK_UL:           type_name = "list"; break;
-        case MD_BLOCK_OL:           type_name = "list"; break;
-        case MD_BLOCK_LI:           type_name = "item"; break;
-        case MD_BLOCK_HR:           type_name = "thematic_break"; break;
-        case MD_BLOCK_H:            type_name = "heading"; break;
-        case MD_BLOCK_CODE:         type_name = "code_block"; break;
-        case MD_BLOCK_HTML:         type_name = "html_block"; break;
-        case MD_BLOCK_P:            type_name = "paragraph"; break;
-        case MD_BLOCK_TABLE:        type_name = "table"; break;
-        case MD_BLOCK_THEAD:        type_name = "table_head"; break;
-        case MD_BLOCK_TBODY:        type_name = "table_body"; break;
-        case MD_BLOCK_TR:           type_name = "table_row"; break;
-        case MD_BLOCK_TH:           type_name = "table_header_cell"; break;
-        case MD_BLOCK_TD:           type_name = "table_cell"; break;
-        case MD_BLOCK_FRONTMATTER:  type_name = "frontmatter"; break;
-        default:                    type_name = "unknown"; break;
+        case MD_BLOCK_DOC:          tag = NULL; break;  /* document root */
+        case MD_BLOCK_QUOTE:        tag = "blockquote"; break;
+        case MD_BLOCK_UL:           tag = "ul"; break;
+        case MD_BLOCK_OL:           tag = "ol"; break;
+        case MD_BLOCK_LI:           tag = "li"; break;
+        case MD_BLOCK_HR:           tag = "hr"; break;
+        case MD_BLOCK_H: {
+            const MD_BLOCK_H_DETAIL* d = (const MD_BLOCK_H_DETAIL*) detail;
+            tag = (d->level >= 1 && d->level <= 6) ? heading_tags[d->level] : "h1";
+            break;
+        }
+        case MD_BLOCK_CODE:         tag = "pre"; break;
+        case MD_BLOCK_HTML:         tag = "html_block"; break;
+        case MD_BLOCK_P:            tag = "p"; break;
+        case MD_BLOCK_TABLE:        tag = "table"; break;
+        case MD_BLOCK_THEAD:        tag = "thead"; break;
+        case MD_BLOCK_TBODY:        tag = "tbody"; break;
+        case MD_BLOCK_TR:           tag = "tr"; break;
+        case MD_BLOCK_TH:           tag = "th"; break;
+        case MD_BLOCK_TD:           tag = "td"; break;
+        case MD_BLOCK_FRONTMATTER:  tag = "frontmatter"; break;
+        default:                    tag = "unknown"; break;
     }
 
-    node = json_node_new(type_name, JSON_NODE_BLOCK);
+    if(type == MD_BLOCK_DOC) {
+        node = json_node_new(NULL, JSON_NODE_DOCUMENT);
+    } else {
+        node = json_node_new(tag, JSON_NODE_ELEMENT);
+    }
     if(node == NULL) { ctx->error = 1; return -1; }
 
     /* Copy type-specific detail data. */
     switch(type) {
         case MD_BLOCK_UL: {
             const MD_BLOCK_UL_DETAIL* d = (const MD_BLOCK_UL_DETAIL*) detail;
-            node->detail.list.list_type = "bullet";
-            node->detail.list.is_tight = d->is_tight;
+            node->detail.ul.is_tight = d->is_tight;
             break;
         }
         case MD_BLOCK_OL: {
             const MD_BLOCK_OL_DETAIL* d = (const MD_BLOCK_OL_DETAIL*) detail;
-            node->detail.list.list_type = "ordered";
-            node->detail.list.is_tight = d->is_tight;
-            node->detail.list.start = d->start;
-            node->detail.list.delimiter = d->mark_delimiter;
+            node->detail.ol.is_tight = d->is_tight;
+            node->detail.ol.start = d->start;
+            node->detail.ol.delimiter = d->mark_delimiter;
             break;
         }
         case MD_BLOCK_LI: {
             const MD_BLOCK_LI_DETAIL* d = (const MD_BLOCK_LI_DETAIL*) detail;
             node->detail.li.is_task = d->is_task;
             node->detail.li.task_mark = d->task_mark;
-            break;
-        }
-        case MD_BLOCK_H: {
-            const MD_BLOCK_H_DETAIL* d = (const MD_BLOCK_H_DETAIL*) detail;
-            node->detail.h.level = d->level;
             break;
         }
         case MD_BLOCK_CODE: {
@@ -263,8 +294,6 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TABLE: {
             const MD_BLOCK_TABLE_DETAIL* d = (const MD_BLOCK_TABLE_DETAIL*) detail;
             node->detail.table.col_count = d->col_count;
-            node->detail.table.head_row_count = d->head_row_count;
-            node->detail.table.body_row_count = d->body_row_count;
             break;
         }
         case MD_BLOCK_TH:
@@ -301,37 +330,44 @@ json_enter_span(MD_SPANTYPE type, void* detail, void* userdata)
 {
     JSON_CTX* ctx = (JSON_CTX*) userdata;
     JSON_NODE* node;
-    const char* type_name;
+    const char* tag;
 
-    switch(type) {
-        case MD_SPAN_EM:                type_name = "emph"; break;
-        case MD_SPAN_STRONG:            type_name = "strong"; break;
-        case MD_SPAN_A:                 type_name = "link"; break;
-        case MD_SPAN_IMG:               type_name = "image"; break;
-        case MD_SPAN_CODE:              type_name = "code"; break;
-        case MD_SPAN_DEL:               type_name = "delete"; break;
-        case MD_SPAN_LATEXMATH:         type_name = "latex_math"; break;
-        case MD_SPAN_LATEXMATH_DISPLAY: type_name = "latex_math_display"; break;
-        case MD_SPAN_WIKILINK:          type_name = "wikilink"; break;
-        case MD_SPAN_U:                 type_name = "underline"; break;
-        default:                        type_name = "unknown"; break;
+    /* Inside an image: suppress nested spans, just accumulate alt text. */
+    if(ctx->image_nesting > 0) {
+        if(type == MD_SPAN_IMG)
+            ctx->image_nesting++;
+        return 0;
     }
 
-    node = json_node_new(type_name, JSON_NODE_SPAN);
+    switch(type) {
+        case MD_SPAN_EM:                tag = "em"; break;
+        case MD_SPAN_STRONG:            tag = "strong"; break;
+        case MD_SPAN_A:                 tag = "a"; break;
+        case MD_SPAN_IMG:               tag = "img"; break;
+        case MD_SPAN_CODE:              tag = "code"; break;
+        case MD_SPAN_DEL:               tag = "del"; break;
+        case MD_SPAN_LATEXMATH:         tag = "math"; break;
+        case MD_SPAN_LATEXMATH_DISPLAY: tag = "math-display"; break;
+        case MD_SPAN_WIKILINK:          tag = "wikilink"; break;
+        case MD_SPAN_U:                 tag = "u"; break;
+        default:                        tag = "unknown"; break;
+    }
+
+    node = json_node_new(tag, JSON_NODE_ELEMENT);
     if(node == NULL) { ctx->error = 1; return -1; }
 
     switch(type) {
         case MD_SPAN_A: {
             const MD_SPAN_A_DETAIL* d = (const MD_SPAN_A_DETAIL*) detail;
-            node->detail.a.destination = json_attr_to_str(&d->href);
+            node->detail.a.href = json_attr_to_str(&d->href);
             node->detail.a.title = json_attr_to_str(&d->title);
-            node->detail.a.is_autolink = d->is_autolink;
             break;
         }
         case MD_SPAN_IMG: {
             const MD_SPAN_IMG_DETAIL* d = (const MD_SPAN_IMG_DETAIL*) detail;
-            node->detail.img.destination = json_attr_to_str(&d->src);
+            node->detail.img.src = json_attr_to_str(&d->src);
             node->detail.img.title = json_attr_to_str(&d->title);
+            ctx->image_nesting = 1;
             break;
         }
         case MD_SPAN_WIKILINK: {
@@ -352,8 +388,15 @@ static int
 json_leave_span(MD_SPANTYPE type, void* detail, void* userdata)
 {
     JSON_CTX* ctx = (JSON_CTX*) userdata;
-    (void) type;
     (void) detail;
+
+    if(ctx->image_nesting > 0) {
+        ctx->image_nesting--;
+        if(ctx->image_nesting > 0)
+            return 0;
+        /* Leaving the image span: text_value has the accumulated alt text. */
+    }
+
     json_pop(ctx);
     return 0;
 }
@@ -364,60 +407,68 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
     JSON_CTX* ctx = (JSON_CTX*) userdata;
     JSON_NODE* node;
     JSON_NODE* prev;
-    const char* type_name;
     char* value = NULL;
     MD_SIZE value_size = 0;
 
-    /* Leaf container nodes: accumulate text as literal on the parent node
-     * instead of creating child text nodes (matches commonmark.js behavior
-     * where code_block, html_block, and code are leaf nodes with literal). */
-    if(strcmp(ctx->current->type_name, "code_block") == 0
-       || strcmp(ctx->current->type_name, "html_block") == 0
-       || strcmp(ctx->current->type_name, "code") == 0) {
+    /* Inside an image: accumulate text as alt attribute. */
+    if(ctx->image_nesting > 0) {
+        if(type == MD_TEXT_SOFTBR) {
+            if(json_append_text(ctx->current, " ", 1) != 0)
+                { ctx->error = 1; return -1; }
+        } else if(type == MD_TEXT_NULLCHAR) {
+            char buf[3] = { (char)0xEF, (char)0xBF, (char)0xBD };
+            if(json_append_text(ctx->current, buf, 3) != 0)
+                { ctx->error = 1; return -1; }
+        } else {
+            if(json_append_text(ctx->current, text, size) != 0)
+                { ctx->error = 1; return -1; }
+        }
+        return 0;
+    }
+
+    /* Leaf container nodes: accumulate text as literal on the parent node. */
+    if(ctx->current->tag != NULL &&
+       (strcmp(ctx->current->tag, "pre") == 0
+        || strcmp(ctx->current->tag, "html_block") == 0
+        || strcmp(ctx->current->tag, "code") == 0
+        || strcmp(ctx->current->tag, "frontmatter") == 0
+        || strcmp(ctx->current->tag, "math") == 0
+        || strcmp(ctx->current->tag, "math-display") == 0)) {
         const char* src = text;
         MD_SIZE src_size = size;
-        char nullchar_buf[4];
+        char nullchar_buf[3];
 
         if(type == MD_TEXT_NULLCHAR) {
             nullchar_buf[0] = (char)0xEF;
             nullchar_buf[1] = (char)0xBF;
             nullchar_buf[2] = (char)0xBD;
-            nullchar_buf[3] = '\0';
             src = nullchar_buf;
             src_size = 3;
         }
 
-        if(ctx->current->text_value == NULL) {
-            ctx->current->text_value = (char*) malloc(src_size + 1);
-            if(ctx->current->text_value == NULL) { ctx->error = 1; return -1; }
-            memcpy(ctx->current->text_value, src, src_size);
-            ctx->current->text_value[src_size] = '\0';
-            ctx->current->text_size = src_size;
-        } else {
-            char* merged = (char*) realloc(ctx->current->text_value, ctx->current->text_size + src_size + 1);
-            if(merged == NULL) { ctx->error = 1; return -1; }
-            memcpy(merged + ctx->current->text_size, src, src_size);
-            ctx->current->text_size += src_size;
-            merged[ctx->current->text_size] = '\0';
-            ctx->current->text_value = merged;
-        }
+        if(json_append_text(ctx->current, src, src_size) != 0)
+            { ctx->error = 1; return -1; }
         return 0;
     }
 
     switch(type) {
-        case MD_TEXT_NORMAL:
-        case MD_TEXT_CODE:
-        case MD_TEXT_LATEXMATH:
-            type_name = "text";
-            value = (char*) malloc(size + 1);
+        case MD_TEXT_BR:
+            /* Linebreak → ["br", {}] element node. */
+            node = json_node_new("br", JSON_NODE_ELEMENT);
+            if(node == NULL) { ctx->error = 1; return -1; }
+            json_append_child(ctx, node);
+            return 0;
+
+        case MD_TEXT_SOFTBR:
+            /* Softbreak → "\n" text. */
+            value = (char*) malloc(2);
             if(value == NULL) { ctx->error = 1; return -1; }
-            memcpy(value, text, size);
-            value[size] = '\0';
-            value_size = size;
+            value[0] = '\n';
+            value[1] = '\0';
+            value_size = 1;
             break;
 
         case MD_TEXT_NULLCHAR:
-            type_name = "text";
             value = (char*) malloc(4);
             if(value == NULL) { ctx->error = 1; return -1; }
             /* U+FFFD in UTF-8 */
@@ -428,34 +479,8 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
             value_size = 3;
             break;
 
-        case MD_TEXT_BR:
-            type_name = "linebreak";
-            break;
-
-        case MD_TEXT_SOFTBR:
-            type_name = "softbreak";
-            break;
-
-        case MD_TEXT_ENTITY:
-            type_name = "text";
-            value = (char*) malloc(size + 1);
-            if(value == NULL) { ctx->error = 1; return -1; }
-            memcpy(value, text, size);
-            value[size] = '\0';
-            value_size = size;
-            break;
-
-        case MD_TEXT_HTML:
-            type_name = "html_inline";
-            value = (char*) malloc(size + 1);
-            if(value == NULL) { ctx->error = 1; return -1; }
-            memcpy(value, text, size);
-            value[size] = '\0';
-            value_size = size;
-            break;
-
         default:
-            type_name = "text";
+            /* Normal text, entity, html_inline, code, latexmath. */
             value = (char*) malloc(size + 1);
             if(value == NULL) { ctx->error = 1; return -1; }
             memcpy(value, text, size);
@@ -464,10 +489,9 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
             break;
     }
 
-    /* Merge consecutive text nodes of the same type. */
+    /* Merge consecutive text nodes. */
     prev = ctx->current->last_child;
     if(prev != NULL && prev->kind == JSON_NODE_TEXT
-       && prev->type_name == type_name
        && prev->text_value != NULL && value != NULL) {
         char* merged = (char*) realloc(prev->text_value, prev->text_size + value_size + 1);
         if(merged == NULL) { free(value); ctx->error = 1; return -1; }
@@ -479,7 +503,7 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
         return 0;
     }
 
-    node = json_node_new(type_name, JSON_NODE_TEXT);
+    node = json_node_new(NULL, JSON_NODE_TEXT);
     if(node == NULL) { free(value); ctx->error = 1; return -1; }
     node->text_value = value;
     node->text_size = value_size;
@@ -510,14 +534,6 @@ static void
 json_write_str(JSON_WRITER* w, const char* str)
 {
     json_write(w, str, (MD_SIZE) strlen(str));
-}
-
-static void
-json_write_indent(JSON_WRITER* w, int depth)
-{
-    int i;
-    for(i = 0; i < depth; i++)
-        json_write(w, "  ", 2);
 }
 
 static void
@@ -564,18 +580,10 @@ json_write_escaped(JSON_WRITER* w, const char* str, MD_SIZE size)
 }
 
 static void
-json_write_string_value(JSON_WRITER* w, const char* str, MD_SIZE size)
+json_write_string(JSON_WRITER* w, const char* str, MD_SIZE size)
 {
     json_write(w, "\"", 1);
     json_write_escaped(w, str, size);
-    json_write(w, "\"", 1);
-}
-
-static void
-json_write_char_value(JSON_WRITER* w, char ch)
-{
-    json_write(w, "\"", 1);
-    json_write_escaped(w, &ch, 1);
     json_write(w, "\"", 1);
 }
 
@@ -586,177 +594,166 @@ json_align_str(int align)
         case MD_ALIGN_LEFT:    return "left";
         case MD_ALIGN_CENTER:  return "center";
         case MD_ALIGN_RIGHT:   return "right";
-        default:               return "default";
+        default:               return NULL;
     }
 }
 
+/* Write the props object for an element node. */
 static void
-json_serialize_node(JSON_WRITER* w, const JSON_NODE* node, int depth)
+json_write_props(JSON_WRITER* w, const JSON_NODE* node)
+{
+    int has_prop = 0;
+
+    json_write(w, "{", 1);
+
+    if(strcmp(node->tag, "ol") == 0) {
+        if(node->detail.ol.start != 1) {
+            char buf[32];
+            json_snprintf(buf, sizeof(buf), "\"start\":%u", node->detail.ol.start);
+            json_write_str(w, buf);
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "li") == 0 && node->detail.li.is_task) {
+        json_write_str(w, "\"task\":true,\"checked\":");
+        json_write_str(w, (node->detail.li.task_mark == 'x' || node->detail.li.task_mark == 'X') ? "true" : "false");
+        has_prop = 1;
+    }
+    else if(strcmp(node->tag, "pre") == 0) {
+        if(node->detail.code.lang != NULL && node->detail.code.lang[0] != '\0') {
+            json_write_str(w, "\"language\":");
+            json_write_string(w, node->detail.code.lang, (MD_SIZE) strlen(node->detail.code.lang));
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "th") == 0 || strcmp(node->tag, "td") == 0) {
+        const char* align = json_align_str(node->detail.td.align);
+        if(align != NULL) {
+            json_write_str(w, "\"align\":\"");
+            json_write_str(w, align);
+            json_write(w, "\"", 1);
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "a") == 0) {
+        if(node->detail.a.href != NULL) {
+            json_write_str(w, "\"href\":");
+            json_write_string(w, node->detail.a.href, (MD_SIZE) strlen(node->detail.a.href));
+            has_prop = 1;
+        }
+        if(node->detail.a.title != NULL && node->detail.a.title[0] != '\0') {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"title\":");
+            json_write_string(w, node->detail.a.title, (MD_SIZE) strlen(node->detail.a.title));
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "img") == 0) {
+        if(node->detail.img.src != NULL) {
+            json_write_str(w, "\"src\":");
+            json_write_string(w, node->detail.img.src, (MD_SIZE) strlen(node->detail.img.src));
+            has_prop = 1;
+        }
+        if(node->text_value != NULL) {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"alt\":");
+            json_write_string(w, node->text_value, node->text_size);
+            has_prop = 1;
+        }
+        if(node->detail.img.title != NULL && node->detail.img.title[0] != '\0') {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"title\":");
+            json_write_string(w, node->detail.img.title, (MD_SIZE) strlen(node->detail.img.title));
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "wikilink") == 0) {
+        if(node->detail.wikilink.target != NULL) {
+            json_write_str(w, "\"target\":");
+            json_write_string(w, node->detail.wikilink.target, (MD_SIZE) strlen(node->detail.wikilink.target));
+            has_prop = 1;
+        }
+    }
+
+    (void) has_prop;
+    json_write(w, "}", 1);
+}
+
+static void
+json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
 {
     const JSON_NODE* child;
-    char num_buf[32];
     int first;
 
-    json_write_indent(w, depth);
-    json_write_str(w, "{\n");
-
-    /* "type" */
-    json_write_indent(w, depth + 1);
-    json_write_str(w, "\"type\": ");
-    json_write_string_value(w, node->type_name, (MD_SIZE) strlen(node->type_name));
-
-    /* Type-specific properties. */
-    if(strcmp(node->type_name, "heading") == 0) {
-        json_snprintf(num_buf, sizeof(num_buf), "%u", node->detail.h.level);
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"level\": ");
-        json_write_str(w, num_buf);
-    }
-    else if(strcmp(node->type_name, "list") == 0) {
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"listType\": \"");
-        json_write_str(w, node->detail.list.list_type);
-        json_write_str(w, "\"");
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"listTight\": ");
-        json_write_str(w, node->detail.list.is_tight ? "true" : "false");
-        if(strcmp(node->detail.list.list_type, "ordered") == 0) {
-            json_snprintf(num_buf, sizeof(num_buf), "%u", node->detail.list.start);
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"listStart\": ");
-            json_write_str(w, num_buf);
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"listDelimiter\": ");
-            json_write_str(w, node->detail.list.delimiter == ')' ? "\"paren\"" : "\"period\"");
-        }
-    }
-    else if(strcmp(node->type_name, "item") == 0 && node->detail.li.is_task) {
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"task\": true,\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"checked\": ");
-        json_write_str(w, (node->detail.li.task_mark == 'x' || node->detail.li.task_mark == 'X') ? "true" : "false");
-    }
-    else if(strcmp(node->type_name, "code_block") == 0) {
-        if(node->detail.code.info != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"info\": ");
-            json_write_string_value(w, node->detail.code.info, (MD_SIZE) strlen(node->detail.code.info));
-        }
-        if(node->detail.code.fence_char != '\0') {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"fence\": ");
-            json_write_char_value(w, node->detail.code.fence_char);
-        }
-    }
-    else if(strcmp(node->type_name, "table") == 0) {
-        json_snprintf(num_buf, sizeof(num_buf), "%u", node->detail.table.col_count);
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"columns\": ");
-        json_write_str(w, num_buf);
-        json_snprintf(num_buf, sizeof(num_buf), "%u", node->detail.table.head_row_count);
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"header_rows\": ");
-        json_write_str(w, num_buf);
-        json_snprintf(num_buf, sizeof(num_buf), "%u", node->detail.table.body_row_count);
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"body_rows\": ");
-        json_write_str(w, num_buf);
-    }
-    else if(strcmp(node->type_name, "table_header_cell") == 0 || strcmp(node->type_name, "table_cell") == 0) {
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"align\": \"");
-        json_write_str(w, json_align_str(node->detail.td.align));
-        json_write_str(w, "\"");
-    }
-    else if(strcmp(node->type_name, "link") == 0) {
-        if(node->detail.a.destination != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"destination\": ");
-            json_write_string_value(w, node->detail.a.destination, (MD_SIZE) strlen(node->detail.a.destination));
-        }
-        if(node->detail.a.title != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"title\": ");
-            json_write_string_value(w, node->detail.a.title, (MD_SIZE) strlen(node->detail.a.title));
-        }
-        if(node->detail.a.is_autolink) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"autolink\": true");
-        }
-    }
-    else if(strcmp(node->type_name, "image") == 0) {
-        if(node->detail.img.destination != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"destination\": ");
-            json_write_string_value(w, node->detail.img.destination, (MD_SIZE) strlen(node->detail.img.destination));
-        }
-        if(node->detail.img.title != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"title\": ");
-            json_write_string_value(w, node->detail.img.title, (MD_SIZE) strlen(node->detail.img.title));
-        }
-    }
-    else if(strcmp(node->type_name, "wikilink") == 0) {
-        if(node->detail.wikilink.target != NULL) {
-            json_write_str(w, ",\n");
-            json_write_indent(w, depth + 1);
-            json_write_str(w, "\"target\": ");
-            json_write_string_value(w, node->detail.wikilink.target, (MD_SIZE) strlen(node->detail.wikilink.target));
-        }
-    }
-
-    /* Literal for leaf nodes (text nodes and leaf containers like code_block). */
-    if(node->text_value != NULL) {
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"literal\": ");
-        json_write_string_value(w, node->text_value, node->text_size);
-    }
-
-    /* Children array for container nodes (skip for leaf containers with literal). */
-    if((node->kind == JSON_NODE_BLOCK || node->kind == JSON_NODE_SPAN)
-       && node->text_value == NULL) {
-        json_write_str(w, ",\n");
-        json_write_indent(w, depth + 1);
-        json_write_str(w, "\"children\": [");
-
-        if(node->first_child != NULL) {
-            json_write_str(w, "\n");
+    switch(node->kind) {
+        case JSON_NODE_DOCUMENT:
+            json_write_str(w, "{\"type\":\"comark\",\"value\":[");
             first = 1;
             for(child = node->first_child; child != NULL; child = child->next_sibling) {
-                if(!first)
-                    json_write_str(w, ",\n");
-                json_serialize_node(w, child, depth + 2);
+                if(!first) json_write(w, ",", 1);
+                json_serialize_node(w, child);
                 first = 0;
             }
-            json_write_str(w, "\n");
-            json_write_indent(w, depth + 1);
-        }
+            json_write_str(w, "]}");
+            break;
 
-        json_write_str(w, "]");
+        case JSON_NODE_TEXT:
+            json_write_string(w, node->text_value, node->text_size);
+            break;
+
+        case JSON_NODE_ELEMENT:
+            json_write_str(w, "[\"");
+            json_write_str(w, node->tag);
+            json_write_str(w, "\",");
+
+            /* Write props. */
+            json_write_props(w, node);
+
+            /* Special handling for code_block ("pre"): emit inner ["code", {}, literal]. */
+            if(strcmp(node->tag, "pre") == 0) {
+                json_write_str(w, ",[\"code\",{");
+                if(node->detail.code.lang != NULL && node->detail.code.lang[0] != '\0') {
+                    json_write_str(w, "\"class\":\"language-");
+                    json_write_escaped(w, node->detail.code.lang, (MD_SIZE) strlen(node->detail.code.lang));
+                    json_write(w, "\"", 1);
+                }
+                json_write_str(w, "},");
+                if(node->text_value != NULL)
+                    json_write_string(w, node->text_value, node->text_size);
+                else
+                    json_write_str(w, "\"\"");
+                json_write(w, "]", 1);
+            }
+            /* html_block and frontmatter: emit literal as text child. */
+            else if(node->text_value != NULL
+                    && (strcmp(node->tag, "html_block") == 0
+                        || strcmp(node->tag, "frontmatter") == 0)) {
+                json_write(w, ",", 1);
+                json_write_string(w, node->text_value, node->text_size);
+            }
+            /* Inline code, math, math-display: emit literal as text child. */
+            else if(node->text_value != NULL
+                    && (strcmp(node->tag, "code") == 0
+                        || strcmp(node->tag, "math") == 0
+                        || strcmp(node->tag, "math-display") == 0)) {
+                json_write(w, ",", 1);
+                json_write_string(w, node->text_value, node->text_size);
+            }
+            /* img: void element, no children (alt is in props). */
+            else if(strcmp(node->tag, "img") == 0) {
+                /* No children emitted. */
+            }
+            /* Regular container: emit children. */
+            else {
+                for(child = node->first_child; child != NULL; child = child->next_sibling) {
+                    json_write(w, ",", 1);
+                    json_serialize_node(w, child);
+                }
+            }
+
+            json_write(w, "]", 1);
+            break;
     }
-
-    json_write_str(w, "\n");
-    json_write_indent(w, depth);
-    json_write_str(w, "}");
 }
 
 
@@ -808,7 +805,7 @@ md_json(const MD_CHAR* input, MD_SIZE input_size,
     /* Serialize the AST to JSON via the output callback. */
     writer.process_output = process_output;
     writer.userdata = userdata;
-    json_serialize_node(&writer, ctx.root, 0);
+    json_serialize_node(&writer, ctx.root);
     json_write(&writer, "\n", 1);
 
     json_node_free(ctx.root);

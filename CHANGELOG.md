@@ -3,6 +3,18 @@
 
 ## Next
 
+### JSON renderer outputs Comark AST format
+
+**Breaking:** The JSON renderer (`md_json` / `renderToJson`) now outputs the Comark AST format instead of the previous mdast/unist-like format. The root is `{"type":"comark","value":[...]}` where each node is either a plain string (text) or a tuple array `["tag", {props}, ...children]`.
+
+Key changes:
+- Tags use HTML element names (`h1`–`h6`, `p`, `blockquote`, `em`, `strong`, `a`, `img`, `pre`/`code`, etc.)
+- Text nodes are plain JSON strings (no `{type:"text",literal:"..."}` wrappers)
+- Code blocks serialize as `["pre", {language}, ["code", {class}, literal]]`
+- Images are void elements with `alt` in props: `["img", {src, alt}]`
+- Heading level is baked into the tag name (`h1` not `heading` + `level`)
+- TypeScript types changed from `MDNode`/`ContainerNode`/`LeafNode` to `ComarkTree`/`ComarkNode`/`ComarkElement`
+
 ### Zig build system
 
 Replaced CMake with Zig build system. Build with `zig build` (defaults to `ReleaseFast`). The project can also be consumed as a Zig package dependency via `build.zig.zon`.

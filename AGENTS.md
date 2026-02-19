@@ -44,7 +44,7 @@ packages/md4x/           # npm package
     wasm.d.mts           # TypeScript declarations for WASM API
     napi.mjs             # JS entrypoint for NAPI (sync API, ESM)
     napi.d.mts           # TypeScript declarations for NAPI API
-    types.d.ts           # Shared TypeScript types (MDNode, ContainerNode, LeafNode, etc.)
+    types.d.ts           # Shared TypeScript types (ComarkTree, ComarkNode, ComarkElement, etc.)
   test/
     _suite.mjs           # Shared test suite (vitest, used by both NAPI and WASM tests)
     napi.test.mjs        # NAPI binding tests
@@ -185,7 +185,7 @@ import { renderToHtml } from 'md4x/napi';
 const html = renderToHtml('# Hello');
 ```
 
-The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). The C binding returns raw strings; the JS wrapper (`lib/napi.mjs`) parses JSON output from `renderToJson` into a `ContainerNode` object.
+The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). The C binding returns raw strings; the JS wrapper (`lib/napi.mjs`) parses JSON output from `renderToJson` into a `ComarkTree` object.
 
 The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node` with a fallback to `md4x.node` for development builds.
 
@@ -207,22 +207,20 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 |---|---|---|
 | `initWasm(input?)` | — | `Promise<void>` (call once before render) |
 | `renderToHtml(input: string)` | `string` | `string` |
-| `renderToJson(input: string)` | `ContainerNode` | `ContainerNode` |
+| `renderToJson(input: string)` | `ComarkTree` | `ComarkTree` |
 | `renderToAnsi(input: string)` | `string` | `string` |
 
-`renderToJson` parses the JSON string from the C renderer and returns a typed `ContainerNode` object (the document root). See `lib/types.d.ts` for the full `MDNode` type hierarchy (`ContainerNode`, `LeafNode`, `BlockType`, `SpanType`, `TextType`).
+`renderToJson` parses the JSON string from the C renderer and returns a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
 
 ### TypeScript Types (`lib/types.d.ts`)
 
-The package exports TypeScript types for the JSON AST:
+The package exports TypeScript types for the Comark AST:
 
-- `BlockType` — Union of block node type strings (e.g. `"document"`, `"heading"`, `"paragraph"`)
-- `SpanType` — Union of span node type strings (e.g. `"emph"`, `"strong"`, `"link"`)
-- `TextType` — Union of text node type strings (`"text"`, `"linebreak"`, `"softbreak"`, `"html_inline"`)
-- `NodeType` — `BlockType | SpanType | TextType`
-- `LeafNode` — Nodes with `literal` and no `children` (code_block, html_block, code, text, html_inline)
-- `ContainerNode` — Nodes with `children` and no `literal` (all other nodes, with optional properties like `level`, `destination`, etc.)
-- `MDNode` — `LeafNode | ContainerNode`
+- `ComarkTree` — Root container: `{ type: "comark", value: ComarkNode[] }`
+- `ComarkNode` — Either a `ComarkElement` (tuple array) or `ComarkText` (plain string)
+- `ComarkElement` — Tuple: `[tag: string, props: ComarkElementAttributes, ...children: ComarkNode[]]`
+- `ComarkText` — Plain string representing text content
+- `ComarkElementAttributes` — Key-value record: `{ [key: string]: unknown }`
 
 ### JS Package Testing
 
@@ -519,13 +517,15 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 
 ## JSON Renderer API (`md4x-json.h`)
 
-Renders Markdown into a nested JSON AST tree (mdast/unist-like):
+Renders Markdown into a Comark AST (array-based JSON format):
 
 ```c
 int md_json(const MD_CHAR* input, MD_SIZE input_size,
             void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
 ```
+
+Produces `{"type":"comark","value":[...]}` where each node is either a plain JSON string (text) or a tuple array `["tag", {props}, ...children]`.
 
 ### Renderer Flags (`MD_JSON_FLAG_*`)
 
@@ -604,15 +604,11 @@ Produces terminal-friendly output with ANSI escape codes for colors, bold, itali
 
 **JSON output (`--format=json`):**
 
-Produces a nested AST tree compatible with the [commonmark.js](https://github.com/commonmark/commonmark.js) AST format. Each node has `"type"`, type-specific properties, and `"children"` (for container nodes) or `"literal"` (for leaf nodes).
+Produces a Comark AST: `{"type":"comark","value":[...]}`. Each node is either a plain string (text) or a tuple array `[tag, props, ...children]`.
 
-Block type mappings: `document`, `block_quote`, `list` (listType, listTight, listStart, listDelimiter), `item` (task, checked), `thematic_break`, `heading` (level), `code_block` (info, fence, literal), `html_block` (literal), `paragraph`, `table` (columns, header_rows, body_rows), `table_head`, `table_body`, `table_row`, `table_header_cell` (align), `table_cell` (align), `frontmatter`.
+Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked), `hr`, `h1`–`h6`, `pre` (language) with inner `code`, `html_block`, `p`, `table`, `thead`, `tbody`, `tr`, `th` (align), `td` (align), `frontmatter`. Spans: `em`, `strong`, `a` (href, title), `img` (src, alt, title — void), `code`, `del`, `math`, `math-display`, `wikilink` (target), `u`. Text: plain strings (merged), `["br",{}]` for hard breaks, `"\n"` for soft breaks.
 
-Span type mappings: `emph`, `strong`, `link` (destination, title, autolink), `image` (destination, title), `code` (literal), `delete`, `latex_math`, `latex_math_display`, `wikilink` (target), `underline`.
-
-Text type mappings: `text` (literal), `linebreak`, `softbreak`, `html_inline` (literal).
-
-Leaf nodes (`code_block`, `html_block`, `code`, `text`, `html_inline`) store content in `literal`. Container nodes (`document`, `block_quote`, `list`, `item`, `paragraph`, `heading`, `emph`, `strong`, `link`, `image`, etc.) have `children` arrays.
+Code blocks serialize as `["pre", {language}, ["code", {class: "language-X"}, literal]]`. Images are void elements with alt text in props: `["img", {src, alt}]`.
 
 The JSON renderer is implemented as a library in `src/renderers/md4x-json.c` (public API in `src/renderers/md4x-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
 
