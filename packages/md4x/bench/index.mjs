@@ -26,11 +26,14 @@ for (const [name, input] of Object.entries(inputs)) {
       bench(`markdown-it`, () => markdownIt.render(input));
     });
 
-    // summary(() => {
-    //   bench(`md4x (napi) json (${name})`, () => napi.renderToJson(input));
-    //   bench(`md4x (wasm) json (${name})`, () => wasm.renderToJson(input));
-    //   bench(`md4w json (${name})`, () => md4w.mdToJSON(input));
-    // });
+    summary(() => {
+      bench(`md4x (napi) json (${name})`, () => napi.renderToJson(input));
+      bench(`md4x (wasm) json (${name})`, () => wasm.renderToJson(input));
+      bench(`md4w json (${name})`, () => md4w.mdToJSON(input));
+      bench(`markdown-it json (${name})`, () =>
+        JSON.stringify(markdownIt.parse(input, {})),
+      );
+    });
   });
 }
 

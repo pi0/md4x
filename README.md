@@ -33,7 +33,7 @@ npx md4x -t html -o out.html doc.md         # Write to file instead of stdout
 
 ## JavaScript
 
-You  for Node.js using a native addon. Supports both ESM and CJS.
+Available for Node.js using a native addon. Supports both ESM and CJS.
 
 ```js
 import { renderToHtml, renderToJson, renderToAnsi } from "md4x";
@@ -51,22 +51,34 @@ const ansi = renderToAnsi("# Hello, **world**!");
 (source: [packages/md4x/bench](./packages/md4x/bench))
 
 ```
-clk: ~5.50 GHz
+clk: ~5.51 GHz
 cpu: AMD Ryzen 9 9950X3D 16-Core Processor
 runtime: bun 1.3.9 (x64-linux)
 
 benchmark                   avg (min … max) p75 / p99    (min … top 1%)
-_------------------------------------------ -------------------------------_
-md4x-napi                      3.05 µs/iter   3.11 µs   3.17 µs ▅█▂▂▂▃▆▅▆▂▂
-md4x-wasm                      5.41 µs/iter   5.42 µs   9.75 µs ██▄▂▁▁▁▁▁▁▁
-md4w                           5.84 µs/iter   5.80 µs  10.08 µs ▂█▄▂▁▁▁▁▁▁▁
-markdown-it                   21.53 µs/iter  21.02 µs  41.14 µs ▁█▃▁▁▁▁▁▁▁▁
+ ------------------------------------------ -------------------------------
+md4x-napi                      3.04 µs/iter   3.08 µs   3.13 µs ▂▂▆█▁▃▄▅▄▃▂
+md4x-wasm                      5.19 µs/iter   5.28 µs   8.08 µs ██▅▂▂▁▁▁▁▁▁
+md4w                           5.77 µs/iter   5.80 µs   9.10 µs ▂█▆▂▂▁▁▁▁▁▁
+markdown-it                   21.27 µs/iter  21.00 µs  39.77 µs ▁█▅▂▁▁▁▁▁▁▁
 
 summary
   md4x-napi
-   1.77x faster than md4x-wasm
-   1.91x faster than md4w
-   7.05x faster than markdown-it
+   1.71x faster than md4x-wasm
+   1.9x faster than md4w
+   7x faster than markdown-it
+
+ ------------------------------------------ -------------------------------
+md4x (napi) json (medium)     10.90 µs/iter  10.92 µs  10.93 µs ▅█▁▁▁▁██▅▅█
+md4x (wasm) json (medium)     12.20 µs/iter  12.22 µs  12.32 µs █▅▅▅▅█▁▅▁▁▅
+md4w json (medium)            11.86 µs/iter  11.96 µs  12.04 µs ▅▃▁▃▁▁▁▁█▃▃
+markdown-it json (medium)     64.03 µs/iter  64.62 µs  90.26 µs ▂█▄▂▂▂▁▁▁▁▁
+
+summary
+  md4x (napi) json (medium)
+   1.09x faster than md4w json (medium)
+   1.12x faster than md4x (wasm) json (medium)
+   5.88x faster than markdown-it json (medium)
 ```
 
 ## Zig Package
