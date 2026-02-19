@@ -47,7 +47,7 @@ static const char* format_name[] = { "html", "text", "json", "ansi" };
 
 /* Global options. */
 static OutputFormat output_format = FORMAT_HTML;
-static unsigned parser_flags = 0;
+static unsigned parser_flags = MD_DIALECT_ALL;
 #ifndef MD4X_USE_ASCII
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG | MD_HTML_FLAG_SKIP_UTF8_BOM;
 #else
@@ -283,30 +283,6 @@ static const CMDLINE_OPTION cmdline_options[] = {
     {  0,  "html-title",                    '1', CMDLINE_OPTFLAG_REQUIREDARG },
     {  0,  "html-css",                      '2', CMDLINE_OPTFLAG_REQUIREDARG },
 
-    {  0,  "commonmark",                    'c', 0 },
-    {  0,  "github",                        'g', 0 },
-
-    {  0,  "fcollapse-whitespace",          'W', 0 },
-    {  0,  "flatex-math",                   'L', 0 },
-    {  0,  "fpermissive-atx-headers",       'A', 0 },
-    {  0,  "fpermissive-autolinks",         'V', 0 },
-    {  0,  "fhard-soft-breaks",             'B', 0 },
-    {  0,  "fpermissive-email-autolinks",   '@', 0 },
-    {  0,  "fpermissive-url-autolinks",     'U', 0 },
-    {  0,  "fpermissive-www-autolinks",     '.', 0 },
-    {  0,  "fstrikethrough",                'S', 0 },
-    {  0,  "ftables",                       'T', 0 },
-    {  0,  "ftasklists",                    'X', 0 },
-    {  0,  "funderline",                    '_', 0 },
-    {  0,  "fverbatim-entities",            'E', 0 },
-    {  0,  "fwiki-links",                   'K', 0 },
-    {  0,  "ffrontmatter",                  'M', 0 },
-
-    {  0,  "fno-html-blocks",               'F', 0 },
-    {  0,  "fno-html-spans",                'G', 0 },
-    {  0,  "fno-html",                      'H', 0 },
-    {  0,  "fno-indented-code",             'I', 0 },
-
     /* Undocumented option for replaying test cases from fuzzers. */
     {  0,  "replay-fuzz",                   'r', 0 },
 
@@ -327,49 +303,9 @@ usage(void)
         "  -h, --help           Display this help and exit\n"
         "  -v, --version        Display version and exit\n"
         "\n"
-        "Markdown dialect options:\n"
-        "(note these are equivalent to some combinations of the flags below)\n"
-        "      --commonmark     CommonMark (this is default)\n"
-        "      --github         Github Flavored Markdown\n"
-        "\n"
-        "Markdown extension options:\n"
-        "      --fcollapse-whitespace\n"
-        "                       Collapse non-trivial whitespace\n"
-        "      --flatex-math    Enable LaTeX style mathematics spans\n"
-        "      --fpermissive-atx-headers\n"
-        "                       Allow ATX headers without delimiting space\n"
-        "      --fpermissive-url-autolinks\n"
-        "                       Allow URL autolinks without '<', '>'\n"
-        "      --fpermissive-www-autolinks\n"
-        "                       Allow WWW autolinks without any scheme (e.g. 'www.example.com')\n"
-        "      --fpermissive-email-autolinks  \n"
-        "                       Allow e-mail autolinks without '<', '>' and 'mailto:'\n"
-        "      --fpermissive-autolinks\n"
-        "                       Same as --fpermissive-url-autolinks --fpermissive-www-autolinks\n"
-        "                       --fpermissive-email-autolinks\n"
-        "      --fhard-soft-breaks\n"
-        "                       Force all soft breaks to act as hard breaks\n"
-        "      --fstrikethrough Enable strike-through spans\n"
-        "      --ftables        Enable tables\n"
-        "      --ftasklists     Enable task lists\n"
-        "      --funderline     Enable underline spans\n"
-        "      --fwiki-links    Enable wiki links\n"
-        "      --ffrontmatter   Enable frontmatter\n"
-        "\n"
-        "Markdown suppression options:\n"
-        "      --fno-html-blocks\n"
-        "                       Disable raw HTML blocks\n"
-        "      --fno-html-spans\n"
-        "                       Disable raw HTML spans\n"
-        "      --fno-html       Same as --fno-html-blocks --fno-html-spans\n"
-        "      --fno-indented-code\n"
-        "                       Disable indented code blocks\n"
-        "\n"
         "HTML output options:\n"
         "  -f, --full-html      Generate full HTML document, including header\n"
         "  -x, --xhtml          Generate XHTML instead of HTML\n"
-        "      --fverbatim-entities\n"
-        "                       Do not translate entities\n"
         "      --html-title=TITLE Sets the title of the document\n"
         "      --html-css=URL   In full HTML or XHTML mode add a css link\n"
         "\n"
@@ -426,29 +362,6 @@ cmdline_callback(int opt, char const* value, void* data)
 
         case '1':   html_title = value; break;
         case '2':   css_path = value; break;
-
-        case 'c':   parser_flags |= MD_DIALECT_COMMONMARK; break;
-        case 'g':   parser_flags |= MD_DIALECT_GITHUB; break;
-
-        case 'E':   renderer_flags |= MD_HTML_FLAG_VERBATIM_ENTITIES; break;
-        case 'A':   parser_flags |= MD_FLAG_PERMISSIVEATXHEADERS; break;
-        case 'I':   parser_flags |= MD_FLAG_NOINDENTEDCODEBLOCKS; break;
-        case 'F':   parser_flags |= MD_FLAG_NOHTMLBLOCKS; break;
-        case 'G':   parser_flags |= MD_FLAG_NOHTMLSPANS; break;
-        case 'H':   parser_flags |= MD_FLAG_NOHTML; break;
-        case 'W':   parser_flags |= MD_FLAG_COLLAPSEWHITESPACE; break;
-        case 'U':   parser_flags |= MD_FLAG_PERMISSIVEURLAUTOLINKS; break;
-        case '.':   parser_flags |= MD_FLAG_PERMISSIVEWWWAUTOLINKS; break;
-        case '@':   parser_flags |= MD_FLAG_PERMISSIVEEMAILAUTOLINKS; break;
-        case 'V':   parser_flags |= MD_FLAG_PERMISSIVEAUTOLINKS; break;
-        case 'T':   parser_flags |= MD_FLAG_TABLES; break;
-        case 'S':   parser_flags |= MD_FLAG_STRIKETHROUGH; break;
-        case 'L':   parser_flags |= MD_FLAG_LATEXMATHSPANS; break;
-        case 'K':   parser_flags |= MD_FLAG_WIKILINKS; break;
-        case 'X':   parser_flags |= MD_FLAG_TASKLISTS; break;
-        case '_':   parser_flags |= MD_FLAG_UNDERLINE; break;
-        case 'B':   parser_flags |= MD_FLAG_HARD_SOFT_BREAKS; break;
-        case 'M':   parser_flags |= MD_FLAG_FRONTMATTER; break;
 
         default:
             fprintf(stderr, "Illegal option: %s\n", value);

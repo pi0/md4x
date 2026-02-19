@@ -316,6 +316,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 - `MD_FLAG_NOHTML` = no HTML blocks + no HTML spans
 - `MD_DIALECT_COMMONMARK` = `0` (strict CommonMark)
 - `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists
+- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter)
 
 ## HTML Renderer API (`md4x-html.h`)
 
@@ -417,11 +418,7 @@ md4x [OPTION]... [FILE]
 | `-h`, `--help` | Display help |
 | `-v`, `--version` | Display version |
 
-**Dialect presets:** `--commonmark` (default), `--github`
-
-**Extension flags:** `--fcollapse-whitespace`, `--flatex-math`, `--fpermissive-atx-headers`, `--fpermissive-autolinks`, `--fpermissive-url-autolinks`, `--fpermissive-www-autolinks`, `--fpermissive-email-autolinks`, `--fhard-soft-breaks`, `--fstrikethrough`, `--ftables`, `--ftasklists`, `--funderline`, `--fwiki-links`, `--ffrontmatter`
-
-**Suppression flags:** `--fno-html-blocks`, `--fno-html-spans`, `--fno-html`, `--fno-indented-code`
+All extensions are enabled by default (`MD_DIALECT_ALL`). No dialect preset flags.
 
 **HTML output options:**
 
@@ -429,7 +426,6 @@ md4x [OPTION]... [FILE]
 |---|---|
 | `-f`, `--full-html` | Generate full HTML document with header |
 | `-x`, `--xhtml` | Generate XHTML instead of HTML |
-| `--fverbatim-entities` | Do not translate entities |
 | `--html-title=TITLE` | Set document title (with `--full-html`) |
 | `--html-css=URL` | Add CSS link (with `--full-html`) |
 
