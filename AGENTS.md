@@ -337,7 +337,6 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 | `MD_HTML_FLAG_DEBUG` | `0x0001` | Send debug output from `md_parse()` to stderr |
 | `MD_HTML_FLAG_VERBATIM_ENTITIES` | `0x0002` | Do not translate HTML entities |
 | `MD_HTML_FLAG_SKIP_UTF8_BOM` | `0x0004` | Skip UTF-8 BOM at input start |
-| `MD_HTML_FLAG_XHTML` | `0x0008` | Generate XHTML (`<br />`, `<hr />`, `<img ... />`) |
 
 ### Rendering Details
 
@@ -425,7 +424,6 @@ All extensions are enabled by default (`MD_DIALECT_ALL`). No dialect preset flag
 | Option | Description |
 |---|---|
 | `-f`, `--full-html` | Generate full HTML document with header |
-| `-x`, `--xhtml` | Generate XHTML instead of HTML |
 | `--html-title=TITLE` | Set document title (with `--full-html`) |
 | `--html-css=URL` | Add CSS link (with `--full-html`) |
 

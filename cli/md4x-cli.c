@@ -54,7 +54,6 @@ static unsigned parser_flags = MD_DIALECT_ALL;
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG;
 #endif
 static int want_fullhtml = 0;
-static int want_xhtml = 0;
 static int want_stat = 0;
 static int want_replay_fuzz = 0;
 
@@ -220,23 +219,16 @@ process_file(const char* in_path, FILE* in, FILE* out)
 
     /* Write down the document in the HTML format. */
     if(want_fullhtml && output_format == FORMAT_HTML) {
-        if(want_xhtml) {
-            fprintf(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-            fprintf(out, "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
-                            "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n");
-            fprintf(out, "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n");
-        } else {
-            fprintf(out, "<!DOCTYPE html>\n");
-            fprintf(out, "<html>\n");
-        }
+        fprintf(out, "<!DOCTYPE html>\n");
+        fprintf(out, "<html>\n");
         fprintf(out, "<head>\n");
         fprintf(out, "<title>%s</title>\n", html_title ? html_title : "");
-        fprintf(out, "<meta name=\"generator\" content=\"md4x\"%s>\n", want_xhtml ? " /" : "");
+        fprintf(out, "<meta name=\"generator\" content=\"md4x\">\n");
 #if !defined MD4X_USE_ASCII && !defined MD4X_USE_UTF16
-        fprintf(out, "<meta charset=\"UTF-8\"%s>\n", want_xhtml ? " /" : "");
+        fprintf(out, "<meta charset=\"UTF-8\">\n");
 #endif
         if(css_path != NULL) {
-            fprintf(out, "<link rel=\"stylesheet\" href=\"%s\"%s>\n", css_path, want_xhtml ? " /" : "");
+            fprintf(out, "<link rel=\"stylesheet\" href=\"%s\">\n", css_path);
         }
         fprintf(out, "</head>\n");
         fprintf(out, "<body>\n");
@@ -273,7 +265,6 @@ out:
 static const CMDLINE_OPTION cmdline_options[] = {
     { 'o', "output",                        'o', CMDLINE_OPTFLAG_REQUIREDARG },
     { 'f', "full-html",                     'f', 0 },
-    { 'x', "xhtml",                         'x', 0 },
     { 's', "stat",                          's', 0 },
     { 'h', "help",                          'h', 0 },
     { 'v', "version",                       'v', 0 },
@@ -305,9 +296,8 @@ usage(void)
         "\n"
         "HTML output options:\n"
         "  -f, --full-html      Generate full HTML document, including header\n"
-        "  -x, --xhtml          Generate XHTML instead of HTML\n"
         "      --html-title=TITLE Sets the title of the document\n"
-        "      --html-css=URL   In full HTML or XHTML mode add a css link\n"
+        "      --html-css=URL   In full HTML mode add a css link\n"
         "\n"
     );
 }
@@ -338,7 +328,6 @@ cmdline_callback(int opt, char const* value, void* data)
 
         case 'o':   output_path = value; break;
         case 'f':   want_fullhtml = 1; break;
-        case 'x':   want_xhtml = 1; renderer_flags |= MD_HTML_FLAG_XHTML; break;
         case 's':   want_stat = 1; break;
         case 'r':   want_replay_fuzz = 1; break;
         case 'h':   usage(); exit(0); break;
