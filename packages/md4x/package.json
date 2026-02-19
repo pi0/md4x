@@ -23,7 +23,8 @@
   },
   "files": [
     "build",
-    "lib"
+    "lib",
+    "README.md"
   ],
   "devDependencies": {
     "@milkdown/crepe": "^7.18.0",

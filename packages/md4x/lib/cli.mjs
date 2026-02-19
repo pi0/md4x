@@ -34,6 +34,10 @@ General options:
   -h, --help           Display this help and exit
   -v, --version        Display version and exit
 
+Input can be a file path, "-" for stdin, an HTTP/HTTPS URL, or a shorthand:
+  gh:<owner>/<repo>[/path]   GitHub (auto-converted to raw content)
+  npm:<package>[@version][/path]  npm package file via unpkg
+
 HTML output options:
   -f, --full-html      Generate full HTML document, including header
       --html-title=TITLE Sets the title of the document
@@ -62,7 +66,23 @@ if (!["html", "json", "ansi"].includes(format)) {
   process.exit(1);
 }
 
-const inputPath = positionals[0];
+let inputPath = positionals[0];
+// gh:owner/repo[/path] → https://github.com/owner/repo[/path]
+if (inputPath && /^gh:/i.test(inputPath)) {
+  inputPath = `https://github.com/${inputPath.slice(3)}`;
+}
+// npm:package[@version][/path] → https://unpkg.com/package[@version][/path]
+if (inputPath && /^npm:/i.test(inputPath)) {
+  const spec = inputPath.slice(4);
+  // Check if spec includes a file path (after the package name + optional version)
+  // Scoped: @scope/pkg[@ver][/path] — path starts after 2nd slash
+  // Unscoped: pkg[@ver][/path] — path starts after 1st slash
+  const slashIdx = spec.startsWith("@")
+    ? spec.indexOf("/", spec.indexOf("/") + 1)
+    : spec.indexOf("/");
+  const hasPath = slashIdx > 0;
+  inputPath = `https://unpkg.com/${spec}${hasPath ? "" : "/README.md"}`;
+}
 let input;
 if (!inputPath || inputPath === "-") {
   if (process.stdin.isTTY) {
@@ -73,6 +93,23 @@ if (!inputPath || inputPath === "-") {
     input = readFileSync(0, "utf8");
   } catch {
     usage();
+    process.exit(1);
+  }
+} else if (/^https?:\/\//i.test(inputPath)) {
+  const fetchUrl = toRawUrl(inputPath);
+  try {
+    const res = await fetch(fetchUrl, {
+      headers: { Accept: "text/markdown, text/plain;q=0.9, */*;q=0.1" },
+    });
+    if (!res.ok) {
+      process.stderr.write(
+        `Failed to fetch ${inputPath}: ${res.status} ${res.statusText}\n`,
+      );
+      process.exit(1);
+    }
+    input = await res.text();
+  } catch (err) {
+    process.stderr.write(`Failed to fetch ${inputPath}: ${err.message}\n`);
     process.exit(1);
   }
 } else {
@@ -135,4 +172,28 @@ if (values.output && values.output !== "-") {
   }
 } else {
   process.stdout.write(result);
+}
+
+// --- internal helpers ---
+
+/** Convert GitHub web URLs to raw content URLs */
+function toRawUrl(url) {
+  const u = new URL(url);
+  if (u.hostname === "github.com" || u.hostname === "www.github.com") {
+    // github.com/:owner/:repo/blob/:ref/path → raw.githubusercontent.com/:owner/:repo/:ref/path
+    const blob = u.pathname.match(/^\/([^/]+\/[^/]+)\/blob\/(.+)/);
+    if (blob) {
+      return `https://raw.githubusercontent.com/${blob[1]}/${blob[2]}`;
+    }
+    // github.com/:owner/:repo → raw.githubusercontent.com/:owner/:repo/HEAD/README.md
+    const repo = u.pathname.match(/^\/([^/]+\/[^/]+)\/?$/);
+    if (repo) {
+      return `https://raw.githubusercontent.com/${repo[1]}/HEAD/README.md`;
+    }
+  }
+  // gist.github.com/:user/:id → gist.githubusercontent.com/:user/:id/raw
+  if (u.hostname === "gist.github.com") {
+    return `https://gist.githubusercontent.com${u.pathname}/raw`;
+  }
+  return url;
 }
