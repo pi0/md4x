@@ -452,6 +452,91 @@ render_close_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
     RENDER_VERBATIM(r, ">");
 }
 
+static void
+render_open_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "<");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+
+    if(det->raw_props != NULL && det->raw_props_size > 0) {
+        const MD_CHAR* raw = det->raw_props;
+        MD_SIZE size = det->raw_props_size;
+        MD_OFFSET i = 0;
+
+        while(i < size) {
+            while(i < size && (raw[i] == ' ' || raw[i] == '\t'))
+                i++;
+            if(i >= size) break;
+
+            if(raw[i] == '#') {
+                MD_OFFSET start = ++i;
+                while(i < size && raw[i] != ' ' && raw[i] != '\t')
+                    i++;
+                if(i > start) {
+                    RENDER_VERBATIM(r, " id=\"");
+                    render_html_escaped(r, raw + start, i - start);
+                    RENDER_VERBATIM(r, "\"");
+                }
+            }
+            else if(raw[i] == '.') {
+                MD_OFFSET start = ++i;
+                while(i < size && raw[i] != ' ' && raw[i] != '\t' && raw[i] != '.')
+                    i++;
+                if(i > start) {
+                    RENDER_VERBATIM(r, " class=\"");
+                    render_html_escaped(r, raw + start, i - start);
+                    RENDER_VERBATIM(r, "\"");
+                }
+            }
+            else {
+                MD_OFFSET key_start = i;
+                if(raw[i] == ':') key_start = ++i;
+
+                while(i < size && raw[i] != '=' && raw[i] != ' ' && raw[i] != '\t')
+                    i++;
+
+                if(i > key_start && i < size && raw[i] == '=') {
+                    MD_OFFSET key_end = i;
+                    i++;
+                    RENDER_VERBATIM(r, " ");
+                    render_html_escaped(r, raw + key_start, key_end - key_start);
+
+                    if(i < size && (raw[i] == '"' || raw[i] == '\'')) {
+                        char quote = raw[i];
+                        MD_OFFSET val_start = ++i;
+                        while(i < size && raw[i] != quote)
+                            i++;
+                        RENDER_VERBATIM(r, "=\"");
+                        render_html_escaped(r, raw + val_start, i - val_start);
+                        RENDER_VERBATIM(r, "\"");
+                        if(i < size) i++;
+                    } else {
+                        MD_OFFSET val_start = i;
+                        while(i < size && raw[i] != ' ' && raw[i] != '\t')
+                            i++;
+                        RENDER_VERBATIM(r, "=\"");
+                        render_html_escaped(r, raw + val_start, i - val_start);
+                        RENDER_VERBATIM(r, "\"");
+                    }
+                } else if(i > key_start) {
+                    RENDER_VERBATIM(r, " ");
+                    render_html_escaped(r, raw + key_start, i - key_start);
+                }
+            }
+        }
+    }
+
+    RENDER_VERBATIM(r, ">\n");
+}
+
+static void
+render_close_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
+{
+    RENDER_VERBATIM(r, "</");
+    render_attribute(r, &det->tag_name, render_html_escaped);
+    RENDER_VERBATIM(r, ">\n");
+}
+
 
 /**************************************
  ***  HTML renderer implementation  ***
@@ -481,6 +566,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       render_open_td_block(r, "th", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "<x-frontmatter>"); break;
+        case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
     }
 
     return 0;
@@ -510,6 +596,7 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       RENDER_VERBATIM(r, "</th>\n"); break;
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "</x-frontmatter>\n"); break;
+        case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
     }
 
     return 0;

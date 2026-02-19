@@ -96,3 +96,179 @@ Visit https://example.com for more.
 .
 <p>Visit <a href="https://example.com">https://example.com</a> for more.</p>
 ````````````````````````````````
+
+
+# Block Components
+
+## Basic block component
+
+```````````````````````````````` example
+::alert
+Hello world
+::
+.
+<alert>
+<p>Hello world</p>
+</alert>
+````````````````````````````````
+
+## Block component with properties
+
+```````````````````````````````` example
+::alert{type="info"}
+This is important!
+::
+.
+<alert type="info">
+<p>This is important!</p>
+</alert>
+````````````````````````````````
+
+## Block component with markdown content
+
+```````````````````````````````` example
+::card{title="My Card"}
+Card content with **markdown** support
+::
+.
+<card title="My Card">
+<p>Card content with <strong>markdown</strong> support</p>
+</card>
+````````````````````````````````
+
+## Empty block component
+
+```````````````````````````````` example
+::divider
+::
+.
+<divider>
+</divider>
+````````````````````````````````
+
+## Nested block components
+
+```````````````````````````````` example
+:::outer
+Outer content
+
+::inner
+Inner content
+::
+
+More outer
+:::
+.
+<outer>
+<p>Outer content</p>
+<inner>
+<p>Inner content</p>
+</inner>
+<p>More outer</p>
+</outer>
+````````````````````````````````
+
+## Deep nesting
+
+```````````````````````````````` example
+::level-1
+:::level-2
+::::level-3
+Content
+::::
+:::
+::
+.
+<level-1>
+<level-2>
+<level-3>
+<p>Content</p>
+</level-3>
+</level-2>
+</level-1>
+````````````````````````````````
+
+## Block component with id and class
+
+```````````````````````````````` example
+::alert{#my-alert .warning}
+Warning message
+::
+.
+<alert id="my-alert" class="warning">
+<p>Warning message</p>
+</alert>
+````````````````````````````````
+
+## Block component with multiple props
+
+```````````````````````````````` example
+::card{title="Card" size="lg" dismissible}
+Content here
+::
+.
+<card title="Card" size="lg" dismissible>
+<p>Content here</p>
+</card>
+````````````````````````````````
+
+## Block component cannot interrupt paragraph
+
+```````````````````````````````` example
+Some text
+::alert
+Hello
+::
+.
+<p>Some text
+::alert
+Hello
+::</p>
+````````````````````````````````
+
+## Block component after blank line
+
+```````````````````````````````` example
+Some text
+
+::alert
+Hello
+::
+.
+<p>Some text</p>
+<alert>
+<p>Hello</p>
+</alert>
+````````````````````````````````
+
+## Block component inside blockquote
+
+```````````````````````````````` example
+> ::alert
+> Hello
+> ::
+.
+<blockquote>
+<alert>
+<p>Hello</p>
+</alert>
+</blockquote>
+````````````````````````````````
+
+## Block component with multiple blocks inside
+
+```````````````````````````````` example
+::card
+# Title
+
+Paragraph one
+
+Paragraph two
+::
+.
+<card>
+<h1>Title</h1>
+<p>Paragraph one</p>
+<p>Paragraph two</p>
+</card>
+````````````````````````````````

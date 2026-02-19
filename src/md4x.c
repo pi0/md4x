@@ -265,6 +265,20 @@ struct MD_CTX_tag {
     int frontmatter_state;  /* 0: looking for opener, 1: inside, 2: done/disabled */
     int last_line_has_list_loosening_effect;
     int last_list_item_starts_with_two_blank_lines;
+
+    /* Block component info array.
+     * Each block component opener pushes its info here. The index is stored
+     * in the container block's data field for later lookup in md_process_all_blocks(). */
+    struct {
+        unsigned colon_count;   /* Number of colons in the opener fence (2+). */
+        OFF name_beg;           /* Offset of component name in source. */
+        OFF name_end;
+        OFF props_beg;          /* Offset of raw props content (after '{'), or 0. */
+        OFF props_end;          /* Offset of '}', or 0. */
+    } *block_component_info;
+    int n_block_components;         /* Number of entries used. */
+    int alloc_block_components;     /* Allocated capacity. */
+    int block_component_nesting;    /* Current nesting depth (for active open components). */
 };
 
 enum MD_LINETYPE_tag {
@@ -279,7 +293,8 @@ enum MD_LINETYPE_tag {
     MD_LINE_TEXT,
     MD_LINE_TABLE,
     MD_LINE_TABLEUNDERLINE,
-    MD_LINE_FRONTMATTER
+    MD_LINE_FRONTMATTER,
+    MD_LINE_BLOCKCOMPONENT
 };
 typedef enum MD_LINETYPE_tag MD_LINETYPE;
 
@@ -4977,6 +4992,7 @@ struct MD_CONTAINER_tag {
     unsigned contents_indent;
     OFF block_byte_off;
     OFF task_mark_off;
+    unsigned colon_count;   /* For block components: number of colons in opener. */
 };
 
 
@@ -5399,6 +5415,10 @@ md_process_all_blocks(MD_CTX* ctx)
 {
     int byte_off = 0;
     int ret = 0;
+    MD_ATTRIBUTE_BUILD comp_name_build;
+    int clean_component_detail = FALSE;
+
+    memset(&comp_name_build, 0, sizeof(comp_name_build));
 
     /* ctx->containers now is not needed for detection of lists and list items
      * so we reuse it for tracking what lists are loose or tight. We rely
@@ -5412,7 +5432,10 @@ md_process_all_blocks(MD_CTX* ctx)
             MD_BLOCK_UL_DETAIL ul;
             MD_BLOCK_OL_DETAIL ol;
             MD_BLOCK_LI_DETAIL li;
+            MD_BLOCK_COMPONENT_DETAIL component;
         } det;
+
+        memset(&det, 0, sizeof(det));
 
         switch(block->type) {
             case MD_BLOCK_UL:
@@ -5431,6 +5454,27 @@ md_process_all_blocks(MD_CTX* ctx)
                 det.li.task_mark = (CHAR) block->data;
                 det.li.task_mark_offset = (OFF) block->n_lines;
                 break;
+
+            case MD_BLOCK_COMPONENT: {
+                int comp_idx = (int) block->data;
+                if(comp_idx >= 0 && comp_idx < ctx->n_block_components) {
+                    OFF name_beg = ctx->block_component_info[comp_idx].name_beg;
+                    OFF name_end = ctx->block_component_info[comp_idx].name_end;
+                    OFF props_beg = ctx->block_component_info[comp_idx].props_beg;
+                    OFF props_end = ctx->block_component_info[comp_idx].props_end;
+
+                    memset(&comp_name_build, 0, sizeof(comp_name_build));
+                    MD_CHECK(md_build_attribute(ctx, STR(name_beg), name_end - name_beg,
+                                                0, &det.component.tag_name, &comp_name_build));
+                    clean_component_detail = TRUE;
+
+                    if(props_beg > 0 && props_end > props_beg) {
+                        det.component.raw_props = STR(props_beg);
+                        det.component.raw_props_size = props_end - props_beg;
+                    }
+                }
+                break;
+            }
 
             default:
                 /* noop */
@@ -5457,6 +5501,10 @@ md_process_all_blocks(MD_CTX* ctx)
                      * <p>...</p>. */
                     ctx->containers[ctx->n_containers].is_loose = TRUE;
                     ctx->n_containers++;
+                } else if(block->type == MD_BLOCK_COMPONENT) {
+                    /* Block components wrap content in <p>...</p>. */
+                    ctx->containers[ctx->n_containers].is_loose = TRUE;
+                    ctx->n_containers++;
                 }
             }
         } else {
@@ -5468,12 +5516,19 @@ md_process_all_blocks(MD_CTX* ctx)
                 byte_off += block->n_lines * sizeof(MD_LINE);
         }
 
+        if(clean_component_detail) {
+            md_free_attribute(ctx, &comp_name_build);
+            clean_component_detail = FALSE;
+        }
+
         byte_off += sizeof(MD_BLOCK);
     }
 
     ctx->n_block_bytes = 0;
 
 abort:
+    if(clean_component_detail)
+        md_free_attribute(ctx, &comp_name_build);
     return ret;
 }
 
@@ -5715,6 +5770,35 @@ abort:
     return ret;
 }
 
+/* Push a block component info entry. Returns the index, or -1 on error. */
+static int
+md_push_block_component_info(MD_CTX* ctx, unsigned colon_count,
+                             OFF name_beg, OFF name_end,
+                             OFF props_beg, OFF props_end)
+{
+    if(ctx->n_block_components >= ctx->alloc_block_components) {
+        int new_alloc = (ctx->alloc_block_components > 0
+                ? ctx->alloc_block_components + ctx->alloc_block_components / 2
+                : 16);
+        void* new_arr = realloc(ctx->block_component_info, new_alloc * sizeof(ctx->block_component_info[0]));
+        if(new_arr == NULL) {
+            MD_LOG("realloc() failed.");
+            return -1;
+        }
+        ctx->block_component_info = new_arr;
+        ctx->alloc_block_components = new_alloc;
+    }
+
+    {
+        int idx = ctx->n_block_components++;
+        ctx->block_component_info[idx].colon_count = colon_count;
+        ctx->block_component_info[idx].name_beg = name_beg;
+        ctx->block_component_info[idx].name_end = name_end;
+        ctx->block_component_info[idx].props_beg = props_beg;
+        ctx->block_component_info[idx].props_end = props_end;
+        return idx;
+    }
+}
 
 
 /***********************
@@ -6122,11 +6206,97 @@ md_is_html_block_end_condition(MD_CTX* ctx, OFF beg, OFF* p_end)
 }
 
 
+/* Check if line at 'off' is a block component opener: ::name or ::name{props}
+ * Returns the colon count (>= 2) on success, 0 on failure.
+ * Sets *p_name_beg, *p_name_end, *p_props_beg, *p_props_end, *p_end. */
+static unsigned
+md_is_block_component_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_end,
+                             OFF* p_props_beg, OFF* p_props_end, OFF* p_end)
+{
+    OFF start = off;
+    unsigned colon_count;
+
+    /* Count colons. */
+    while(off < ctx->size && CH(off) == _T(':'))
+        off++;
+    colon_count = off - start;
+    if(colon_count < 2)
+        return 0;
+
+    /* Component name must start with a letter. */
+    if(off >= ctx->size || !ISALPHA(off))
+        return 0;
+
+    *p_name_beg = off;
+    while(off < ctx->size && (ISALNUM(off) || CH(off) == _T('-')))
+        off++;
+    *p_name_end = off;
+
+    if(*p_name_end == *p_name_beg)
+        return 0;
+
+    /* Optional {props}. */
+    *p_props_beg = 0;
+    *p_props_end = 0;
+    if(off < ctx->size && CH(off) == _T('{')) {
+        OFF brace_start = off + 1;
+        OFF j = brace_start;
+        while(j < ctx->size && !ISNEWLINE(j) && CH(j) != _T('}'))
+            j++;
+        if(j < ctx->size && CH(j) == _T('}')) {
+            *p_props_beg = brace_start;
+            *p_props_end = j;
+            off = j + 1;
+        }
+    }
+
+    /* Only whitespace allowed after. */
+    while(off < ctx->size && ISBLANK(off))
+        off++;
+    if(off < ctx->size && !ISNEWLINE(off))
+        return 0;
+
+    *p_end = off;
+    return colon_count;
+}
+
+/* Check if line at 'off' is a block component closer: :: (with only whitespace after).
+ * Returns the colon count (>= 2) on success, 0 on failure. */
+static unsigned
+md_is_block_component_closer(MD_CTX* ctx, OFF off, OFF* p_end)
+{
+    OFF start = off;
+    unsigned colon_count;
+
+    while(off < ctx->size && CH(off) == _T(':'))
+        off++;
+    colon_count = off - start;
+    if(colon_count < 2)
+        return 0;
+
+    /* Must not be followed by a name (that would be an opener). */
+    if(off < ctx->size && ISALPHA(off))
+        return 0;
+
+    /* Only whitespace allowed after. */
+    while(off < ctx->size && ISBLANK(off))
+        off++;
+    if(off < ctx->size && !ISNEWLINE(off))
+        return 0;
+
+    *p_end = off;
+    return colon_count;
+}
+
 static int
 md_is_container_compatible(const MD_CONTAINER* pivot, const MD_CONTAINER* container)
 {
     /* Block quote has no "items" like lists. */
     if(container->ch == _T('>'))
+        return FALSE;
+
+    /* Block components have no "items". */
+    if(container->ch == _T(':'))
         return FALSE;
 
     if(container->ch != pivot->ch)
@@ -6196,6 +6366,10 @@ md_enter_child_containers(MD_CTX* ctx, int n_children)
                 MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0, 0, MD_BLOCK_CONTAINER_OPENER));
                 break;
 
+            case _T(':'):
+                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_COMPONENT, 0, c->start, MD_BLOCK_CONTAINER_OPENER));
+                break;
+
             default:
                 MD_UNREACHABLE();
                 break;
@@ -6235,6 +6409,12 @@ md_leave_child_containers(MD_CTX* ctx, int n_keep)
             case _T('>'):
                 MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0,
                                 0, MD_BLOCK_CONTAINER_CLOSER));
+                break;
+
+            case _T(':'):
+                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_COMPONENT, 0,
+                                c->start, MD_BLOCK_CONTAINER_CLOSER));
+                ctx->block_component_nesting--;
                 break;
 
             default:
@@ -6368,7 +6548,9 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
 
             line->beg = off;
 
-        } else if(c->ch != _T('>')  &&  line->indent >= c->contents_indent) {
+        } else if(c->ch == _T(':')) {
+            /* Block component: always continues (content is normal markdown). */
+        } else if(c->ch != _T('>')  &&  c->ch != _T(':')  &&  line->indent >= c->contents_indent) {
             /* List. */
             line->indent -= c->contents_indent;
         } else {
@@ -6380,9 +6562,10 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
 
     if(off >= ctx->size  ||  ISNEWLINE(off)) {
         /* Blank line does not need any real indentation to be nested inside
-         * a list. */
+         * a list or block component. */
         if(n_brothers + n_children == 0) {
-            while(n_parents < ctx->n_containers  &&  ctx->containers[n_parents].ch != _T('>'))
+            while(n_parents < ctx->n_containers  &&  ctx->containers[n_parents].ch != _T('>')
+                  &&  ctx->containers[n_parents].ch != _T(':'))
                 n_parents++;
         }
     }
@@ -6469,6 +6652,33 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 line->type = MD_LINE_HTML;
                 n_parents = ctx->n_containers;
                 break;
+            }
+        }
+
+        /* Check for block component closer (::). */
+        if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&  ctx->block_component_nesting > 0  &&
+           line->indent < ctx->code_indent_offset  &&  off < ctx->size  &&  CH(off) == _T(':'))
+        {
+            OFF tmp;
+            unsigned closer_colons = md_is_block_component_closer(ctx, off, &tmp);
+            if(closer_colons > 0) {
+                /* Find the innermost open block component with matching colon count.
+                 * Walk containers from innermost to find the matching ':' container. */
+                int i;
+                for(i = ctx->n_containers - 1; i >= 0; i--) {
+                    if(ctx->containers[i].ch == _T(':') && ctx->containers[i].colon_count <= closer_colons) {
+                        /* Close this component and everything inside it. */
+                        if(n_children == 0)
+                            MD_CHECK(md_leave_child_containers(ctx, i));
+
+                        line->type = MD_LINE_BLANK;
+                        ctx->last_line_has_list_loosening_effect = FALSE;
+                        off = tmp;
+                        break;
+                    }
+                }
+                if(line->type == MD_LINE_BLANK)
+                    break;
             }
         }
 
@@ -6635,6 +6845,45 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
             line->indent -= ctx->code_indent_offset;
             line->data = 0;
             break;
+        }
+
+        /* Check for block component opener (::name or ::name{props}).
+         * Block components cannot interrupt a paragraph. */
+        if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&
+           line->indent < ctx->code_indent_offset  &&
+           pivot_line->type != MD_LINE_TEXT  &&
+           off < ctx->size  &&  CH(off) == _T(':'))
+        {
+            OFF name_beg, name_end, props_beg, props_end, comp_end;
+            unsigned colon_count = md_is_block_component_opener(ctx, off, &name_beg, &name_end,
+                                                                &props_beg, &props_end, &comp_end);
+            if(colon_count > 0) {
+                int comp_idx = md_push_block_component_info(ctx, colon_count,
+                                                            name_beg, name_end,
+                                                            props_beg, props_end);
+                if(comp_idx < 0) { ret = -1; goto abort; }
+
+                container.ch = _T(':');
+                container.is_loose = FALSE;
+                container.is_task = FALSE;
+                container.mark_indent = 0;
+                container.contents_indent = 0;
+                container.start = (unsigned) comp_idx;
+                container.colon_count = colon_count;
+
+                if(n_brothers + n_children == 0)
+                    pivot_line = &md_dummy_blank_line;
+                if(n_children == 0)
+                    MD_CHECK(md_leave_child_containers(ctx, n_parents + n_brothers));
+
+                n_children++;
+                MD_CHECK(md_push_container(ctx, &container));
+                ctx->block_component_nesting++;
+
+                off = comp_end;
+                line->type = MD_LINE_BLANK;
+                break;
+            }
         }
 
         /* Check for start of a new container block. */
@@ -7055,6 +7304,7 @@ md_parse(const MD_CHAR* text, MD_SIZE size, const MD_PARSER* parser, void* userd
     free(ctx.marks);
     free(ctx.block_bytes);
     free(ctx.containers);
+    free(ctx.block_component_info);
 
     return ret;
 }

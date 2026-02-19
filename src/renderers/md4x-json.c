@@ -265,11 +265,27 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:           tag = "th"; break;
         case MD_BLOCK_TD:           tag = "td"; break;
         case MD_BLOCK_FRONTMATTER:  tag = "frontmatter"; break;
+        case MD_BLOCK_COMPONENT:    tag = NULL; break;  /* handled below */
         default:                    tag = "unknown"; break;
     }
 
     if(type == MD_BLOCK_DOC) {
         node = json_node_new(NULL, JSON_NODE_DOCUMENT);
+    } else if(type == MD_BLOCK_COMPONENT) {
+        const MD_BLOCK_COMPONENT_DETAIL* d = (const MD_BLOCK_COMPONENT_DETAIL*) detail;
+        tag = json_attr_to_str(&d->tag_name);
+        if(tag == NULL) { ctx->error = 1; return -1; }
+        node = json_node_new(tag, JSON_NODE_ELEMENT);
+        if(node == NULL) { free((char*)tag); ctx->error = 1; return -1; }
+        node->tag_is_dynamic = 1;
+        if(d->raw_props != NULL && d->raw_props_size > 0) {
+            node->detail.component.raw_props = (char*) malloc(d->raw_props_size + 1);
+            if(node->detail.component.raw_props != NULL) {
+                memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
+                node->detail.component.raw_props[d->raw_props_size] = '\0';
+                node->detail.component.raw_props_size = d->raw_props_size;
+            }
+        }
     } else {
         node = json_node_new(tag, JSON_NODE_ELEMENT);
     }

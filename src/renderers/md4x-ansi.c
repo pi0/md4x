@@ -382,6 +382,14 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_FRONTMATTER:
             render_ansi(r, ANSI_DIM);
             break;
+
+        case MD_BLOCK_COMPONENT:
+            if(r->need_newline) {
+                render_newline(r);
+                r->need_newline = 0;
+            }
+            render_ansi(r, ANSI_COLOR_CYAN);
+            break;
     }
 
     return 0;
@@ -470,6 +478,11 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_FRONTMATTER:
             render_ansi(r, ANSI_DIM_OFF);
+            r->need_newline = 1;
+            break;
+
+        case MD_BLOCK_COMPONENT:
+            render_ansi(r, ANSI_COLOR_DEFAULT);
             r->need_newline = 1;
             break;
     }

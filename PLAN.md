@@ -73,30 +73,38 @@ Extend `MD_BLOCK_CODE_DETAIL` in the core parser to parse filename, highlights, 
 
 ### Phase 3: Block Components (parser-level)
 
-- [ ] **3.1** Add `MD_BLOCK_COMPONENT` to `MD_BLOCKTYPE` enum and detail struct
-  - `MD_BLOCK_COMPONENT_DETAIL` (tag name, raw props string, nesting level / colon count)
+- [x] **3.1** Add `MD_BLOCK_COMPONENT` to `MD_BLOCKTYPE` enum and detail struct
+  - `MD_BLOCK_COMPONENT_DETAIL` (tag name, raw props string)
+  - Reuses `MD_FLAG_COMPONENTS` flag (shared with inline components)
 
-- [ ] **3.2** Implement block component parsing in `md4x.c`
+- [x] **3.2** Implement block component parsing in `md4x.c`
   - Recognize `::component-name{props}` as opening, `::` as closing
   - Handle nesting via colon count: `::` < `:::` < `::::` etc.
   - Content between open/close is parsed as normal markdown blocks
   - Empty components: `::divider\n::`
+  - Block components cannot interrupt paragraphs
+  - Container-based design: uses MD_CONTAINER with `ch = ':'`
 
-- [ ] **3.3** Implement component slots parsing
+- [x] **3.3** Handle block components in JSON renderer
+  - Map `MD_BLOCK_COMPONENT` to dynamic tag name (reuses `tag_is_dynamic` pattern)
+  - Parse and emit props (reuses `json_write_component_props`)
+  - Emit as `["component-name", {props}, ...children]`
+
+- [x] **3.4** Handle block components in HTML renderer
+  - Render as `<component-name ...props>content</component-name>`
+  - Reuses prop parsing logic from inline component renderer
+
+- [x] **3.5** Handle block components in ANSI renderer
+  - Render with cyan color styling
+
+- [x] **3.6** Add test cases for block components
+  - 12 spec tests in `test/spec-components.txt` (basic, props, nesting, empty, blockquote, etc.)
+  - 8 JS test cases in `_suite.mjs` (HTML + AST for various scenarios)
+
+- [ ] **3.7** Implement component slots parsing (deferred to Phase 3b)
   - Inside a block component, `#slot-name` at line start creates a named slot
   - Content after `#slot-name` until next `#slot` or `::` closing is the slot body
   - Emit as `["template", {"name": "slot-name"}, ...children]` in JSON
-
-- [ ] **3.4** Handle block components in JSON renderer
-  - Map `MD_BLOCK_COMPONENT` to dynamic tag name
-  - Parse and emit props (reuse prop parser from Phase 4)
-
-- [ ] **3.5** Handle block components in HTML renderer
-  - Render as `<component-name ...props>content</component-name>`
-
-- [ ] **3.6** Add test cases for block components
-  - Add to `test/spec-components.txt` — block components, nesting, slots
-  - JS test cases for AST output
 
 ### Phase 4: Component Property Parser
 

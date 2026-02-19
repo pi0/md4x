@@ -263,6 +263,85 @@ export function defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST
     });
   });
 
+  describe("block components", () => {
+    it("renders block component HTML", async () => {
+      const html = await renderToHtml("::alert\nHello world\n::");
+      expect(html).toContain("<alert>");
+      expect(html).toContain("<p>Hello world</p>");
+      expect(html).toContain("</alert>");
+    });
+
+    it("renders block component with props HTML", async () => {
+      const html = await renderToHtml('::alert{type="info"}\nMessage\n::');
+      expect(html).toContain('<alert type="info">');
+      expect(html).toContain("</alert>");
+    });
+
+    it("parses block component AST", async () => {
+      const ast = await parseAST("::alert\nHello\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1]).toEqual({});
+      // Child is a paragraph
+      const p = comp[2];
+      expect(p[0]).toBe("p");
+      expect(p[2]).toBe("Hello");
+    });
+
+    it("parses block component with props AST", async () => {
+      const ast = await parseAST('::alert{type="info"}\nMessage\n::');
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].type).toBe("info");
+    });
+
+    it("parses nested block components AST", async () => {
+      const ast = await parseAST(":::outer\nOuter\n\n::inner\nInner\n::\n\n:::");
+      const outer = ast.value[0];
+      expect(outer[0]).toBe("outer");
+      // First child: paragraph "Outer"
+      expect(outer[2][0]).toBe("p");
+      expect(outer[2][2]).toBe("Outer");
+      // Second child: inner component
+      const inner = outer[3];
+      expect(inner[0]).toBe("inner");
+      expect(inner[2][0]).toBe("p");
+      expect(inner[2][2]).toBe("Inner");
+    });
+
+    it("parses empty block component AST", async () => {
+      const ast = await parseAST("::divider\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("divider");
+      expect(comp.length).toBe(2); // [tag, props] with no children
+    });
+
+    it("block component with markdown content AST", async () => {
+      const ast = await parseAST("::card\n# Title\n\nParagraph\n::");
+      const card = ast.value[0];
+      expect(card[0]).toBe("card");
+      expect(card[2][0]).toBe("h1");
+      expect(card[2][2]).toBe("Title");
+      expect(card[3][0]).toBe("p");
+      expect(card[3][2]).toBe("Paragraph");
+    });
+
+    it("parses block component with id and class AST", async () => {
+      const ast = await parseAST('::alert{#my-id .highlight}\nText\n::');
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].id).toBe("my-id");
+      expect(comp[1].class).toBe("highlight");
+    });
+
+    it("parses block component with boolean prop AST", async () => {
+      const ast = await parseAST("::alert{dismissible}\nText\n::");
+      const comp = ast.value[0];
+      expect(comp[0]).toBe("alert");
+      expect(comp[1].dismissible).toBe(true);
+    });
+  });
+
   describe("renderToAnsi", () => {
     it("renders heading with ansi codes", async () => {
       expect(await renderToAnsi("# Hello")).toContain("Hello");

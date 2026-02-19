@@ -104,7 +104,12 @@ typedef enum MD_BLOCKTYPE {
     /* Frontmatter block (e.g. YAML metadata delimited by ---).
      * Note: Recognized only when MD_FLAG_FRONTMATTER is enabled.
      * Content is provided verbatim as MD_TEXT_NORMAL. */
-    MD_BLOCK_FRONTMATTER
+    MD_BLOCK_FRONTMATTER,
+
+    /* Block component (::component-name{props} ... ::).
+     * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
+     * Detail: Structure MD_BLOCK_COMPONENT_DETAIL. */
+    MD_BLOCK_COMPONENT
 } MD_BLOCKTYPE;
 
 /* Span represents an in-line piece of a document which should be rendered with
@@ -319,6 +324,13 @@ typedef struct MD_SPAN_COMPONENT_DETAIL {
     const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
     MD_SIZE raw_props_size;         /* Size of raw_props. */
 } MD_SPAN_COMPONENT_DETAIL;
+
+/* Detailed info for MD_BLOCK_COMPONENT. */
+typedef struct MD_BLOCK_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "alert", "card"). */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated. */
+    MD_SIZE raw_props_size;         /* Size of raw_props. */
+} MD_BLOCK_COMPONENT_DETAIL;
 
 /* Flags specifying extensions/deviations from CommonMark specification.
  *

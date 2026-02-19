@@ -264,7 +264,7 @@ python3 test/pathological-tests.py -p zig-out/bin/md4x
 
 Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4x` and compares normalized output.
 
-Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `regressions.txt`, `coverage.txt`
+Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `spec-components.txt`, `regressions.txt`, `coverage.txt`
 
 ## Parser API (`md4x.h`)
 
@@ -361,6 +361,7 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 | `MD_BLOCK_TH` | `<th>` | `MD_BLOCK_TD_DETAIL` |
 | `MD_BLOCK_TD` | `<td>` | `MD_BLOCK_TD_DETAIL` |
 | `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | — |
+| `MD_BLOCK_COMPONENT` | _(dynamic tag)_ | `MD_BLOCK_COMPONENT_DETAIL` |
 
 ### Span Types (`MD_SPANTYPE`)
 
@@ -451,6 +452,12 @@ typedef struct MD_SPAN_COMPONENT_DETAIL {
     const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated */
     MD_SIZE raw_props_size;         /* Size of raw_props */
 } MD_SPAN_COMPONENT_DETAIL;
+
+typedef struct MD_BLOCK_COMPONENT_DETAIL {
+    MD_ATTRIBUTE tag_name;          /* Component name (e.g. "alert", "card") */
+    const MD_CHAR* raw_props;       /* Raw props string from {...}, or NULL. Not null-terminated */
+    MD_SIZE raw_props_size;         /* Size of raw_props */
+} MD_BLOCK_COMPONENT_DETAIL;
 ```
 
 ### `MD_ATTRIBUTE`
@@ -488,7 +495,7 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 | `MD_FLAG_UNDERLINE` | `0x4000` | Enable underline (disables `_` emphasis) |
 | `MD_FLAG_HARD_SOFT_BREAKS` | `0x8000` | Force all soft breaks to act as hard breaks |
 | `MD_FLAG_FRONTMATTER` | `0x10000` | Enable frontmatter extension |
-| `MD_FLAG_COMPONENTS` | `0x20000` | Enable inline components (`:name`, `:name[content]{props}`) |
+| `MD_FLAG_COMPONENTS` | `0x20000` | Enable components (inline `:name[content]{props}` and block `::name{props}...::`) |
 
 **Compound flags:**
 
@@ -617,7 +624,7 @@ Produces terminal-friendly output with ANSI escape codes for colors, bold, itali
 
 Produces a Comark AST: `{"type":"comark","value":[...]}`. Each node is either a plain string (text) or a tuple array `[tag, props, ...children]`.
 
-Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked), `hr`, `h1`–`h6`, `pre` (language) with inner `code`, `html_block`, `p`, `table`, `thead`, `tbody`, `tr`, `th` (align), `td` (align), `frontmatter`. Spans: `em`, `strong`, `a` (href, title), `img` (src, alt, title — void), `code`, `del`, `math`, `math-display`, `wikilink` (target), `u`, inline components (dynamic tag name with parsed props). Text: plain strings (merged), `["br",{}]` for hard breaks, `"\n"` for soft breaks.
+Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked), `hr`, `h1`–`h6`, `pre` (language) with inner `code`, `html_block`, `p`, `table`, `thead`, `tbody`, `tr`, `th` (align), `td` (align), `frontmatter`, block components (dynamic tag name with parsed props). Spans: `em`, `strong`, `a` (href, title), `img` (src, alt, title — void), `code`, `del`, `math`, `math-display`, `wikilink` (target), `u`, inline components (dynamic tag name with parsed props). Text: plain strings (merged), `["br",{}]` for hard breaks, `"\n"` for soft breaks.
 
 Code blocks serialize as `["pre", {language}, ["code", {class: "language-X"}, literal]]`. Images are void elements with alt text in props: `["img", {src, alt}]`.
 
@@ -692,6 +699,34 @@ Constraints:
 - Standalone components (no `[content]` or `{props}`) require a hyphen in the name
 
 Property syntax in `{...}`: `key="value"`, `key='value'`, `bool` (boolean true), `#id`, `.class`, `:key='json'` (JSON passthrough). Multiple `.class` values are merged.
+
+HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
+
+### Extension: Block Components (`MD_FLAG_COMPONENTS`)
+
+Block components use the MDC syntax with `::` fences. They are container blocks — content between open and close is parsed as normal markdown.
+
+```
+::alert{type="info"}
+This is **important** content.
+::
+```
+
+- **Basic**: `::name\ncontent\n::` — content is parsed as markdown blocks
+- **With props**: `::name{key="value" bool #id .class}\ncontent\n::`
+- **Empty**: `::divider\n::` — no content between open/close
+- **Nested**: Use more colons for outer containers: `:::outer\n::inner\n::\n:::`
+- **Deep nesting**: `::::` > `:::` > `::` (outer must have more colons than inner)
+
+Constraints:
+- Block components **cannot interrupt paragraphs** (require blank line before)
+- Opening line: `::name` or `::name{props}` (2+ colons, component name, optional props)
+- Closing line: `::` (2+ colons only, no name)
+- A closer with N colons closes the innermost open component with ≤N colons
+- Component name: `[a-zA-Z][a-zA-Z0-9-]*` (same as inline components)
+- Content is always treated as loose (paragraphs wrapped in `<p>`)
+
+Implementation: Block components use the container mechanism (`MD_CONTAINER` with `ch = ':'`). Component info (name/props source offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field.
 
 HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
 
