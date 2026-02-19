@@ -25,6 +25,14 @@ Added a new renderer library (`src/md4x-ansi.c`, `src/md4x-ansi.h`) that convert
 
 The CLI supports it via `--format=ansi`. Pass `MD_ANSI_FLAG_NO_COLOR` to suppress all escape codes.
 
+### WASM target (`zig build wasm`)
+
+Added a WebAssembly build target (`wasm32-wasi`) that produces a ~163K `.wasm` binary. Exposes `md4x_to_html`, `md4x_to_json`, and `md4x_to_ansi` functions callable from JavaScript, along with `md4x_alloc`/`md4x_free` for memory management and `md4x_result_ptr`/`md4x_result_size` for reading output.
+
+### Node.js NAPI addon (`zig build napi`)
+
+Added a Node-API native addon target that produces a `.node` shared library. Exposes `renderToHtml`, `renderToJson`, and `renderToAnsi` functions that take a string and optional parser/renderer flags, returning the rendered output as a string. Requires `node-api-headers` (`zig build napi -Dnapi-include=node_modules/node-api-headers/include`).
+
 ### Frontmatter support (`MD_FLAG_FRONTMATTER`)
 
 Added YAML-style frontmatter parsing as an opt-in extension. When enabled, a `---` fence on the very first line of the document opens a frontmatter block. Content is exposed verbatim via `MD_BLOCK_FRONTMATTER` callbacks and rendered as `<x-frontmatter>` in HTML. CLI flag: `--ffrontmatter`.

@@ -1,7 +1,7 @@
 # MD4X
 
 > **Always keep this file (`AGENTS.md`) updated when making changes to the project.**
-> **Also update `CHANGELOG.md` when adding or changing user-facing features.**
+> **Always update `CHANGELOG.md` when adding removing user-facing features, APIs, build targets, CLI options, or library behavior.**
 
 > C Markdown parser library (fork of [mity/md4c](https://github.com/mity/md4c))
 
@@ -24,11 +24,33 @@ src/
   md4x-json.h          # JSON renderer public API
   md4x-ansi.c          # ANSI terminal renderer library (~450 LoC)
   md4x-ansi.h          # ANSI renderer public API
+  md4x-wasm.c          # WASM exports (alloc/free + renderer wrappers)
+  md4x-napi.c          # Node.js NAPI addon (module registration + renderer wrappers)
 cli/
   md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
   cmdline.c            # Command-line parser (from c-reusables)
   cmdline.h            # Command-line parser API
   md4x.1               # Man page
+packages/md4x/           # npm package
+  package.json           # Package manifest (name: md4x)
+  README.md              # Package README
+  LICENSE.md             # MIT license
+  build/
+    md4x.wasm            # Prebuilt WASM binary
+    md4x.node            # Prebuilt NAPI binary
+  lib/
+    wasm.mjs             # JS entrypoint for WASM (async API, ESM)
+    wasm.d.mts           # TypeScript declarations for WASM API
+    napi.mjs             # JS entrypoint for NAPI (sync API, ESM)
+    napi.d.mts           # TypeScript declarations for NAPI API
+    types.d.ts           # Shared TypeScript types (MDNode, ContainerNode, LeafNode, etc.)
+  test/
+    _suite.mjs           # Shared test suite (vitest, used by both NAPI and WASM tests)
+    napi.test.mjs        # NAPI binding tests
+    wasm.test.mjs        # WASM binding tests
+  bench/
+    _fixtures.mjs        # Benchmark fixture strings (small, medium, large)
+    index.mjs            # Benchmark runner (mitata, compares napi/wasm/md4w/markdown-it)
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
   spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
@@ -47,11 +69,11 @@ scripts/
   build_whitespace_map.py # Whitespace classification generator
   coverity.sh          # Coverity Scan integration
   unicode/             # Unicode data files (CaseFolding.txt, DerivedGeneralCategory.txt)
+package.json             # Root workspace package (bun, workspaces: packages/*)
 build.zig                # Zig build script
 build.zig.zon            # Zig package manifest
 .github/workflows/
   ci-build.yml         # Build + test (Linux/Windows, debug/release, coverage)
-  ci-fuzz.yml          # OSS-Fuzz integration
 ```
 
 ## Building
@@ -68,14 +90,134 @@ Outputs to `zig-out/` (`bin/md4x`, `lib/libmd4x*.a`, `include/md4x*.h`).
 
 The project can also be consumed as a Zig package dependency via `build.zig.zon`.
 
-Produces four static libraries and one executable:
+Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x** — Parser library (compiled with `-DMD4X_USE_UTF8`)
 - **libmd4x-html** — HTML renderer (links against libmd4x)
 - **libmd4x-json** — JSON AST renderer (links against libmd4x)
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
+- **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
+- **md4x.node** — Node.js NAPI addon (`zig build napi -Dnapi-include=...`, output: `packages/md4x/build/md4x.node`)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
+
+### WASM Target
+
+```sh
+zig build wasm                     # outputs zig-out/bin/md4x.wasm (~163K)
+```
+
+Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` optimization. The WASM module requires minimal WASI imports (`fd_close`, `fd_seek`, `fd_write`, `proc_exit`) which can be stubbed for browser use.
+
+**Exported functions:**
+
+| Function | Description |
+|---|---|
+| `md4x_alloc(size) -> ptr` | Allocate memory in WASM linear memory |
+| `md4x_free(ptr)` | Free previously allocated memory |
+| `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error) |
+| `md4x_to_json(ptr, size) -> int` | Render to JSON AST |
+| `md4x_to_ansi(ptr, size) -> int` | Render to ANSI |
+| `md4x_result_ptr() -> ptr` | Get output buffer pointer (after render) |
+| `md4x_result_size() -> size` | Get output buffer size (after render) |
+
+**Usage from JS (via `lib/wasm.mjs` wrapper):**
+
+```js
+import { initWasm, renderToHtml } from 'md4x/wasm';
+
+await initWasm(); // load WASM binary (call once before using render methods)
+
+const html = renderToHtml('# Hello'); // sync after init
+```
+
+`initWasm(input?)` accepts an optional input: `ArrayBuffer`, `Uint8Array`, `WebAssembly.Module`, `Response`, or `Promise<Response>`. When called with no arguments in Node.js, it reads the bundled `.wasm` file from disk. All render methods are **sync** after initialization. All extensions are enabled by default (`MD_DIALECT_ALL`).
+
+### NAPI Target (Node.js)
+
+```sh
+bunx nypm add node-api-headers
+zig build napi -Dnapi-include=node_modules/node-api-headers/include
+```
+
+Builds a native `.node` shared library (output: `zig-out/lib/md4x.node`).
+
+**Exported functions (C-level, raw strings):**
+
+| Function | Signature |
+|---|---|
+| `renderToHtml` | `(input: string) => string` |
+| `renderToJson` | `(input: string) => string` (JSON string) |
+| `renderToAnsi` | `(input: string) => string` |
+
+**Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
+
+```js
+import { renderToHtml } from 'md4x/napi';
+
+const html = renderToHtml('# Hello');
+```
+
+The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). The C binding returns raw strings; the JS wrapper (`lib/napi.mjs`) parses JSON output from `renderToJson` into a `ContainerNode` object.
+
+### JS Package Exports
+
+Configured in `packages/md4x/package.json` via `exports`:
+
+| Subpath | Module | Description |
+|---|---|---|
+| `md4x` (bare) | `lib/napi.mjs` (node) / `lib/wasm.mjs` (default) | Auto-selects NAPI on Node.js, WASM elsewhere |
+| `md4x/wasm` | `lib/wasm.mjs` | WASM-based API (sync after `initWasm()`) |
+| `md4x/napi` | `lib/napi.mjs` | Sync NAPI-based API (ESM only) |
+
+All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer flag configuration is exposed to JS consumers.
+
+**JS API functions:**
+
+| Function | NAPI | WASM |
+|---|---|---|
+| `initWasm(input?)` | — | `Promise<void>` (call once before render) |
+| `renderToHtml(input: string)` | `string` | `string` |
+| `renderToJson(input: string)` | `ContainerNode` | `ContainerNode` |
+| `renderToAnsi(input: string)` | `string` | `string` |
+
+`renderToJson` parses the JSON string from the C renderer and returns a typed `ContainerNode` object (the document root). See `lib/types.d.ts` for the full `MDNode` type hierarchy (`ContainerNode`, `LeafNode`, `BlockType`, `SpanType`, `TextType`).
+
+### TypeScript Types (`lib/types.d.ts`)
+
+The package exports TypeScript types for the JSON AST:
+
+- `BlockType` — Union of block node type strings (e.g. `"document"`, `"heading"`, `"paragraph"`)
+- `SpanType` — Union of span node type strings (e.g. `"emph"`, `"strong"`, `"link"`)
+- `TextType` — Union of text node type strings (`"text"`, `"linebreak"`, `"softbreak"`, `"html_inline"`)
+- `NodeType` — `BlockType | SpanType | TextType`
+- `LeafNode` — Nodes with `literal` and no `children` (code_block, html_block, code, text, html_inline)
+- `ContainerNode` — Nodes with `children` and no `literal` (all other nodes, with optional properties like `level`, `destination`, etc.)
+- `MDNode` — `LeafNode | ContainerNode`
+
+### JS Package Testing
+
+Tests use vitest with a shared test suite (`packages/md4x/test/_suite.mjs`) that validates both NAPI and WASM bindings:
+
+```sh
+pnpm vitest run packages/md4x/test/napi.test.mjs   # NAPI tests
+pnpm vitest run packages/md4x/test/wasm.test.mjs   # WASM tests
+```
+
+### JS Package Benchmarks
+
+Benchmarks use `mitata` and compare against `md4w` and `markdown-it`:
+
+```sh
+node packages/md4x/bench/index.mjs
+```
+
+### Workspace Setup
+
+The root `package.json` defines a bun workspace (`"workspaces": ["packages/*"]`) with:
+- `node-api-headers` — Required for NAPI builds
+- `prettier` — Code formatting
+- Package manager: `bun@1.3.9`
 
 ## Testing
 

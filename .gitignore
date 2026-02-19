@@ -56,6 +56,9 @@ dkms.conf
 *.pyc
 __pycache__/
 
+# Node.js
+node_modules
+
 # Temp files
 *.swp
 *.tmp
@@ -85,3 +88,4 @@ stamp-*
 *.stamp
 *.stamp-*
 .Tpo
+

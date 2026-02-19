@@ -116,4 +116,84 @@ pub fn build(b: *std.Build) void {
     }
     const run_step = b.step("run", "Run md4x CLI");
     run_step.dependOn(&run_cmd.step);
+
+    // --- WASM library ---
+
+    const wasm_target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .wasi,
+    });
+
+    const md4x_wasm = b.addExecutable(.{
+        .name = "md4x",
+        .root_module = b.createModule(.{
+            .target = wasm_target,
+            .optimize = .ReleaseSmall,
+            .link_libc = true,
+            .strip = true,
+        }),
+    });
+    md4x_wasm.rdynamic = true;
+    md4x_wasm.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
+    md4x_wasm.addCSourceFiles(.{
+        .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-wasm.c" },
+        .flags = c_flags,
+    });
+    md4x_wasm.addIncludePath(b.path("src"));
+    md4x_wasm.root_module.export_symbol_names = &.{
+        "md4x_alloc",
+        "md4x_free",
+        "md4x_to_html",
+        "md4x_to_json",
+        "md4x_to_ansi",
+        "md4x_result_ptr",
+        "md4x_result_size",
+    };
+
+    const wasm_install = b.addInstallArtifact(md4x_wasm, .{
+        .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
+    });
+    const wasm_log = b.addSystemCommand(&.{ "echo", "Built WASM -> packages/md4x/build/md4x.wasm" });
+    wasm_log.step.dependOn(&wasm_install.step);
+    const wasm_step = b.step("wasm", "Build WASM library");
+    wasm_step.dependOn(&wasm_log.step);
+
+    // --- NAPI shared library ---
+
+    const napi_include = b.option([]const u8, "napi-include", "Path to node-api-headers include directory") orelse "node_modules/node-api-headers/include";
+
+    {
+        const include_path = napi_include;
+        const md4x_napi = b.addLibrary(.{
+            .linkage = .dynamic,
+            .name = "md4x",
+            .root_module = b.createModule(.{
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+                .strip = strip,
+            }),
+        });
+        md4x_napi.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
+        md4x_napi.addCSourceFiles(.{
+            .files = &.{ "src/md4x-html.c", "src/md4x-json.c", "src/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
+            .flags = c_flags ++ &[_][]const u8{"-DNODE_GYP_MODULE_NAME=md4x"},
+        });
+        md4x_napi.addIncludePath(b.path("src"));
+        md4x_napi.addIncludePath(.{ .cwd_relative = include_path });
+        md4x_napi.linker_allow_shlib_undefined = true;
+
+        const napi_install = b.addInstallArtifact(md4x_napi, .{
+            .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
+            .dest_sub_path = "md4x.node",
+        });
+        const napi_log = b.addSystemCommand(&.{ "echo", "Built NAPI -> packages/md4x/build/md4x.node" });
+        napi_log.step.dependOn(&napi_install.step);
+        const napi_step = b.step("napi", "Build Node.js NAPI addon");
+        napi_step.dependOn(&napi_log.step);
+
+        // Make default install also build WASM and NAPI
+        b.getInstallStep().dependOn(wasm_step);
+        b.getInstallStep().dependOn(napi_step);
+    }
 }
