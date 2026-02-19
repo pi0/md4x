@@ -25,11 +25,11 @@ jobs:
       - name: Build
         run: zig build
 
-      # - name: Test
-      #   run: bun ./scripts/run-tests.ts
+      - name: Tests
+        run: bun ./scripts/run-tests.ts
 
-      # - name: Test (vitest)
-      #   run: bun vitest run
+      - name: Test (vitest)
+        run: bun test
 
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

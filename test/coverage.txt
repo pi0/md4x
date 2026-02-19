@@ -82,7 +82,7 @@ Example of 1-byte UTF-8 sequence (U+0009):
 ```````````````````````````````` example
 x→__foo__→
 .
-<p>x <strong>foo</strong></p>
+<p>x	<u><u>foo</u></u></p>
 ````````````````````````````````
 (The initial `x` to suppress indented code block.)
 
@@ -90,14 +90,14 @@ Example of 2-byte UTF-8 sequence (U+00A0):
 ```````````````````````````````` example
  __foo__
 .
-<p> <strong>foo</strong> </p>
+<p><u><u>foo</u></u></p>
 ````````````````````````````````
 
 Example of 3-byte UTF-8 sequence (U+2000):
 ```````````````````````````````` example
  __foo__
 .
-<p> <strong>foo</strong> </p>
+<p> <u><u>foo</u></u></p>
 ````````````````````````````````
 
 (AFAIK, there is no 4-byte UTF-8 whitespace.)
@@ -110,28 +110,28 @@ Example of 1-byte UTF-8 sequence (U+002E):
 ```````````````````````````````` example
 .__foo__.
 .
-<p>.<strong>foo</strong>.</p>
+<p>.<u><u>foo</u></u>.</p>
 ````````````````````````````````
 
 Example of 2-byte UTF-8 sequence (U+00B7):
 ```````````````````````````````` example
 ·__foo__·
 .
-<p>·<strong>foo</strong>·</p>
+<p>·<u><u>foo</u></u>·</p>
 ````````````````````````````````
 
 Example of 3-byte UTF-8 sequence (U+0C84):
 ```````````````````````````````` example
 ಄__foo__಄
 .
-<p>಄<strong>foo</strong>಄</p>
+<p>಄<u><u>foo</u></u>಄</p>
 ````````````````````````````````
 
 Example of 4-byte UTF-8 sequence (U+1039F):
 ```````````````````````````````` example
 𐎟__foo__𐎟
 .
-<p>𐎟<strong>foo</strong>𐎟</p>
+<p>𐎟<u><u>foo</u></u>𐎟</p>
 ````````````````````````````````
 
 
@@ -291,7 +291,5 @@ main(int argc, char** argv)
 ```````````````````````````````` example
 foo  bar → baz
 .
-<p>foo bar baz</p>
-.
---fcollapse-whitespace
+<p>foo  bar → baz</p>
 ````````````````````````````````

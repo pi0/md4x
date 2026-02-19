@@ -26,10 +26,6 @@ www.example.com
 <p><a href="mailto:john.doe@gmail.com">john.doe@gmail.com</a>
 <a href="https://www.example.com">https://www.example.com</a>
 <a href="http://www.example.com">www.example.com</a></p>
-.
---fpermissive-email-autolinks
---fpermissive-url-autolinks
---fpermissive-www-autolinks
 ````````````````````````````````
 
 However as this syntax also brings some more danger of false positives, more
@@ -51,10 +47,6 @@ Therefore these are not autolinks because `:` precedes or follows:
 <p>:john.doe@gmail.com
 :https://www.example.com
 :www.example.com</p>
-.
---fpermissive-email-autolinks
---fpermissive-url-autolinks
---fpermissive-www-autolinks
 ````````````````````````````````
 
 Allowed punctuation right before autolink includes only opening brackets `(`,
@@ -68,10 +60,6 @@ Allowed punctuation right before autolink includes only opening brackets `(`,
 <p>[<a href="mailto:john.doe@gmail.com">john.doe@gmail.com</a>
 (<a href="https://www.example.com">https://www.example.com</a>
 {<a href="http://www.example.com">www.example.com</a></p>
-.
---fpermissive-email-autolinks
---fpermissive-url-autolinks
---fpermissive-www-autolinks
 ````````````````````````````````
 
 Correspondingly, the respective closing brackets may follow the autolinks.
@@ -84,10 +72,6 @@ www.example.com}
 <p><a href="mailto:john.doe@gmail.com">john.doe@gmail.com</a>]
 <a href="https://www.example.com">https://www.example.com</a>)
 <a href="http://www.example.com">www.example.com</a>}</p>
-.
---fpermissive-email-autolinks
---fpermissive-url-autolinks
---fpermissive-www-autolinks
 ````````````````````````````````
 
 Some other punctuation characters are also allowed after the autolink so that
@@ -98,8 +82,6 @@ the autolinks may appear at the end of a sentence or clause (`.`, `!`, `?`,
 Have you ever visited http://zombo.com?
 .
 <p>Have you ever visited <a href="http://zombo.com">http://zombo.com</a>?</p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 Markdown emphasis mark can also precede (but only opening mark) or follow
@@ -109,8 +91,6 @@ Markdown emphasis mark can also precede (but only opening mark) or follow
 You may contact me at **john.doe@example.com**.
 .
 <p>You may contact me at <strong><a href="mailto:john.doe@example.com">john.doe@example.com</a></strong>.</p>
-.
---fpermissive-email-autolinks
 ````````````````````````````````
 
 However the following is not, because in this example `*` is literal `*` and
@@ -123,8 +103,6 @@ john.doe@example.com*
 .
 <p>*john.doe@example.com</p>
 <p>john.doe@example.com*</p>
-.
---fpermissive-email-autolinks
 ````````````````````````````````
 
 ## Permissive URL Autolinks
@@ -147,8 +125,6 @@ ssh://example.com
 <a href="http://example.com">http://example.com</a>
 <a href="ftp://example.com">ftp://example.com</a></p>
 <p>ssh://example.com</p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 The host is a sequence made of alphanumerical characters, `.`, `-` and `_`.
@@ -166,8 +142,6 @@ character.
 https://example.com/images/branding/logo_272x92.png
 .
 <p><a href="https://example.com/images/branding/logo_272x92.png">https://example.com/images/branding/logo_272x92.png</a></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 Then optionally query may follow. The query is made of `?` and then with
@@ -179,8 +153,6 @@ characters, and also brackets `(` have to be balanced `)`.
 https://www.google.com/search?q=md4c+markdown
 .
 <p><a href="https://www.google.com/search?q=md4c+markdown">https://www.google.com/search?q=md4c+markdown</a></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 And finally there may be an optional fragment.
@@ -189,8 +161,6 @@ And finally there may be an optional fragment.
 https://example.com#fragment
 .
 <p><a href="https://example.com#fragment">https://example.com#fragment</a></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 And finally one complex example:
@@ -205,8 +175,6 @@ Anonymous FTP is available at ftp://foo.bar.baz.
 <p><a href="http://commonmark.org">http://commonmark.org</a></p>
 <p>(Visit <a href="https://encrypted.google.com/search?q=Markup+(business)">https://encrypted.google.com/search?q=Markup+(business)</a>)</p>
 <p>Anonymous FTP is available at <a href="ftp://foo.bar.baz">ftp://foo.bar.baz</a>.</p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 
@@ -220,8 +188,6 @@ of providing an explicit scheme, they have to begin with `www.`.
 www.google.com/search?q=Markdown
 .
 <p><a href="http://www.google.com/search?q=Markdown">www.google.com/search?q=Markdown</a></p>
-.
---fpermissive-www-autolinks
 ````````````````````````````````
 
 
@@ -241,8 +207,6 @@ following limitations to the e-mail addresses:
    john__doe@example.com
    .
    <p>john__doe@example.com</p>
-   .
-   --fpermissive-email-autolinks
    ````````````````````````````````
 
 2. Same rules for domain as for URL and WWW autolinks apply.

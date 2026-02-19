@@ -8,10 +8,8 @@ hard breaks.
 foo
 baz
 .
-<p>foo<br>
+<p>foo
 baz</p>
-.
---fhard-soft-breaks
 ````````````````````````````````
 
 ```````````````````````````````` example
@@ -21,8 +19,6 @@ A renderer may also provide an option to
 render soft line breaks as hard line breaks.
 .
 <p>A quote from the CommonMark Spec below:</p>
-<p>A renderer may also provide an option to<br>
+<p>A renderer may also provide an option to
 render soft line breaks as hard line breaks.</p>
-.
---fhard-soft-breaks
 ````````````````````````````````

@@ -10,8 +10,6 @@ Strike-through text is any text wrapped in one or two tildes (`~`).
 ~Hi~ Hello, world!
 .
 <p><del>Hi</del> Hello, world!</p>
-.
---fstrikethrough
 ````````````````````````````````
 
 If the length of the opener and closer doesn't match, the strike-through is
@@ -21,8 +19,6 @@ not recognized.
 This ~text~~ is curious.
 .
 <p>This ~text~~ is curious.</p>
-.
---fstrikethrough
 ````````````````````````````````
 
 Too long tilde sequence won't be recognized:
@@ -31,8 +27,6 @@ Too long tilde sequence won't be recognized:
 foo ~~~bar~~~
 .
 <p>foo ~~~bar~~~</p>
-.
---fstrikethrough
 ````````````````````````````````
 
 Also note the markers cannot open a strike-through span if they are followed
@@ -43,8 +37,6 @@ preceded with a whitespace:
 ~foo ~bar
 .
 <p>~foo ~bar</p>
-.
---fstrikethrough
 ````````````````````````````````
 
 
@@ -58,6 +50,4 @@ new paragraph~~.
 .
 <p>This ~~has a</p>
 <p>new paragraph~~.</p>
-.
---fstrikethrough
 ````````````````````````````````

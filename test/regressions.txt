@@ -52,8 +52,7 @@ att2=tok2> bar</p>
 > [foo bar]
 .
 <blockquote>
-<p><a href="/url">foo
-bar</a></p>
+<p><a href="/url">foo bar</a></p>
 </blockquote>
 ````````````````````````````````
 
@@ -126,7 +125,7 @@ a*b**c*
 ```````````````````````````````` example
 __x_ _x___
 .
-<p><em><em>x</em> <em>x</em></em>_</p>
+<p><u><u>x</u> <u>x</u></u>_</p>
 ````````````````````````````````
 
 
@@ -158,8 +157,6 @@ __x_ _x___
 <li>x|x
 ---|---</li>
 </ul>
-.
---ftables
 ````````````````````````````````
 (Not a table, because the underline has wrong indentation and is not part of the
 list item.)
@@ -181,8 +178,6 @@ x|x
 </li>
 </ul>
 <p>x|x</p>
-.
---ftables
 ````````````````````````````````
 (Here the underline has the right indentation so the table is detected.
 But the last line is not part of it due its indentation.)
@@ -212,8 +207,6 @@ But the last line is not part of it due its indentation.)
 </tr>
 </tbody>
 </table>
-.
---ftables
 ````````````````````````````````
 
 
@@ -223,16 +216,12 @@ But the last line is not part of it due its indentation.)
 This is [link](http://github.com/).
 .
 <p>This is <a href="http://github.com/">link</a>.</p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 ```````````````````````````````` example
 This is [link](http://github.com/)X
 .
 <p>This is <a href="http://github.com/">link</a>X</p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 
@@ -250,24 +239,18 @@ This is [link](http://github.com/)X
 ~`foo`~
 .
 <p><del><code>foo</code></del></p>
-.
---fstrikethrough
 ````````````````````````````````
 
 ```````````````````````````````` example
 ~*foo*~
 .
 <p><del><em>foo</em></del></p>
-.
---fstrikethrough
 ````````````````````````````````
 
 ```````````````````````````````` example
 *~foo~*
 .
 <p><em><del>foo</del></em></p>
-.
---fstrikethrough
 ````````````````````````````````
 
 
@@ -293,8 +276,6 @@ This is [link](http://github.com/)X
 *(http://example.com)*
 .
 <p><em>(<a href="http://example.com">http://example.com</a>)</em></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 
@@ -317,7 +298,6 @@ foo
 <p>foo</p>
 <blockquote>
 </blockquote>
-
 ````````````````````````````````
 
 
@@ -353,7 +333,6 @@ foo
 *a **b c* d**
 .
 <p><em>a <em><em>b c</em> d</em></em></p>
-
 ````````````````````````````````
 
 
@@ -394,8 +373,6 @@ A | B
 </tr>
 </tbody>
 </table>
-.
---ftables
 ````````````````````````````````
 
 
@@ -405,7 +382,6 @@ A | B
 ***foo *bar baz***
 .
 <p>*<strong>foo <em>bar baz</em></strong></p>
-
 ````````````````````````````````
 
 
@@ -453,8 +429,6 @@ A | B
 </tr>
 </thead>
 </table>
-.
---ftables
 ````````````````````````````````
 
 
@@ -492,8 +466,6 @@ bar
 [http://example.com](http://example.com)
 .
 <p><a href="http://example.com">http://example.com</a></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 
@@ -593,8 +565,6 @@ x
 </tr>
 </tbody>
 </table>
-.
---ftables
 ````````````````````````````````
 
 
@@ -620,8 +590,6 @@ x
 </tbody>
 </table>
 <p><x-wikilink data-target=" "> </x-wikilink><x-wikilink data-target="![|]()"><img src="" alt="|"></x-wikilink></p>
-.
---ftables --fwiki-links
 ````````````````````````````````
 
 
@@ -663,14 +631,14 @@ _*__-_-
 
 _*xx-_-
 .
-<p><strong>!_!</strong></p>
-<p><strong>!x!</strong></p>
+<p><u><u>!_!</u></u></p>
+<p><u><u>!x!</u></u></p>
 <p><strong>!*!</strong></p>
-<hr />
-<p><em><em>__</em></em>*</p>
-<p><em><em>xx</em></em>*</p>
-<p><em>*__-</em>-</p>
-<p><em>*xx-</em>-</p>
+<hr>
+<p><u><em>__</em></u>*</p>
+<p><u><em>xx</em></u>*</p>
+<p><u>*__-</u>-</p>
+<p><u>*xx-</u>-</p>
 ````````````````````````````````
 
 
@@ -680,8 +648,6 @@ _*xx-_-
 ~foo ~bar baz~
 .
 <p>~foo <del>bar baz</del></p>
-.
---fstrikethrough
 ````````````````````````````````
 
 
@@ -723,8 +689,6 @@ https://example.com/dir/
 .
 <p><a href="https://example.com/">https://example.com/</a>
 <a href="https://example.com/dir/">https://example.com/dir/</a></p>
-.
---fpermissive-url-autolinks
 ````````````````````````````````
 
 
@@ -737,8 +701,6 @@ copy "~user1/file" to "~user2/file"
 .
 <p>copy ~user1/file to ~user2/file</p>
 <p>copy &quot;~user1/file&quot; to &quot;~user2/file&quot;</p>
-.
---fstrikethrough
 ````````````````````````````````
 
 

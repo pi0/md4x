@@ -11,8 +11,6 @@ A math span is is any text wrapped in dollars or double dollars (`$...$` or
 $a+b=c$ Hello, world!
 .
 <p><x-equation>a+b=c</x-equation> Hello, world!</p>
-.
---flatex-math
 ````````````````````````````````
 
 However the LaTeX math spans cannot be nested:
@@ -21,8 +19,6 @@ However the LaTeX math spans cannot be nested:
 $$foo $bar$ baz$$
 .
 <p>$$foo <x-equation>bar</x-equation> baz$$</p>
-.
---flatex-math
 ````````````````````````````````
 
 The opening delimiter cannot be preceded with an alphanumerical character:
@@ -31,8 +27,6 @@ The opening delimiter cannot be preceded with an alphanumerical character:
 x$a+b=c$
 .
 <p>x$a+b=c$</p>
-.
---flatex-math
 ````````````````````````````````
 
 Similarly the closing delimiter cannot be followed with an alphanumerical character:
@@ -41,8 +35,6 @@ Similarly the closing delimiter cannot be followed with an alphanumerical charac
 $a+b=c$x
 .
 <p>$a+b=c$x</p>
-.
---flatex-math
 ````````````````````````````````
 
 If the double dollar sign is used, the math span is a display math span.
@@ -51,8 +43,6 @@ If the double dollar sign is used, the math span is a display math span.
 This is a display equation: $$\int_a^b x dx$$.
 .
 <p>This is a display equation: <x-equation type="display">\int_a^b x dx</x-equation>.</p>
-.
---flatex-math
 ````````````````````````````````
 
 Math spans may span multiple lines as they are normal spans:
@@ -64,8 +54,6 @@ f(x) dx
 $$
 .
 <p><x-equation type="display"> \int_a^b f(x) dx </x-equation></p>
-.
---flatex-math
 ````````````````````````````````
 
 Note though that many (simple) renderers may output the math spans just as a

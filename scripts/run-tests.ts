@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const selfPath = dirname(fileURLToPath(import.meta.url));
 const projectDir = resolve(selfPath, "..");
 const testDir = join(projectDir, "test");
-const program = resolve("cli", "md4x");
+const program = resolve("zig-out", "bin", "md4x");
 
 let errCount = 0;
 
