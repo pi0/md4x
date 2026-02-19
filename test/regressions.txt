@@ -192,7 +192,7 @@ But the last line is not part of it due its indentation.)
 |---|---|
 |x|
 .
-<p>] http://x.x <em>x</em></p>
+<p>] <a href="http://x.x">http://x.x</a> <em>x</em></p>
 <table>
 <thead>
 <tr>
