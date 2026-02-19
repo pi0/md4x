@@ -1,7 +1,9 @@
 
 # 📄 MD4X
 
-Fast markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
+Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
+
+**[> Online Playground](https://pi0.github.io/md4x)**
 
 ## CLI
 
