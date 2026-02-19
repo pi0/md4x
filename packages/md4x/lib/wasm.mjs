@@ -45,7 +45,11 @@ export function renderToHtml(input) {
 }
 
 export function renderToJson(input) {
-  return JSON.parse(render(getExports(), getExports().md4x_to_json, input));
+  return render(getExports(), getExports().md4x_to_json, input);
+}
+
+export function parseAST(input) {
+  return JSON.parse(renderToJson(input));
 }
 
 export function renderToAnsi(input) {

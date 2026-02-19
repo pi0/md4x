@@ -19,7 +19,11 @@ export function renderToHtml(input) {
 }
 
 export function renderToJson(input) {
-  return JSON.parse(binding.renderToJson(input));
+  return binding.renderToJson(input);
+}
+
+export function parseAST(input) {
+  return JSON.parse(renderToJson(input));
 }
 
 export function renderToAnsi(input) {

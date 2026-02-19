@@ -185,7 +185,7 @@ import { renderToHtml } from 'md4x/napi';
 const html = renderToHtml('# Hello');
 ```
 
-The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). The C binding returns raw strings; the JS wrapper (`lib/napi.mjs`) parses JSON output from `renderToJson` into a `ComarkTree` object.
+The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToJson` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
 
 The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node` with a fallback to `md4x.node` for development builds.
 
@@ -207,10 +207,11 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 |---|---|---|
 | `initWasm(input?)` | — | `Promise<void>` (call once before render) |
 | `renderToHtml(input: string)` | `string` | `string` |
-| `renderToJson(input: string)` | `ComarkTree` | `ComarkTree` |
+| `renderToJson(input: string)` | `string` | `string` |
+| `parseAST(input: string)` | `ComarkTree` | `ComarkTree` |
 | `renderToAnsi(input: string)` | `string` | `string` |
 
-`renderToJson` parses the JSON string from the C renderer and returns a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
+`renderToJson` returns the raw JSON string from the C renderer. `parseAST` calls `renderToJson` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
 
 ### TypeScript Types (`lib/types.d.ts`)
 

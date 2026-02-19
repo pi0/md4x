@@ -32,18 +32,39 @@ npx md4x -t html -o out.html doc.md         # Write to file instead of stdout
 
 ## JavaScript
 
-Available for Node.js using a native addon. Supports both ESM and CJS.
+Available as a native Node.js addon (NAPI) for maximum performance, or as a portable WASM module that works in any JavaScript runtime (Node.js, Deno, Bun, browsers, edge workers, etc.).
+
+The bare `md4x` import auto-selects NAPI on Node.js and WASM elsewhere.
 
 ```js
-import { renderToHtml, renderToJson, renderToAnsi } from "md4x";
-
-// import { ... } from "md4x/napi";
-// import { initWasm } from "md4x/wasm";
+import { renderToHtml, renderToJson, parseAST, renderToAnsi } from "md4x";
 
 const html = renderToHtml("# Hello, **world**!");
-const json = renderToJson("# Hello, **world**!");
+const json = renderToJson("# Hello, **world**!"); // raw JSON string
+const ast = parseAST("# Hello, **world**!"); // parsed ComarkTree object
 const ansi = renderToAnsi("# Hello, **world**!");
 ```
+
+#### NAPI (Node.js native)
+
+Synchronous, zero-overhead native addon. Best performance for server-side use.
+
+```js
+import { renderToHtml } from "md4x/napi";
+```
+
+#### WASM (universal)
+
+Works anywhere with WebAssembly support. Requires a one-time async initialization.
+
+```js
+import { initWasm, renderToHtml } from "md4x/wasm";
+
+await initWasm(); // call once before rendering
+const html = renderToHtml("# Hello");
+```
+
+`initWasm()` accepts an optional input (`ArrayBuffer`, `Response`, `WebAssembly.Module`, or `Promise<Response>`). When called with no arguments, it loads the bundled `.wasm` file automatically.
 
 ### Benchmarks
 

@@ -29,8 +29,13 @@ for (const [name, input] of Object.entries(inputs)) {
     summary(() => {
       bench(`md4x (napi) json (${name})`, () => napi.renderToJson(input));
       bench(`md4x (wasm) json (${name})`, () => wasm.renderToJson(input));
-      bench(`md4w json (${name})`, () => md4w.mdToJSON(input));
-      bench(`markdown-it json (${name})`, () =>
+    });
+
+    summary(() => {
+      bench(`md4x (napi) parseAST (${name})`, () => napi.parseAST(input));
+      bench(`md4x (wasm) parseAST (${name})`, () => wasm.parseAST(input));
+      bench(`md4w parseAST (${name})`, () => md4w.mdToJSON(input));
+      bench(`markdown-it parseAST (${name})`, () =>
         JSON.stringify(markdownIt.parse(input, {})),
       );
     });

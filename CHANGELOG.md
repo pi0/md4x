@@ -3,6 +3,10 @@
 
 ## Next
 
+### `renderToJson` returns raw string, new `parseAST` function
+
+**Breaking:** `renderToJson` now returns the raw JSON string instead of a parsed `ComarkTree` object. A new `parseAST` function is added that calls `renderToJson` and parses the result into a `ComarkTree` object (equivalent to the previous `renderToJson` behavior).
+
 ### JSON renderer outputs Comark AST format
 
 **Breaking:** The JSON renderer (`md_json` / `renderToJson`) now outputs the Comark AST format instead of the previous mdast/unist-like format. The root is `{"type":"comark","value":[...]}` where each node is either a plain string (text) or a tuple array `["tag", {props}, ...children]`.

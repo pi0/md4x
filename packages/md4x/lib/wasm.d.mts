@@ -4,5 +4,6 @@ export type { ComarkTree, ComarkNode, ComarkElement, ComarkText, ComarkElementAt
 
 export declare function initWasm(input?: ArrayBuffer | Uint8Array | WebAssembly.Module | Response | Promise<Response>): Promise<void>;
 export declare function renderToHtml(input: string): string;
-export declare function renderToJson(input: string): ComarkTree;
+export declare function renderToJson(input: string): string;
+export declare function parseAST(input: string): ComarkTree;
 export declare function renderToAnsi(input: string): string;
