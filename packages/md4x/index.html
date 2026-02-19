@@ -252,6 +252,8 @@ Indented block:
 | Wiki Links      |   ✓    |  \`[[target]]\`    |
 | Underline       |   ✓    |    \`__text__\`     |
 | Frontmatter     |   ✓    |    YAML \`---\`     |
+| Components      |   ✓    | Inline + block     |
+| Attributes      |   ✓    |  \`{.class #id}\`  |
 
 
 ## Wiki Links
@@ -278,6 +280,83 @@ Line two (hard break above).
 
 Line three with backslash\\
 Line four (hard break above).
+
+## LaTeX Math
+
+Inline math: $E = mc^2$ and $\\alpha + \\beta = \\gamma$.
+
+Display math:
+
+$$
+\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
+$$
+
+## Code Block Metadata
+
+Code with filename and highlighted lines:
+
+\`\`\`js [greet.js] {1,3}
+function greet(name) {
+  return \\\`Hello, \\\${name}!\\\`;
+}
+\`\`\`
+
+\`\`\`ts [server.ts] {2-4}
+import { serve } from "bun";
+
+serve({
+  port: 3000,
+  fetch(req) {
+    return new Response("Hello!");
+  },
+});
+\`\`\`
+
+## Inline Components
+
+Standalone: :icon-star :icon-heart
+
+With content: :badge[New] :badge[v2.0]{color="blue"}
+
+With props only: :tooltip{text="Hover me"}
+
+## Block Components
+
+::alert{type="info"}
+This is an **info** alert with _inline_ formatting.
+::
+
+::card{title="Features"}
+- Fast parsing
+- Low memory
+- Streaming output
+::
+
+Nested components:
+
+:::layout{cols="2"}
+::card{title="Left"}
+First column content.
+::
+
+::card{title="Right"}
+Second column content.
+::
+:::
+
+## Inline Attributes
+
+**bold**{.highlight} and *italic*{#myid} and \`code\`{.lang-ts}
+
+~~deleted~~{.old} and __underline__{.accent}
+
+[Link](https://github.com){target="_blank" .external}
+
+## Span Attributes
+
+[Styled text]{.primary} and [**bold** inside span]{.fancy}
+
+[Warning: check this]{.badge .rounded #alert-1}
 
 `;
 
