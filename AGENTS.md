@@ -20,21 +20,15 @@ src/
   md4x-html.h          # HTML renderer public API
   entity.c             # HTML entity lookup table (generated)
   entity.h             # Entity header
-  md4x.pc.in           # pkg-config for libmd4x
-  md4x-html.pc.in      # pkg-config for libmd4x-html
   md4x-json.c          # JSON AST renderer library (~580 LoC)
   md4x-json.h          # JSON renderer public API
-  md4x-json.pc.in      # pkg-config for libmd4x-json
   md4x-ansi.c          # ANSI terminal renderer library (~450 LoC)
   md4x-ansi.h          # ANSI renderer public API
-  md4x-ansi.pc.in      # pkg-config for libmd4x-ansi
-  CMakeLists.txt       # Builds libmd4x + libmd4x-html + libmd4x-json + libmd4x-ansi
 cli/
   md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
   cmdline.c            # Command-line parser (from c-reusables)
   cmdline.h            # Command-line parser API
   md4x.1               # Man page
-  CMakeLists.txt       # Builds md4x executable
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
   spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
@@ -53,6 +47,8 @@ scripts/
   build_whitespace_map.py # Whitespace classification generator
   coverity.sh          # Coverity Scan integration
   unicode/             # Unicode data files (CaseFolding.txt, DerivedGeneralCategory.txt)
+build.zig                # Zig build script
+build.zig.zon            # Zig package manifest
 .github/workflows/
   ci-build.yml         # Build + test (Linux/Windows, debug/release, coverage)
   ci-fuzz.yml          # OSS-Fuzz integration
@@ -60,41 +56,38 @@ scripts/
 
 ## Building
 
-Uses CMake. No external dependencies beyond the C standard library.
+No external dependencies beyond the C standard library. Uses Zig build system.
 
 ```sh
-mkdir build && cd build
-cmake ..
-make
+zig build                          # build all (defaults to ReleaseFast)
+zig build -Doptimize=Debug         # debug build
+zig build run -- --help            # run md4x CLI
 ```
 
-Produces four libraries and one executable:
+Outputs to `zig-out/` (`bin/md4x`, `lib/libmd4x*.a`, `include/md4x*.h`).
+
+The project can also be consumed as a Zig package dependency via `build.zig.zon`.
+
+Produces four static libraries and one executable:
 - **libmd4x** — Parser library (compiled with `-DMD4X_USE_UTF8`)
 - **libmd4x-html** — HTML renderer (links against libmd4x)
 - **libmd4x-json** — JSON AST renderer (links against libmd4x)
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 
-CMake options:
-- `BUILD_SHARED_LIBS=ON|OFF` — Shared (default Linux) vs static (default Windows)
-- `BUILD_MD4X_CLI=ON|OFF` — Whether to build the CLI (default ON, `BUILD_MD2HTML_EXECUTABLE` is a backward-compat alias)
-- Default build type is `Release` (Debug is ~2x slower)
-
-Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement` (GCC/Clang), `/W3` (MSVC)
-
-CMake exports `md4x::md4x`, `md4x::md4x-html`, `md4x::md4x-json`, and `md4x::md4x-ansi` targets for `find_package(md4x)`.
+Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
 
 ## Testing
 
 ```sh
-# From build directory:
-python3 ../scripts/run-tests.py
+# Run all test suites:
+python3 scripts/run-tests.py
 
 # Individual test suite:
-python3 test/run-testsuite.py -s test/spec.txt -p build/cli/md4x
+python3 test/run-testsuite.py -s test/spec.txt -p zig-out/bin/md4x
 
 # Pathological inputs only:
-python3 test/pathological-tests.py -p build/cli/md4x
+python3 test/pathological-tests.py -p zig-out/bin/md4x
 ```
 
 Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4x` and compares normalized output.

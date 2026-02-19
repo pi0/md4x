@@ -6,4 +6,12 @@
 
 See [CHANGELOG.md](./CHANGELOG.md) for a list of changes from upstream.
 
+## Building
+
+```sh
+zig build
+```
+
+---
+
 AI Agents please read [./AGENTS.md](./AGENTS.md) first.

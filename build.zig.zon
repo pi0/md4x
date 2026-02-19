@@ -1,0 +1,13 @@
+.{
+    .name = .md4x,
+    .version = "0.5.2",
+    .fingerprint = 0x422299c733688929,
+    .minimum_zig_version = "0.14.0",
+    .paths = .{
+        "src",
+        "cli",
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE",
+    },
+}
