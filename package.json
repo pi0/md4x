@@ -12,6 +12,7 @@
     "bench": "bun packages/md4x/bench/index.mjs"
   },
   "devDependencies": {
+    "@types/node": "^25.3.0",
     "node-api-headers": "^1.8.0",
     "prettier": "^3.8.1"
   },

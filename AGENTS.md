@@ -63,13 +63,14 @@ test/
   normalize.py         # HTML normalization for comparison
   fuzzers/             # LibFuzzer integration + seed corpus
 scripts/
-  run-tests.py         # Main test runner (runs all suites)
-  build_entity_map.py  # Generates entity.c from WHATWG spec
-  build_folding_map.py # Unicode case folding map generator
-  build_punct_map.py   # Punctuation character map generator
-  build_whitespace_map.py # Whitespace classification generator
-  coverity.sh          # Coverity Scan integration
-  unicode/             # Unicode data files (CaseFolding.txt, DerivedGeneralCategory.txt)
+  run-tests.ts            # Main test runner (runs all suites)
+  build-entity-map.ts     # Generates entity.c from WHATWG spec
+  build-folding-map.ts    # Unicode case folding map generator
+  build-punct-map.ts      # Punctuation character map generator
+  build-whitespace-map.ts # Whitespace classification generator
+  _unicode-map.ts         # Shared helper for punct/whitespace map generators
+  coverity.sh             # Coverity Scan integration
+  unicode/                # Unicode data files (CaseFolding.txt, DerivedGeneralCategory.txt)
 package.json             # Root workspace package (bun, workspaces: packages/*)
 build.zig                # Zig build script
 build.zig.zon            # Zig package manifest
@@ -237,7 +238,7 @@ pnpm vitest run packages/md4x/test/wasm.test.mjs   # WASM tests
 Benchmarks use `mitata` and compare against `md4w` and `markdown-it`:
 
 ```sh
-node packages/md4x/bench/index.mjs
+bun packages/md4x/bench/index.mjs
 ```
 
 ### Workspace Setup
@@ -251,7 +252,7 @@ The root `package.json` defines a bun workspace (`"workspaces": ["packages/*"]`)
 
 ```sh
 # Run all test suites:
-python3 scripts/run-tests.py
+bun scripts/run-tests.ts
 
 # Individual test suite:
 python3 test/run-testsuite.py -s test/spec.txt -p zig-out/bin/md4x
@@ -671,11 +672,12 @@ YAML-style frontmatter delimited by `---` at the very start of the document. The
 
 ## Code Generation Scripts
 
-The `scripts/` directory contains Python generators for lookup tables compiled into `md4x.c`:
+The `scripts/` directory contains TypeScript generators for lookup tables compiled into `md4x.c`:
 
-- `build_entity_map.py` — Fetches [WHATWG entities.json](https://html.spec.whatwg.org/entities.json), generates `entity.c`
-- `build_folding_map.py` — Unicode case folding from `scripts/unicode/CaseFolding.txt`
-- `build_punct_map.py` — Unicode punctuation categories from `scripts/unicode/DerivedGeneralCategory.txt`
-- `build_whitespace_map.py` — Unicode whitespace classification
+- `build-entity-map.ts` — Fetches [WHATWG entities.json](https://html.spec.whatwg.org/entities.json), generates `entity.c`
+- `build-folding-map.ts` — Unicode case folding from `scripts/unicode/CaseFolding.txt`
+- `build-punct-map.ts` — Unicode punctuation categories from `scripts/unicode/DerivedGeneralCategory.txt`
+- `build-whitespace-map.ts` — Unicode whitespace classification
+- `_unicode-map.ts` — Shared helper for punct/whitespace map generators
 
 These are run manually when updating Unicode compliance (currently Unicode 15.1).
