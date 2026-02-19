@@ -21,6 +21,9 @@
       "default": "./lib/napi.mjs"
     }
   },
+  "scripts": {
+    "prepack": "rm -rf build && mkdir build && cd ../.. && bun run build"
+  },
   "files": [
     "build",
     "lib",
