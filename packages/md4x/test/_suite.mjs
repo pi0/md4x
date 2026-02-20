@@ -1,4 +1,13 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const nitroIndex = readFileSync(
+  join(__dirname, "fixtures/nitro-index.md"),
+  "utf-8",
+);
 
 export function defineSuite({
   renderToHtml,
@@ -879,6 +888,144 @@ export function defineSuite({
     it.skip("renders emoji", async () => {
       const html = await renderToHtml("Hello :wave:");
       expect(html).toContain("\u{1F44B}");
+    });
+  });
+
+  describe("real-world: nitro docs", () => {
+    // Helper to recursively collect all element tag names from AST
+    function collectTags(nodes, tags = []) {
+      if (!Array.isArray(nodes)) return tags;
+      for (const n of nodes) {
+        if (Array.isArray(n)) {
+          tags.push(n[0]);
+          for (let i = 2; i < n.length; i++) {
+            if (Array.isArray(n[i])) collectTags([n[i]], tags);
+          }
+        }
+      }
+      return tags;
+    }
+
+    // Helper to find elements by tag name (recursive)
+    function findAll(nodes, tag) {
+      const result = [];
+      if (!Array.isArray(nodes)) return result;
+      for (const n of nodes) {
+        if (Array.isArray(n)) {
+          if (n[0] === tag) result.push(n);
+          for (let i = 2; i < n.length; i++) {
+            if (Array.isArray(n[i])) result.push(...findAll([n[i]], tag));
+          }
+        }
+      }
+      return result;
+    }
+
+    it("parses without error", async () => {
+      const ast = await parseAST(nitroIndex);
+      expect(ast.type).toBe("comark");
+      expect(ast.value.length).toBeGreaterThan(0);
+    });
+
+    it("parses frontmatter with nested seo object", async () => {
+      const ast = await parseAST(nitroIndex);
+      const fm = ast.value[0];
+      expect(fm[0]).toBe("frontmatter");
+      expect(fm[1].seo).toEqual({
+        title: "Ship Full-Stack Vite Apps",
+        description:
+          "Nitro extends your Vite application with a production-ready server, compatible with any runtime. Add server routes to your application and deploy many hosting platform with a zero-config experience.",
+      });
+    });
+
+    it("detects top-level block components", async () => {
+      const ast = await parseAST(nitroIndex);
+      // Skip frontmatter (index 0), collect top-level tags
+      const topTags = ast.value
+        .slice(1)
+        .map((n) => (Array.isArray(n) ? n[0] : null));
+      expect(topTags).toContain("u-page-hero");
+      expect(topTags).toContain("div");
+      expect(topTags).toContain("u-page-section");
+    });
+
+    it("detects nested block components", async () => {
+      const ast = await parseAST(nitroIndex);
+      const allTags = collectTags(ast.value);
+      expect(allTags).toContain("code-group");
+      expect(allTags).toContain("prose-pre");
+      expect(allTags).toContain("u-button");
+      expect(allTags).toContain("u-container");
+      expect(allTags).toContain("tabs");
+      // Deeply indented components (previously missed due to code block detection)
+      expect(allTags).toContain("u-page-grid");
+      expect(allTags).toContain("u-page-feature");
+      expect(allTags).toContain("tabs-item");
+      expect(allTags).toContain("code-tree");
+    });
+
+    it("detects inline components", async () => {
+      const ast = await parseAST(nitroIndex);
+      const allTags = collectTags(ast.value);
+      expect(allTags).toContain("hero-background");
+      expect(allTags).toContain("page-sponsors");
+      expect(allTags).toContain("page-contributors");
+    });
+
+    it("detects named slots (templates)", async () => {
+      const ast = await parseAST(nitroIndex);
+      const templates = findAll(ast.value, "template");
+      const slotNames = templates.map((t) => t[1].name);
+      expect(slotNames).toContain("title");
+      expect(slotNames).toContain("description");
+      expect(slotNames).toContain("links");
+      expect(slotNames).toContain("default");
+    });
+
+    it("detects component props", async () => {
+      const ast = await parseAST(nitroIndex);
+      const divs = findAll(ast.value, "div");
+      const withClass = divs.find((d) => d[1].class?.includes("bg-neutral-50"));
+      expect(withClass).toBeDefined();
+    });
+
+    it("detects u-button components inside slots", async () => {
+      const ast = await parseAST(nitroIndex);
+      const buttons = findAll(ast.value, "u-button");
+      expect(buttons.length).toBe(2);
+    });
+
+    it("detects deeply nested tabs-item with props", async () => {
+      const ast = await parseAST(nitroIndex);
+      const tabsItems = findAll(ast.value, "tabs-item");
+      expect(tabsItems.length).toBe(5);
+      expect(tabsItems[0][1].label).toBe("FS Routing");
+      expect(tabsItems[0][1].icon).toBe("i-lucide-folder");
+    });
+
+    it("detects u-page-feature components with slots", async () => {
+      const ast = await parseAST(nitroIndex);
+      const features = findAll(ast.value, "u-page-feature");
+      expect(features.length).toBe(3);
+      // Each feature has title and description slots
+      for (const feature of features) {
+        const slots = feature
+          .slice(2)
+          .filter((c) => Array.isArray(c) && c[0] === "template");
+        expect(slots.length).toBe(2);
+      }
+    });
+
+    it("renders HTML without error", async () => {
+      const html = await renderToHtml(nitroIndex);
+      expect(html).toContain("<u-page-hero>");
+      expect(html).toContain("<u-page-section>");
+      expect(html).toContain("</u-page-hero>");
+    });
+
+    it("renders ANSI without error", async () => {
+      const ansi = await renderToAnsi(nitroIndex);
+      expect(ansi.length).toBeGreaterThan(0);
     });
   });
 

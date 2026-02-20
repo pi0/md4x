@@ -457,3 +457,129 @@ Inner Title
 </inner>
 </outer>
 ````````````````````````````````
+
+## Indented nested block components
+
+```````````````````````````````` example
+::outer
+  :::middle
+    ::::inner
+    Content
+    ::::
+  :::
+::
+.
+<outer>
+<middle>
+<inner>
+<p>Content</p>
+</inner>
+</middle>
+</outer>
+````````````````````````````````
+
+## Indented component at exactly 4 spaces
+
+```````````````````````````````` example
+::wrapper
+    ::child
+    Text
+    ::
+::
+.
+<wrapper>
+<child>
+<p>Text</p>
+</child>
+</wrapper>
+````````````````````````````````
+
+## Indented slots inside indented components
+
+```````````````````````````````` example
+::outer
+  :::card
+    #header
+    Title
+
+    #content
+    Body
+  :::
+::
+.
+<outer>
+<card>
+<template name="header">
+<p>Title</p>
+</template>
+<template name="content">
+<p>Body</p>
+</template>
+</card>
+</outer>
+````````````````````````````````
+
+## Deeply indented components (5 levels)
+
+```````````````````````````````` example
+::l1
+  :::l2
+    ::::l3
+      :::::l4
+        ::::::l5
+        Deep
+        ::::::
+      :::::
+    ::::
+  :::
+::
+.
+<l1>
+<l2>
+<l3>
+<l4>
+<l5>
+<p>Deep</p>
+</l5>
+</l4>
+</l3>
+</l2>
+</l1>
+````````````````````````````````
+
+## Fenced code block inside indented component
+
+```````````````````````````````` example
+::outer
+  :::inner
+    ```js
+    console.log("hello")
+    ```
+  :::
+::
+.
+<outer>
+<inner>
+<pre><code class="language-js">console.log(&quot;hello&quot;)
+</code></pre>
+</inner>
+</outer>
+````````````````````````````````
+
+## Indented component closer matches correct level
+
+```````````````````````````````` example
+::outer
+  :::inner
+  Content
+  :::
+More outer
+::
+.
+<outer>
+<inner>
+<p>Content</p>
+</inner>
+<p>More outer</p>
+</outer>
+````````````````````````````````

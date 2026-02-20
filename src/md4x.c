@@ -7042,6 +7042,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
     int n_parents = 0;
     int n_brothers = 0;
     int n_children = 0;
+    int inside_component = 0;
     MD_CONTAINER container = { 0 };
     int prev_line_has_list_loosening_effect = ctx->last_line_has_list_loosening_effect;
     OFF off = beg;
@@ -7074,9 +7075,17 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
             line->beg = off;
 
         } else if(c->ch == _T(':')) {
-            /* Block component: always continues (content is normal markdown). */
+            /* Block component: always continues (content is normal markdown).
+             * Subtract visual nesting indentation. */
+            if(line->indent >= c->contents_indent)
+                line->indent -= c->contents_indent;
+            inside_component = 1;
         } else if(c->ch == _T('#')) {
-            /* Template slot: always continues (content is normal markdown). */
+            /* Template slot: always continues (content is normal markdown).
+             * Subtract visual nesting indentation. */
+            if(line->indent >= c->contents_indent)
+                line->indent -= c->contents_indent;
+            inside_component = 1;
         } else if(c->ch != _T('>')  &&  c->ch != _T(':')  &&  c->ch != _T('#')  &&  line->indent >= c->contents_indent) {
             /* List. */
             line->indent -= c->contents_indent;
@@ -7185,7 +7194,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
 
         /* Check for block component closer (::). */
         if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&  ctx->block_component_nesting > 0  &&
-           line->indent < ctx->code_indent_offset  &&  off < ctx->size  &&  CH(off) == _T(':'))
+           (line->indent < ctx->code_indent_offset || inside_component)  &&  off < ctx->size  &&  CH(off) == _T(':'))
         {
             OFF tmp;
             unsigned closer_colons = md_is_block_component_closer(ctx, off, &tmp);
@@ -7213,7 +7222,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         /* Check for slot opener (#slot-name) inside a block component.
          * Slots cannot interrupt a paragraph. */
         if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&  ctx->block_component_nesting > 0  &&
-           line->indent < ctx->code_indent_offset  &&
+           (line->indent < ctx->code_indent_offset || inside_component)  &&
            pivot_line->type != MD_LINE_TEXT  &&
            off < ctx->size  &&  CH(off) == _T('#'))
         {
@@ -7241,7 +7250,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 container.is_loose = FALSE;
                 container.is_task = FALSE;
                 container.mark_indent = 0;
-                container.contents_indent = 0;
+                container.contents_indent = line->indent;
                 container.start = (unsigned) slot_idx;
                 container.colon_count = 0;
 
@@ -7451,8 +7460,9 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         }
 
         /* Check for indented code.
-         * Note indented code block cannot interrupt a paragraph. */
-        if(line->indent >= ctx->code_indent_offset  &&  (pivot_line->type != MD_LINE_TEXT)) {
+         * Note indented code block cannot interrupt a paragraph.
+         * Note indented code is disabled inside block components. */
+        if(line->indent >= ctx->code_indent_offset  &&  !inside_component  &&  (pivot_line->type != MD_LINE_TEXT)) {
             line->type = MD_LINE_INDENTEDCODE;
             line->indent -= ctx->code_indent_offset;
             line->data = 0;
@@ -7462,7 +7472,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         /* Check for block component opener (::name or ::name{props}).
          * Block components cannot interrupt a paragraph. */
         if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&
-           line->indent < ctx->code_indent_offset  &&
+           (line->indent < ctx->code_indent_offset || inside_component)  &&
            pivot_line->type != MD_LINE_TEXT  &&
            off < ctx->size  &&  CH(off) == _T(':'))
         {
@@ -7479,7 +7489,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 container.is_loose = FALSE;
                 container.is_task = FALSE;
                 container.mark_indent = 0;
-                container.contents_indent = 0;
+                container.contents_indent = line->indent;
                 container.start = (unsigned) comp_idx;
                 container.colon_count = colon_count;
 
