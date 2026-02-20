@@ -10,18 +10,36 @@ int md_html(const MD_CHAR* input, MD_SIZE input_size,
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
 ```
 
-Only `<body>` contents are generated — caller handles HTML header/footer.
+Only `<body>` contents are generated. Frontmatter blocks are suppressed from output.
+
+Extended API with full-HTML document generation:
+
+```c
+typedef struct MD_HTML_OPTS {
+    const char* title;      /* Document title override (NULL = use frontmatter) */
+    const char* css_url;    /* CSS stylesheet URL (NULL = omit) */
+} MD_HTML_OPTS;
+
+int md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
+               void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+               void* userdata, unsigned parser_flags, unsigned renderer_flags,
+               const MD_HTML_OPTS* opts);
+```
+
+When `MD_HTML_FLAG_FULL_HTML` is set, `md_html_ex()` generates a complete HTML document (`<!DOCTYPE html>`, `<head>`, `<body>`). If YAML frontmatter exists, `title` and `description` fields are used in `<head>`. The `opts->title` overrides the frontmatter title. `opts` may be NULL.
 
 ### Renderer Flags (`MD_HTML_FLAG_*`)
 
-| Flag                             | Value    | Description                                   |
-| -------------------------------- | -------- | --------------------------------------------- |
-| `MD_HTML_FLAG_DEBUG`             | `0x0001` | Send debug output from `md_parse()` to stderr |
-| `MD_HTML_FLAG_VERBATIM_ENTITIES` | `0x0002` | Do not translate HTML entities                |
-| `MD_HTML_FLAG_SKIP_UTF8_BOM`     | `0x0004` | Skip UTF-8 BOM at input start                 |
+| Flag                             | Value    | Description                                         |
+| -------------------------------- | -------- | --------------------------------------------------- |
+| `MD_HTML_FLAG_DEBUG`             | `0x0001` | Send debug output from `md_parse()` to stderr       |
+| `MD_HTML_FLAG_VERBATIM_ENTITIES` | `0x0002` | Do not translate HTML entities                      |
+| `MD_HTML_FLAG_SKIP_UTF8_BOM`     | `0x0004` | Skip UTF-8 BOM at input start                       |
+| `MD_HTML_FLAG_FULL_HTML`         | `0x0008` | Generate full HTML document (requires `md_html_ex`) |
 
 ### Rendering Details
 
+- Frontmatter blocks are suppressed (not rendered in HTML output)
 - Wiki links render as `<x-wikilink>` tags
 - LaTeX math renders as `<x-equation>` tags
 - Task lists render with `<input type="checkbox">` elements

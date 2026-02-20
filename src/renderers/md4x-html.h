@@ -37,20 +37,19 @@
 #define MD_HTML_FLAG_DEBUG                  0x0001
 #define MD_HTML_FLAG_VERBATIM_ENTITIES      0x0002
 #define MD_HTML_FLAG_SKIP_UTF8_BOM          0x0004
+#define MD_HTML_FLAG_FULL_HTML              0x0008
 
 
-/* Render Markdown into HTML.
+/* Options for md_html_ex(). */
+typedef struct MD_HTML_OPTS {
+    const char* title;      /* Document title override (NULL = use frontmatter) */
+    const char* css_url;    /* CSS stylesheet URL (NULL = omit) */
+} MD_HTML_OPTS;
+
+
+/* Render Markdown into HTML body content.
  *
- * Note only contents of <body> tag is generated. Caller must generate
- * HTML header/footer manually before/after calling md_html().
- *
- * Params input and input_size specify the Markdown input.
- * Callback process_output() gets called with chunks of HTML output.
- * (Typical implementation may just output the bytes to a file or append to
- * some buffer).
- * Param userdata is just propagated back to process_output() callback.
- * Param parser_flags are flags from md4x.h propagated to md_parse().
- * Param render_flags is bitmask of MD_HTML_FLAG_xxxx.
+ * Frontmatter blocks are suppressed from output.
  *
  * Returns -1 on error (if md_parse() fails.)
  * Returns 0 on success.
@@ -58,6 +57,17 @@
 int md_html(const MD_CHAR* input, MD_SIZE input_size,
             void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
+
+/* Extended HTML renderer with full-document support.
+ *
+ * When MD_HTML_FLAG_FULL_HTML is set, generates a complete HTML document.
+ * If frontmatter exists, YAML title and description are used in <head>.
+ * opts->title overrides the frontmatter title. opts may be NULL.
+ */
+int md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
+               void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+               void* userdata, unsigned parser_flags, unsigned renderer_flags,
+               const MD_HTML_OPTS* opts);
 
 
 #ifdef __cplusplus

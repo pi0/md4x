@@ -183,10 +183,22 @@ process_file(const char* in_path, FILE* in, FILE* out)
     t0 = clock();
 
     switch(output_format) {
-        case FORMAT_HTML:
-            ret = md_html(buf_in.data, (MD_SIZE)buf_in.size, process_output,
-                        (void*) &buf_out, p_flags, r_flags);
+        case FORMAT_HTML: {
+            unsigned html_flags = r_flags;
+            MD_HTML_OPTS html_opts = { NULL, NULL };
+            const MD_HTML_OPTS* opts_ptr = NULL;
+
+            if(want_fullhtml) {
+                html_flags |= MD_HTML_FLAG_FULL_HTML;
+                html_opts.title = html_title;
+                html_opts.css_url = css_path;
+                opts_ptr = &html_opts;
+            }
+
+            ret = md_html_ex(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out, p_flags, html_flags, opts_ptr);
             break;
+        }
         case FORMAT_JSON: {
             unsigned j_flags = MD_AST_FLAG_DEBUG;
 #ifndef MD4X_USE_ASCII
@@ -222,29 +234,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
         goto out;
     }
 
-    /* Write down the document in the HTML format. */
-    if(want_fullhtml && output_format == FORMAT_HTML) {
-        fprintf(out, "<!DOCTYPE html>\n");
-        fprintf(out, "<html>\n");
-        fprintf(out, "<head>\n");
-        fprintf(out, "<title>%s</title>\n", html_title ? html_title : "");
-        fprintf(out, "<meta name=\"generator\" content=\"md4x\">\n");
-#if !defined MD4X_USE_ASCII && !defined MD4X_USE_UTF16
-        fprintf(out, "<meta charset=\"UTF-8\">\n");
-#endif
-        if(css_path != NULL) {
-            fprintf(out, "<link rel=\"stylesheet\" href=\"%s\">\n", css_path);
-        }
-        fprintf(out, "</head>\n");
-        fprintf(out, "<body>\n");
-    }
-
     fwrite(buf_out.data, 1, buf_out.size, out);
-
-    if(want_fullhtml && output_format == FORMAT_HTML) {
-        fprintf(out, "</body>\n");
-        fprintf(out, "</html>\n");
-    }
 
     if(want_stat) {
         if(t0 != (clock_t)-1  &&  t1 != (clock_t)-1) {

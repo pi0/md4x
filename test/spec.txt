@@ -1567,8 +1567,6 @@ Bar
 ---
 Baz
 .
-<x-frontmatter>Foo
-</x-frontmatter>
 <h2>Bar</h2>
 <p>Baz</p>
 ````````````````````````````````
@@ -1592,7 +1590,6 @@ in these examples gets interpreted as a thematic break:
 ---
 ---
 .
-<x-frontmatter></x-frontmatter>
 ````````````````````````````````
 
 

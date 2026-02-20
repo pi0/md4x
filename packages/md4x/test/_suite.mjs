@@ -142,7 +142,8 @@ export function defineSuite({
 
     it("renders frontmatter", async () => {
       const html = await renderToHtml("---\ntitle: Test\n---\n\n# Content");
-      expect(html).toContain("<x-frontmatter>");
+      expect(html).not.toContain("<x-frontmatter>");
+      expect(html).not.toContain("title: Test");
       expect(html).toContain("<h1>Content</h1>");
     });
 

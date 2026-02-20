@@ -75,28 +75,28 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 
 ## Block Types (`MD_BLOCKTYPE`)
 
-| Type                   | HTML              | Detail struct               |
-| ---------------------- | ----------------- | --------------------------- |
-| `MD_BLOCK_DOC`         | `<body>`          | —                           |
-| `MD_BLOCK_QUOTE`       | `<blockquote>`    | —                           |
-| `MD_BLOCK_UL`          | `<ul>`            | `MD_BLOCK_UL_DETAIL`        |
-| `MD_BLOCK_OL`          | `<ol>`            | `MD_BLOCK_OL_DETAIL`        |
-| `MD_BLOCK_LI`          | `<li>`            | `MD_BLOCK_LI_DETAIL`        |
-| `MD_BLOCK_HR`          | `<hr>`            | —                           |
-| `MD_BLOCK_H`           | `<h1>`–`<h6>`     | `MD_BLOCK_H_DETAIL`         |
-| `MD_BLOCK_CODE`        | `<pre><code>`     | `MD_BLOCK_CODE_DETAIL`      |
-| `MD_BLOCK_HTML`        | _(raw HTML)_      | —                           |
-| `MD_BLOCK_P`           | `<p>`             | —                           |
-| `MD_BLOCK_TABLE`       | `<table>`         | `MD_BLOCK_TABLE_DETAIL`     |
-| `MD_BLOCK_THEAD`       | `<thead>`         | —                           |
-| `MD_BLOCK_TBODY`       | `<tbody>`         | —                           |
-| `MD_BLOCK_TR`          | `<tr>`            | —                           |
-| `MD_BLOCK_TH`          | `<th>`            | `MD_BLOCK_TD_DETAIL`        |
-| `MD_BLOCK_TD`          | `<td>`            | `MD_BLOCK_TD_DETAIL`        |
-| `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | —                           |
-| `MD_BLOCK_COMPONENT`   | _(dynamic tag)_   | `MD_BLOCK_COMPONENT_DETAIL` |
-| `MD_BLOCK_TEMPLATE`    | `<template>`      | `MD_BLOCK_TEMPLATE_DETAIL`  |
-| `MD_BLOCK_ALERT`       | `<blockquote>`    | `MD_BLOCK_ALERT_DETAIL`     |
+| Type                   | HTML            | Detail struct               |
+| ---------------------- | --------------- | --------------------------- |
+| `MD_BLOCK_DOC`         | `<body>`        | —                           |
+| `MD_BLOCK_QUOTE`       | `<blockquote>`  | —                           |
+| `MD_BLOCK_UL`          | `<ul>`          | `MD_BLOCK_UL_DETAIL`        |
+| `MD_BLOCK_OL`          | `<ol>`          | `MD_BLOCK_OL_DETAIL`        |
+| `MD_BLOCK_LI`          | `<li>`          | `MD_BLOCK_LI_DETAIL`        |
+| `MD_BLOCK_HR`          | `<hr>`          | —                           |
+| `MD_BLOCK_H`           | `<h1>`–`<h6>`   | `MD_BLOCK_H_DETAIL`         |
+| `MD_BLOCK_CODE`        | `<pre><code>`   | `MD_BLOCK_CODE_DETAIL`      |
+| `MD_BLOCK_HTML`        | _(raw HTML)_    | —                           |
+| `MD_BLOCK_P`           | `<p>`           | —                           |
+| `MD_BLOCK_TABLE`       | `<table>`       | `MD_BLOCK_TABLE_DETAIL`     |
+| `MD_BLOCK_THEAD`       | `<thead>`       | —                           |
+| `MD_BLOCK_TBODY`       | `<tbody>`       | —                           |
+| `MD_BLOCK_TR`          | `<tr>`          | —                           |
+| `MD_BLOCK_TH`          | `<th>`          | `MD_BLOCK_TD_DETAIL`        |
+| `MD_BLOCK_TD`          | `<td>`          | `MD_BLOCK_TD_DETAIL`        |
+| `MD_BLOCK_FRONTMATTER` | _(suppressed)_  | —                           |
+| `MD_BLOCK_COMPONENT`   | _(dynamic tag)_ | `MD_BLOCK_COMPONENT_DETAIL` |
+| `MD_BLOCK_TEMPLATE`    | `<template>`    | `MD_BLOCK_TEMPLATE_DETAIL`  |
+| `MD_BLOCK_ALERT`       | `<blockquote>`  | `MD_BLOCK_ALERT_DETAIL`     |
 
 ## Span Types (`MD_SPANTYPE`)
 

@@ -24,7 +24,9 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <yaml.h>
 
 #include "md4x-html.h"
 #include "md4x-props.h"
@@ -55,6 +57,18 @@ struct MD_HTML_tag {
     unsigned flags;
     int image_nesting_level;
     char escape_map[256];
+
+    /* Frontmatter suppression state. */
+    int in_frontmatter;
+
+    /* Full-HTML mode state. */
+    const MD_HTML_OPTS* opts;
+    int head_emitted;
+
+    /* Frontmatter YAML capture buffer (allocated only when FULL_HTML). */
+    char* fm_text;
+    MD_SIZE fm_size;
+    MD_SIZE fm_cap;
 };
 
 #define NEED_HTML_ESC_FLAG   0x1
@@ -499,6 +513,165 @@ render_open_alert_block(MD_HTML* r, const MD_BLOCK_ALERT_DETAIL* det)
 }
 
 
+/*********************************************
+ ***  Full-HTML frontmatter YAML helpers  ***
+ *********************************************/
+
+static int
+fm_append(MD_HTML* r, const char* text, MD_SIZE size)
+{
+    if(r->fm_size + size > r->fm_cap) {
+        MD_SIZE new_cap = r->fm_cap + r->fm_cap / 2 + size + 64;
+        char* p = (char*) realloc(r->fm_text, new_cap);
+        if(p == NULL) return -1;
+        r->fm_text = p;
+        r->fm_cap = new_cap;
+    }
+    memcpy(r->fm_text + r->fm_size, text, size);
+    r->fm_size += size;
+    return 0;
+}
+
+/* Parse YAML frontmatter and extract title/description.
+ * Caller must free *out_title and *out_description if non-NULL. */
+static void
+parse_frontmatter_meta(const char* text, MD_SIZE size,
+                       char** out_title, char** out_description)
+{
+    yaml_parser_t yp;
+    yaml_event_t event;
+
+    *out_title = NULL;
+    *out_description = NULL;
+
+    if(!yaml_parser_initialize(&yp))
+        return;
+
+    yaml_parser_set_input_string(&yp, (const unsigned char*) text, size);
+
+    /* Consume STREAM_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_STREAM_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Consume DOCUMENT_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_DOCUMENT_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Expect top-level MAPPING_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_MAPPING_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Iterate top-level key-value pairs. */
+    while(1) {
+        char** target = NULL;
+
+        if(!yaml_parser_parse(&yp, &event)) goto done;
+        if(event.type == YAML_MAPPING_END_EVENT) { yaml_event_delete(&event); break; }
+        if(event.type != YAML_SCALAR_EVENT) { yaml_event_delete(&event); goto done; }
+
+        /* Check if key is "title" or "description". */
+        if(event.data.scalar.length == 5
+           && memcmp(event.data.scalar.value, "title", 5) == 0) {
+            target = out_title;
+        } else if(event.data.scalar.length == 11
+                  && memcmp(event.data.scalar.value, "description", 11) == 0) {
+            target = out_description;
+        }
+        yaml_event_delete(&event);
+
+        /* Read the value. */
+        if(!yaml_parser_parse(&yp, &event)) goto done;
+
+        if(target != NULL && event.type == YAML_SCALAR_EVENT
+           && event.data.scalar.length > 0) {
+            size_t len = event.data.scalar.length;
+            char* s = (char*) malloc(len + 1);
+            if(s != NULL) {
+                memcpy(s, event.data.scalar.value, len);
+                s[len] = '\0';
+                free(*target);
+                *target = s;
+            }
+        } else if(event.type == YAML_MAPPING_START_EVENT
+                  || event.type == YAML_SEQUENCE_START_EVENT) {
+            /* Skip nested structures. */
+            int depth = 1;
+            yaml_event_delete(&event);
+            while(depth > 0) {
+                if(!yaml_parser_parse(&yp, &event)) goto done;
+                if(event.type == YAML_MAPPING_START_EVENT
+                   || event.type == YAML_SEQUENCE_START_EVENT)
+                    depth++;
+                else if(event.type == YAML_MAPPING_END_EVENT
+                        || event.type == YAML_SEQUENCE_END_EVENT)
+                    depth--;
+                yaml_event_delete(&event);
+            }
+            continue;
+        }
+        yaml_event_delete(&event);
+    }
+
+done:
+    yaml_parser_delete(&yp);
+}
+
+/* Emit the <!DOCTYPE html><html><head>...<body> preamble.
+ * Called lazily before the first body content in full-HTML mode. */
+static void
+ensure_head_emitted(MD_HTML* r)
+{
+    char* yaml_title = NULL;
+    char* yaml_desc = NULL;
+    const char* title;
+
+    if(r->head_emitted)
+        return;
+    r->head_emitted = 1;
+
+    /* Parse YAML frontmatter for title/description. */
+    if(r->fm_text != NULL && r->fm_size > 0)
+        parse_frontmatter_meta(r->fm_text, r->fm_size, &yaml_title, &yaml_desc);
+
+    /* Explicit opts->title overrides YAML title. */
+    title = (r->opts != NULL && r->opts->title != NULL) ? r->opts->title
+            : yaml_title;
+
+    RENDER_VERBATIM(r, "<!DOCTYPE html>\n<html>\n<head>\n");
+
+    RENDER_VERBATIM(r, "<title>");
+    if(title != NULL)
+        render_html_escaped(r, title, (MD_SIZE) strlen(title));
+    RENDER_VERBATIM(r, "</title>\n");
+
+    RENDER_VERBATIM(r, "<meta name=\"generator\" content=\"md4x\">\n");
+
+#if !defined MD4X_USE_ASCII && !defined MD4X_USE_UTF16
+    RENDER_VERBATIM(r, "<meta charset=\"UTF-8\">\n");
+#endif
+
+    if(yaml_desc != NULL) {
+        RENDER_VERBATIM(r, "<meta name=\"description\" content=\"");
+        render_html_escaped(r, yaml_desc, (MD_SIZE) strlen(yaml_desc));
+        RENDER_VERBATIM(r, "\">\n");
+    }
+
+    if(r->opts != NULL && r->opts->css_url != NULL) {
+        RENDER_VERBATIM(r, "<link rel=\"stylesheet\" href=\"");
+        render_html_escaped(r, r->opts->css_url, (MD_SIZE) strlen(r->opts->css_url));
+        RENDER_VERBATIM(r, "\">\n");
+    }
+
+    RENDER_VERBATIM(r, "</head>\n<body>\n");
+
+    free(yaml_title);
+    free(yaml_desc);
+}
+
+
 /**************************************
  ***  HTML renderer implementation  ***
  **************************************/
@@ -508,6 +681,16 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 {
     static const MD_CHAR* head[6] = { "<h1>", "<h2>", "<h3>", "<h4>", "<h5>", "<h6>" };
     MD_HTML* r = (MD_HTML*) userdata;
+
+    /* Frontmatter: always suppress, capture text for full-HTML. */
+    if(type == MD_BLOCK_FRONTMATTER) {
+        r->in_frontmatter = 1;
+        return 0;
+    }
+
+    /* In full-HTML mode, emit <head> before first body content. */
+    if((r->flags & MD_HTML_FLAG_FULL_HTML) && type != MD_BLOCK_DOC)
+        ensure_head_emitted(r);
 
     switch(type) {
         case MD_BLOCK_DOC:      /* noop */ break;
@@ -526,7 +709,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TR:       RENDER_VERBATIM(r, "<tr>\n"); break;
         case MD_BLOCK_TH:       render_open_td_block(r, "th", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
-        case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "<x-frontmatter>"); break;
+        case MD_BLOCK_FRONTMATTER:  break;  /* handled above */
         case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
         case MD_BLOCK_ALERT:        render_open_alert_block(r, (const MD_BLOCK_ALERT_DETAIL*) detail); break;
         case MD_BLOCK_TEMPLATE: {
@@ -547,8 +730,19 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
     static const MD_CHAR* head[6] = { "</h1>\n", "</h2>\n", "</h3>\n", "</h4>\n", "</h5>\n", "</h6>\n" };
     MD_HTML* r = (MD_HTML*) userdata;
 
+    /* Frontmatter: always suppress. */
+    if(type == MD_BLOCK_FRONTMATTER) {
+        r->in_frontmatter = 0;
+        return 0;
+    }
+
     switch(type) {
-        case MD_BLOCK_DOC:      /*noop*/ break;
+        case MD_BLOCK_DOC:
+            if(r->flags & MD_HTML_FLAG_FULL_HTML) {
+                ensure_head_emitted(r);
+                RENDER_VERBATIM(r, "</body>\n</html>\n");
+            }
+            break;
         case MD_BLOCK_QUOTE:    RENDER_VERBATIM(r, "</blockquote>\n"); break;
         case MD_BLOCK_UL:       RENDER_VERBATIM(r, "</ul>\n"); break;
         case MD_BLOCK_OL:       RENDER_VERBATIM(r, "</ol>\n"); break;
@@ -564,7 +758,7 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TR:       RENDER_VERBATIM(r, "</tr>\n"); break;
         case MD_BLOCK_TH:       RENDER_VERBATIM(r, "</th>\n"); break;
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
-        case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "</x-frontmatter>\n"); break;
+        case MD_BLOCK_FRONTMATTER:  break;  /* handled above */
         case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
         case MD_BLOCK_ALERT:        RENDER_VERBATIM(r, "</blockquote>\n"); break;
         case MD_BLOCK_TEMPLATE:     RENDER_VERBATIM(r, "</template>\n"); break;
@@ -674,6 +868,13 @@ text_callback(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdat
 {
     MD_HTML* r = (MD_HTML*) userdata;
 
+    /* Frontmatter text: capture for full-HTML, always suppress output. */
+    if(r->in_frontmatter) {
+        if(r->flags & MD_HTML_FLAG_FULL_HTML)
+            fm_append(r, text, size);
+        return 0;
+    }
+
     switch(type) {
         case MD_TEXT_NULLCHAR:  render_utf8_codepoint(r, 0x0000, render_verbatim); break;
         case MD_TEXT_BR:        RENDER_VERBATIM(r, (r->image_nesting_level == 0 ? "<br>\n" : " "));
@@ -696,12 +897,20 @@ debug_log_callback(const char* msg, void* userdata)
 }
 
 int
-md_html(const MD_CHAR* input, MD_SIZE input_size,
-        void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
-        void* userdata, unsigned parser_flags, unsigned renderer_flags)
+md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
+           void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+           void* userdata, unsigned parser_flags, unsigned renderer_flags,
+           const MD_HTML_OPTS* opts)
 {
-    MD_HTML render = { process_output, userdata, renderer_flags, 0, { 0 } };
+    MD_HTML render;
     int i;
+    int ret;
+
+    memset(&render, 0, sizeof(render));
+    render.process_output = process_output;
+    render.userdata = userdata;
+    render.flags = renderer_flags;
+    render.opts = opts;
 
     MD_PARSER parser = {
         0,
@@ -735,6 +944,19 @@ md_html(const MD_CHAR* input, MD_SIZE input_size,
         }
     }
 
-    return md_parse(input, input_size, &parser, (void*) &render);
+    ret = md_parse(input, input_size, &parser, (void*) &render);
+
+    free(render.fm_text);
+
+    return ret;
+}
+
+int
+md_html(const MD_CHAR* input, MD_SIZE input_size,
+        void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+        void* userdata, unsigned parser_flags, unsigned renderer_flags)
+{
+    return md_html_ex(input, input_size, process_output, userdata,
+                      parser_flags, renderer_flags, NULL);
 }
 
