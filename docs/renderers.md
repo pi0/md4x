@@ -131,6 +131,8 @@ int md_ansi(const MD_CHAR* input, MD_SIZE input_size,
 - Lists: dim bullet/number prefix with nesting indentation
 - Task lists: `[x]`/`[ ]` with green for checked items
 - Images: `[image: alt]` in dim
+- Alerts: colored thick left bar (`▌`) with type-specific colors (note/info=blue, tip/success=green, important=magenta, warning=yellow, caution/danger=red), bold type label on first line
+- Components: cyan for generic; alert-like components (`::note`, `::tip`, `::important`, `::warning`, `::caution`) and `::alert{type="..."}` render with the same colored bar style as alerts
 - Entities resolved to UTF-8 characters
 
 Uses streaming renderer pattern (like HTML renderer), no AST construction.

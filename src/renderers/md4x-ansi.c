@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "md4x-ansi.h"
+#include "md4x-props.h"
 #include "entity.h"
 
 
@@ -63,6 +64,7 @@
 #define ANSI_COLOR_MAGENTA  "\033[35m"
 #define ANSI_COLOR_YELLOW   "\033[33m"
 #define ANSI_COLOR_GREEN    "\033[32m"
+#define ANSI_COLOR_RED      "\033[31m"
 #define ANSI_COLOR_DEFAULT  "\033[39m"
 
 /* Compound styles */
@@ -85,6 +87,9 @@
 /* Blockquote bar (UTF-8: vertical bar U+2502) */
 #define QUOTE_BAR           "\xe2\x94\x82"
 
+/* Alert bar (UTF-8: left half block U+258C ▌) */
+#define ALERT_BAR           "\xe2\x96\x8c"
+
 
 typedef struct MD_ANSI_tag MD_ANSI;
 struct MD_ANSI_tag {
@@ -99,6 +104,8 @@ struct MD_ANSI_tag {
     int need_newline;       /* pending newline before next block */
     int need_indent;        /* emit indent prefix on next code text */
     int li_opened;          /* just opened a list item (bullet already printed) */
+    int in_alert;           /* inside an alert block */
+    const char* alert_color; /* ANSI color escape for current alert bar */
 };
 
 
@@ -131,6 +138,11 @@ render_indent(MD_ANSI* r)
         RENDER_VERBATIM(r, "  " QUOTE_BAR " ");
         render_ansi(r, ANSI_DIM_OFF);
     }
+    if(r->in_alert && r->alert_color) {
+        render_ansi(r, r->alert_color);
+        RENDER_VERBATIM(r, ALERT_BAR " ");
+        render_ansi(r, ANSI_COLOR_DEFAULT);
+    }
     for(i = 0; i < r->list_depth; i++) {
         RENDER_VERBATIM(r, "  ");
     }
@@ -140,6 +152,19 @@ static void
 render_newline(MD_ANSI* r)
 {
     RENDER_VERBATIM(r, "\n");
+}
+
+/* Render a blank separator line with alert bar prefix when inside an alert. */
+static void
+render_separator(MD_ANSI* r)
+{
+    render_newline(r);
+    if(r->in_alert && r->alert_color) {
+        render_ansi(r, r->alert_color);
+        RENDER_VERBATIM(r, ALERT_BAR);
+        render_ansi(r, ANSI_COLOR_DEFAULT);
+        render_newline(r);
+    }
 }
 
 static unsigned
@@ -243,6 +268,41 @@ render_attribute(MD_ANSI* r, const MD_ATTRIBUTE* attr,
 }
 
 
+/* Case-insensitive compare for short ASCII strings. */
+static int
+ci_eq(const MD_CHAR* a, MD_SIZE a_size, const char* b)
+{
+    MD_SIZE i;
+    for(i = 0; i < a_size && b[i] != '\0'; i++) {
+        char ca = a[i];
+        char cb = b[i];
+        if(ca >= 'A' && ca <= 'Z') ca += 32;
+        if(cb >= 'A' && cb <= 'Z') cb += 32;
+        if(ca != cb) return 0;
+    }
+    return (i == a_size && b[i] == '\0');
+}
+
+/* Map alert/component type name to ANSI color, or NULL if not an alert name. */
+static const char*
+alert_type_color(const MD_CHAR* name, MD_SIZE size)
+{
+    if(size == 0 || name == NULL)
+        return NULL;
+
+    if(ci_eq(name, size, "note"))       return ANSI_COLOR_BLUE;
+    if(ci_eq(name, size, "info"))       return ANSI_COLOR_BLUE;
+    if(ci_eq(name, size, "tip"))        return ANSI_COLOR_GREEN;
+    if(ci_eq(name, size, "success"))    return ANSI_COLOR_GREEN;
+    if(ci_eq(name, size, "important"))  return ANSI_COLOR_MAGENTA;
+    if(ci_eq(name, size, "warning"))    return ANSI_COLOR_YELLOW;
+    if(ci_eq(name, size, "caution"))    return ANSI_COLOR_RED;
+    if(ci_eq(name, size, "danger"))     return ANSI_COLOR_RED;
+
+    return NULL;
+}
+
+
 /**************************************
  ***  ANSI renderer implementation  ***
  **************************************/
@@ -258,7 +318,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_QUOTE:
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             r->quote_depth++;
@@ -266,14 +326,14 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_UL:
             if(r->need_newline && r->list_depth == 0) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             break;
 
         case MD_BLOCK_OL:
             if(r->need_newline && r->list_depth == 0) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             r->ol_counter = ((MD_BLOCK_OL_DETAIL*)detail)->start;
@@ -312,7 +372,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_HR:
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             render_indent(r);
@@ -325,7 +385,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_H:
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             render_indent(r);
@@ -334,7 +394,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_CODE:
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             r->in_code_block = 1;
@@ -347,7 +407,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_P:
             if(r->need_newline && !r->li_opened) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             if(!r->li_opened)
@@ -357,7 +417,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_TABLE:
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
             break;
@@ -383,29 +443,73 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             render_ansi(r, ANSI_DIM);
             break;
 
-        case MD_BLOCK_COMPONENT:
+        case MD_BLOCK_COMPONENT: {
+            const MD_BLOCK_COMPONENT_DETAIL* comp = (const MD_BLOCK_COMPONENT_DETAIL*) detail;
+            const char* color = alert_type_color(comp->tag_name.text, comp->tag_name.size);
+            const MD_CHAR* title = comp->tag_name.text;
+            MD_SIZE title_size = comp->tag_name.size;
+
+            /* For ::alert{type="..."}, resolve color from the type prop. */
+            if(color == NULL && ci_eq(comp->tag_name.text, comp->tag_name.size, "alert")) {
+                MD_PARSED_PROPS parsed;
+                int pi;
+                md_parse_props(comp->raw_props, comp->raw_props_size, &parsed);
+                for(pi = 0; pi < parsed.n_props; pi++) {
+                    if(parsed.props[pi].type == MD_PROP_STRING
+                        && ci_eq(parsed.props[pi].key, parsed.props[pi].key_size, "type"))
+                    {
+                        color = alert_type_color(parsed.props[pi].value, parsed.props[pi].value_size);
+                        title = parsed.props[pi].value;
+                        title_size = parsed.props[pi].value_size;
+                        break;
+                    }
+                }
+                if(color == NULL) color = ANSI_COLOR_YELLOW;
+            }
+
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
-            render_ansi(r, ANSI_COLOR_CYAN);
+            if(color != NULL) {
+                /* Render as alert-style box */
+                r->alert_color = color;
+                render_indent(r);
+                render_ansi(r, color);
+                RENDER_VERBATIM(r, ALERT_BAR " ");
+                render_ansi(r, ANSI_BOLD);
+                render_verbatim(r, title, title_size);
+                render_ansi(r, ANSI_BOLD_OFF);
+                render_ansi(r, ANSI_COLOR_DEFAULT);
+                render_newline(r);
+                r->in_alert = 1;
+            } else {
+                render_ansi(r, ANSI_COLOR_CYAN);
+            }
             break;
+        }
 
         case MD_BLOCK_ALERT: {
             const MD_BLOCK_ALERT_DETAIL* det = (const MD_BLOCK_ALERT_DETAIL*) detail;
+            const char* color = alert_type_color(det->type_name.text, det->type_name.size);
+            if(color == NULL) color = ANSI_COLOR_YELLOW;
             if(r->need_newline) {
-                render_newline(r);
+                render_separator(r);
                 r->need_newline = 0;
             }
-            r->quote_depth++;
+            r->alert_color = color;
+            /* Render title line: ▌ TYPE */
             render_indent(r);
+            render_ansi(r, color);
+            RENDER_VERBATIM(r, ALERT_BAR " ");
             render_ansi(r, ANSI_BOLD);
-            render_ansi(r, ANSI_COLOR_YELLOW);
             if(det->type_name.text != NULL && det->type_name.size > 0)
                 render_verbatim(r, det->type_name.text, det->type_name.size);
-            render_ansi(r, ANSI_COLOR_DEFAULT);
             render_ansi(r, ANSI_BOLD_OFF);
+            render_ansi(r, ANSI_COLOR_DEFAULT);
             render_newline(r);
+            /* Set in_alert after title so render_indent doesn't double-bar */
+            r->in_alert = 1;
             break;
         }
 
@@ -434,11 +538,13 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_UL:
             r->ol_counter = 0;
+            r->li_opened = 0;
             r->need_newline = 1;
             break;
 
         case MD_BLOCK_OL:
             r->ol_counter = 0;
+            r->li_opened = 0;
             r->need_newline = 1;
             break;
 
@@ -504,12 +610,18 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             break;
 
         case MD_BLOCK_COMPONENT:
-            render_ansi(r, ANSI_COLOR_DEFAULT);
+            if(r->in_alert) {
+                r->in_alert = 0;
+                r->alert_color = NULL;
+            } else {
+                render_ansi(r, ANSI_COLOR_DEFAULT);
+            }
             r->need_newline = 1;
             break;
 
         case MD_BLOCK_ALERT:
-            r->quote_depth--;
+            r->in_alert = 0;
+            r->alert_color = NULL;
             r->need_newline = 1;
             break;
 

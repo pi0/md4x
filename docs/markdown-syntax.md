@@ -73,7 +73,7 @@ GitHub-style alert/admonition syntax. A blockquote whose first line is `> [!TYPE
 - Supports all GitHub types (NOTE, TIP, IMPORTANT, WARNING, CAUTION) plus custom types
 - Content supports full markdown (inline formatting, lists, nested blockquotes, code blocks)
 
-HTML renderer: `<blockquote class="alert alert-{type}">` (type lowercased in class). JSON renderer: `["alert", {"type": "NOTE"}, ...children]`. ANSI renderer: bold yellow type label with quote-bar prefix.
+HTML renderer: `<blockquote class="alert alert-{type}">` (type lowercased in class). JSON renderer: `["alert", {"type": "NOTE"}, ...children]`. ANSI renderer: colored thick left bar (`▌`) with type-specific colors (note/info=blue, tip/success=green, important=magenta, warning=yellow, caution/danger=red). Block components `::alert{type="..."}`, `::note`, `::warning`, etc. also render with the same style.
 
 ## Extension: Inline Components (`MD_FLAG_COMPONENTS`)
 
