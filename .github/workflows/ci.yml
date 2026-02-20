@@ -15,9 +15,13 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - name: Detect Zig version
+        id: zig-version
+        run: echo "version=$(grep -oP 'minimum_zig_version\s*=\s*"\K[^"]+' build.zig.zon)" >> "$GITHUB_OUTPUT"
+
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: ${{ steps.zig-version.outputs.version }}
 
       - name: Install JS dependencies
         run: bun install

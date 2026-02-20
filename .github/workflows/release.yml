@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Detect Zig version
+        id: zig-version
+        run: echo "version=$(grep -oP 'minimum_zig_version\s*=\s*"\K[^"]+' build.zig.zon)" >> "$GITHUB_OUTPUT"
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ steps.zig-version.outputs.version }}
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build
+        run: zig build --verbose
+
+      - name: Tests
+        run: bun ./scripts/run-tests.ts
+
+      - name: Test (vitest)
+        run: bun vitest
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        working-directory: packages/md4x
