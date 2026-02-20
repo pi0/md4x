@@ -30,6 +30,7 @@
 #include "md4x-ast.h"
 #include "md4x-ansi.h"
 #include "md4x-meta.h"
+#include "md4x-text.h"
 
 
 /* Stub main for wasi libc (we are a library, not a program) */
@@ -133,4 +134,10 @@ __attribute__((export_name("md4x_to_meta")))
 int md4x_to_meta(const char* input, unsigned input_size)
 {
     return render(md_meta, input, input_size);
+}
+
+__attribute__((export_name("md4x_to_text")))
+int md4x_to_text(const char* input, unsigned input_size)
+{
+    return render(md_text, input, input_size);
 }

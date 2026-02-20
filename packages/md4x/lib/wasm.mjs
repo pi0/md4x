@@ -97,6 +97,10 @@ export function renderToMeta(input) {
   return render(getExports(), getExports().md4x_to_meta, input);
 }
 
+export function renderToText(input) {
+  return render(getExports(), getExports().md4x_to_text, input);
+}
+
 export function parseMeta(input) {
   const meta = JSON.parse(renderToMeta(input));
   if (!meta.title && meta.headings?.[0]) {

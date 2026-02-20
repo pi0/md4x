@@ -7,6 +7,7 @@ import {
   parseAST,
   renderToMeta,
   parseMeta,
+  renderToText,
 } from "../lib/wasm.mjs";
 import { defineSuite } from "./_suite.mjs";
 
@@ -21,4 +22,5 @@ defineSuite({
   parseAST,
   renderToMeta,
   parseMeta,
+  renderToText,
 });

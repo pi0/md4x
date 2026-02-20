@@ -6,6 +6,7 @@ import {
   renderToHtml,
   parseAST,
   renderToAnsi,
+  renderToText,
   parseMeta,
 } from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
@@ -45,6 +46,7 @@ const modeOptions = [
   { value: "raw", label: "Source" },
   { value: "json", label: "AST" },
   { value: "ansi", label: "ANSI" },
+  { value: "text", label: "Text" },
   { value: "meta", label: "Meta" },
 ];
 const mode = ref("html");
@@ -103,6 +105,13 @@ function render() {
     } else if (m === "ansi") {
       const ansi = renderToAnsi(md).replace(/\x1b\]8;[^\x1b]*\x1b\\/g, "");
       outputHtml.value = ansiToHtml(ansi);
+    } else if (m === "text") {
+      const text = renderToText(md);
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      outputHtml.value = `<pre>${escaped}</pre>`;
     } else if (m === "meta") {
       outputHtml.value = highlighter.codeToHtml(
         JSON.stringify(parseMeta(md), null, 2),
@@ -327,6 +336,8 @@ onMounted(async () => {
         mode === 'html' && 'prose max-w-none p-5 px-6',
         mode === 'ansi' &&
           'whitespace-pre-wrap break-words bg-linear-to-br from-[#0f0f1a] to-[#161625] p-5 px-6 font-mono text-[13.5px] leading-[1.65] text-[#c8cad8]',
+        mode === 'text' &&
+          'whitespace-pre-wrap break-words p-5 px-6 font-mono text-[13.5px] leading-[1.65]',
       ]"
       :data-hidden="mobileTab === 'editor' ? '' : undefined"
       v-html="outputHtml"

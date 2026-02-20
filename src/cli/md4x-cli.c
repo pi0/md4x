@@ -31,6 +31,7 @@
 #include "md4x-html.h"
 #include "md4x-ast.h"
 #include "md4x-ansi.h"
+#include "md4x-text.h"
 #include "cmdline.h"
 
 
@@ -204,11 +205,15 @@ process_file(const char* in_path, FILE* in, FILE* out)
                         (void*) &buf_out, p_flags, a_flags);
             break;
         }
-        case FORMAT_TEXT:
-            fprintf(stderr, "Format '%s' is not yet implemented.\n",
-                    format_name[output_format]);
-            ret = -1;
+        case FORMAT_TEXT: {
+            unsigned t_flags = MD_TEXT_FLAG_DEBUG;
+#ifndef MD4X_USE_ASCII
+            t_flags |= MD_TEXT_FLAG_SKIP_UTF8_BOM;
+#endif
+            ret = md_text(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out, p_flags, t_flags);
             break;
+        }
     }
 
     t1 = clock();

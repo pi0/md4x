@@ -18,6 +18,7 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 | `md4x_to_ast(ptr, size) -> int`  | Render to JSON AST                       |
 | `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
 | `md4x_to_meta(ptr, size) -> int` | Render to meta JSON                      |
+| `md4x_to_text(ptr, size) -> int` | Render to plain text                     |
 | `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
 | `md4x_result_size() -> size`     | Get output buffer size (after render)    |
 
@@ -78,6 +79,7 @@ Windows targets use `zig dlltool` to generate import libraries from `node_module
 | `renderToAST`  | `(input: string) => string` (JSON string) |
 | `renderToAnsi` | `(input: string) => string`               |
 | `renderToMeta` | `(input: string) => string` (JSON string) |
+| `renderToText` | `(input: string) => string`               |
 
 **Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
 
@@ -116,6 +118,7 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 | `renderToAnsi(input: string)` | `string`                                 | `string`                                 |
 | `renderToMeta(input: string)` | `string`                                 | `string`                                 |
 | `parseMeta(input: string)`    | `ComarkMeta`                             | `ComarkMeta`                             |
+| `renderToText(input: string)` | `string`                                 | `string`                                 |
 
 `renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. `renderToMeta` returns the raw JSON string from the meta renderer. `parseMeta` calls `renderToMeta`, parses the result, and falls back to the first heading as `title` if no frontmatter title exists. See `lib/types.d.ts` for types.
 

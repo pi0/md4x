@@ -48,6 +48,10 @@ export function renderToMeta(input) {
   return getBinding().renderToMeta(input);
 }
 
+export function renderToText(input) {
+  return getBinding().renderToText(input);
+}
+
 export function parseMeta(input) {
   const meta = JSON.parse(renderToMeta(input));
   if (!meta.title && meta.headings?.[0]) {

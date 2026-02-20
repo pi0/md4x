@@ -34,6 +34,8 @@ src/
     md4x-ansi.h        # ANSI renderer public API
     md4x-meta.c        # Meta renderer library (~300 LoC)
     md4x-meta.h        # Meta renderer public API
+    md4x-text.c        # Plain text renderer library (~350 LoC)
+    md4x-text.h        # Plain text renderer public API
   cli/
     md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
     cmdline.c            # Command-line parser (from c-reusables)
@@ -119,6 +121,7 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-ast** — AST renderer (links against libmd4x)
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **libmd4x-meta** — Meta renderer (links against libmd4x)
+- **libmd4x-text** — Plain text renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
 - **md4x.{platform}-{arch}[-musl].node** — Cross-compiled NAPI addons (`zig build napi-all`, 9 targets)

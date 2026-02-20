@@ -171,3 +171,40 @@ Produces a flat JSON object with frontmatter properties spread at the top level 
 - Heading text is extracted as plain text — inline formatting (bold, italic, code, etc.) is stripped
 - HTML entities in headings are resolved to UTF-8 characters
 - Uses streaming renderer pattern (like HTML renderer), no AST construction
+
+## Text Renderer API (`md4x-text.h`)
+
+Strips markdown formatting and produces plain text output:
+
+```c
+int md_text(const MD_CHAR* input, MD_SIZE input_size,
+            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+            void* userdata, unsigned parser_flags, unsigned renderer_flags);
+```
+
+### Renderer Flags (`MD_TEXT_FLAG_*`)
+
+| Flag                         | Value    | Description                                   |
+| ---------------------------- | -------- | --------------------------------------------- |
+| `MD_TEXT_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_TEXT_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                 |
+
+### Rendering Details
+
+- All inline formatting (bold, italic, underline, strikethrough, code spans) stripped — only text content remains
+- Headings: plain text + newline
+- Paragraphs: plain text + newline
+- Lists: `- ` (unordered) or `1. ` (ordered) prefix with 2-space nesting indentation
+- Task lists: `[x] ` / `[ ] ` prefix
+- Code blocks: verbatim with 2-space indent
+- Blockquotes: `> ` prefix (nested)
+- Horizontal rules: `---`
+- Tables: tab-separated cells
+- Links: text content only (URL not shown)
+- Images: alt text only
+- Frontmatter: stripped (no output)
+- Components/templates: transparent (children rendered normally)
+- Alerts: type label + content with `> ` prefix
+- Entities resolved to UTF-8 characters
+- Raw HTML: stripped (no output)
+- Uses streaming renderer pattern (like HTML renderer), no AST construction

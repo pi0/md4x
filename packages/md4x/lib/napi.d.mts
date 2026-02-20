@@ -15,6 +15,7 @@ export interface NAPIBinding {
   renderToAST(input: string): string;
   renderToAnsi(input: string): string;
   renderToMeta(input: string): string;
+  renderToText(input: string): string;
 }
 
 export interface InitOptions {
@@ -28,3 +29,4 @@ export declare function parseAST(input: string): ComarkTree;
 export declare function renderToAnsi(input: string): string;
 export declare function renderToMeta(input: string): string;
 export declare function parseMeta(input: string): ComarkMeta;
+export declare function renderToText(input: string): string;

@@ -1,9 +1,7 @@
 # 📄 MD4X
 
-
-
 [![npm version](https://img.shields.io/npm/v/md4x?style=flat&colorA=18181B&colorB=F0DB4F)](https://npmx.dev/package/md4x)
-![md4x.wasm gzip size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3Dmd4x%2Fbuild%2Fmd4x.wasm&query=%24.size.compressedSize&label=md4x.wasm%20(gzip)&style=flat&colorA=18181B&colorB=F0DB4F)
+![md4x.wasm gzip size](<https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3Dmd4x%2Fbuild%2Fmd4x.wasm&query=%24.size.compressedSize&label=md4x.wasm%20(gzip)&style=flat&colorA=18181B&colorB=F0DB4F>)
 
 Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
 
@@ -15,6 +13,7 @@ Fast and Small markdown parser and renderer based on [mity/md4c](https://github.
 # Local files
 npx md4x README.md                          # ANSI output (default in TTY)
 npx md4x -t html doc.md                     # HTML output
+npx md4x -t text doc.md                     # Plain text output (strip markdown)
 npx md4x -t json doc.md                     # JSON AST output (comark)
 
 # Remote sources
@@ -47,6 +46,7 @@ import {
   renderToAST,
   parseAST,
   renderToAnsi,
+  renderToText,
   renderToMeta,
   parseMeta,
 } from "md4x";
@@ -57,6 +57,7 @@ const html = renderToHtml("# Hello, **world**!");
 const json = renderToAST("# Hello, **world**!"); // raw JSON string
 const ast = parseAST("# Hello, **world**!"); // parsed ComarkTree object
 const ansi = renderToAnsi("# Hello, **world**!");
+const text = renderToText("# Hello, **world**!"); // plain text (stripped)
 const metaJson = renderToMeta("# Hello, **world**!"); // raw JSON string
 const meta = parseMeta("# Hello, **world**!"); // parsed meta
 ```
@@ -169,6 +170,17 @@ md_ast(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 md_ansi(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 ```
 
+#### Text Renderer
+
+Strips markdown formatting and produces plain text:
+
+```c
+#include "md4x.h"
+#include "md4x-text.h"
+
+md_text(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
+```
+
 #### Meta Renderer
 
 Extracts frontmatter and headings as a flat JSON object:
@@ -206,26 +218,6 @@ MD_PARSER parser = {
 
 md_parse(input, input_size, &parser, NULL);
 ```
-
-## Extensions
-
-All extensions are enabled by default in the JS and CLI interfaces (`MD_DIALECT_ALL`).
-
-| Extension     | Flag                          |
-| ------------- | ----------------------------- |
-| Tables        | `MD_FLAG_TABLES`              |
-| Strikethrough | `MD_FLAG_STRIKETHROUGH`       |
-| Task lists    | `MD_FLAG_TASKLISTS`           |
-| Autolinks     | `MD_FLAG_PERMISSIVEAUTOLINKS` |
-| LaTeX math    | `MD_FLAG_LATEXMATHSPANS`      |
-| Wiki links    | `MD_FLAG_WIKILINKS`           |
-| Underline     | `MD_FLAG_UNDERLINE`           |
-| Frontmatter   | `MD_FLAG_FRONTMATTER`         |
-| Components    | `MD_FLAG_COMPONENTS`          |
-| Attributes    | `MD_FLAG_ATTRIBUTES`          |
-| Alerts        | `MD_FLAG_ALERTS`              |
-
-Dialect presets: `MD_DIALECT_COMMONMARK` (strict), `MD_DIALECT_GITHUB`, `MD_DIALECT_ALL`.
 
 ## License
 

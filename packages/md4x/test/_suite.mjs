@@ -16,6 +16,7 @@ export function defineSuite({
   parseAST,
   renderToMeta,
   parseMeta,
+  renderToText,
 }) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
@@ -1127,6 +1128,87 @@ export function defineSuite({
     it("handles heading with inline code", async () => {
       const meta = await parseMeta("# Using `parseMeta` API");
       expect(meta.headings[0].text).toBe("Using parseMeta API");
+    });
+  });
+
+  describe("renderToText", () => {
+    it("renders a heading", async () => {
+      expect(await renderToText("# Hello")).toBe("Hello\n");
+    });
+
+    it("renders a paragraph", async () => {
+      expect(await renderToText("Hello world")).toBe("Hello world\n");
+    });
+
+    it("strips inline formatting", async () => {
+      expect(await renderToText("**bold** and *italic*")).toBe(
+        "bold and italic\n",
+      );
+    });
+
+    it("renders empty input", async () => {
+      expect(await renderToText("")).toBe("");
+    });
+
+    it("renders a link as text only", async () => {
+      expect(await renderToText("[click](https://example.com)")).toBe(
+        "click\n",
+      );
+    });
+
+    it("renders a code block with indent", async () => {
+      const text = await renderToText("```\ncode\n```");
+      expect(text).toContain("  code");
+    });
+
+    it("renders unordered list", async () => {
+      const text = await renderToText("- one\n- two");
+      expect(text).toContain("- one");
+      expect(text).toContain("- two");
+    });
+
+    it("renders ordered list", async () => {
+      const text = await renderToText("1. first\n2. second");
+      expect(text).toContain("1. first");
+      expect(text).toContain("2. second");
+    });
+
+    it("renders blockquote with prefix", async () => {
+      const text = await renderToText("> quoted");
+      expect(text).toContain("> quoted");
+    });
+
+    it("renders horizontal rule", async () => {
+      const text = await renderToText("text\n\n***");
+      expect(text).toContain("---");
+    });
+
+    it("strips frontmatter", async () => {
+      const text = await renderToText("---\ntitle: Test\n---\n\n# Content");
+      expect(text).not.toContain("title: Test");
+      expect(text).toContain("Content");
+    });
+
+    it("renders task list", async () => {
+      const text = await renderToText("- [x] done\n- [ ] todo");
+      expect(text).toContain("[x] done");
+      expect(text).toContain("[ ] todo");
+    });
+
+    it("resolves entities", async () => {
+      expect(await renderToText("&amp;")).toBe("&\n");
+    });
+
+    it("renders multiline content", async () => {
+      const text = await renderToText("# Title\n\nParagraph\n\n- item");
+      expect(text).toContain("Title");
+      expect(text).toContain("Paragraph");
+      expect(text).toContain("- item");
+    });
+
+    it("renders real-world content without error", async () => {
+      const text = await renderToText(nitroIndex);
+      expect(text.length).toBeGreaterThan(0);
     });
   });
 }

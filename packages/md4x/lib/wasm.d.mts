@@ -26,3 +26,4 @@ export declare function parseAST(input: string): ComarkTree;
 export declare function renderToAnsi(input: string): string;
 export declare function renderToMeta(input: string): string;
 export declare function parseMeta(input: string): ComarkMeta;
+export declare function renderToText(input: string): string;
