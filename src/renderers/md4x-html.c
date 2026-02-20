@@ -50,6 +50,18 @@
 
 
 
+/* Code block metadata entry (heap-allocated when MD_HTML_FLAG_CODE_META is set) */
+typedef struct MD_HTML_CODE_META {
+    MD_SIZE start;              /* Byte offset of code content start (after <code...>) */
+    MD_SIZE end;                /* Byte offset of code content end (before </code>) */
+    char lang[64];              /* Language string (copied) */
+    MD_SIZE lang_size;
+    char filename[256];         /* Filename string (copied) */
+    MD_SIZE filename_size;
+    unsigned* highlights;       /* Heap-allocated copy of highlight line numbers, or NULL */
+    unsigned highlight_count;
+} MD_HTML_CODE_META;
+
 typedef struct MD_HTML_tag MD_HTML;
 struct MD_HTML_tag {
     void (*process_output)(const MD_CHAR*, MD_SIZE, void*);
@@ -69,6 +81,13 @@ struct MD_HTML_tag {
     char* fm_text;
     MD_SIZE fm_size;
     MD_SIZE fm_cap;
+
+    /* Code block metadata tracking (only active when MD_HTML_FLAG_CODE_META is set) */
+    MD_SIZE output_offset;
+    int in_code_block;
+    MD_HTML_CODE_META* code_blocks;
+    int n_code_blocks;
+    int code_blocks_cap;
 };
 
 #define NEED_HTML_ESC_FLAG   0x1
@@ -89,6 +108,8 @@ static inline void
 render_verbatim(MD_HTML* r, const MD_CHAR* text, MD_SIZE size)
 {
     r->process_output(text, size, r->userdata);
+    if(r->flags & MD_HTML_FLAG_CODE_META)
+        r->output_offset += size;
 }
 
 /* Keep this as a macro. Most compiler should then be smart enough to replace
@@ -494,6 +515,100 @@ render_close_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
 }
 
 
+/*****************************************
+ ***  Code block metadata tracking     ***
+ *****************************************/
+
+static MD_HTML_CODE_META*
+code_meta_push(MD_HTML* r)
+{
+    if(r->code_blocks == NULL) {
+        r->code_blocks = (MD_HTML_CODE_META*) malloc(8 * sizeof(MD_HTML_CODE_META));
+        if(r->code_blocks == NULL) return NULL;
+        r->code_blocks_cap = 8;
+    } else if(r->n_code_blocks >= r->code_blocks_cap) {
+        int new_cap = r->code_blocks_cap * 2;
+        MD_HTML_CODE_META* p = (MD_HTML_CODE_META*) realloc(r->code_blocks, new_cap * sizeof(MD_HTML_CODE_META));
+        if(p == NULL) return NULL;
+        r->code_blocks = p;
+        r->code_blocks_cap = new_cap;
+    }
+    memset(&r->code_blocks[r->n_code_blocks], 0, sizeof(MD_HTML_CODE_META));
+    return &r->code_blocks[r->n_code_blocks];
+}
+
+static void
+code_meta_cleanup(MD_HTML* r)
+{
+    if(r->code_blocks != NULL) {
+        int i;
+        for(i = 0; i < r->n_code_blocks; i++)
+            free(r->code_blocks[i].highlights);
+        free(r->code_blocks);
+    }
+}
+
+static void
+emit_json_str(void (*out)(const MD_CHAR*, MD_SIZE, void*), void* ud,
+              const char* str, MD_SIZE size)
+{
+    MD_SIZE i, beg = 0;
+    out("\"", 1, ud);
+    for(i = 0; i < size; i++) {
+        if(str[i] == '"' || str[i] == '\\') {
+            if(i > beg)
+                out(str + beg, i - beg, ud);
+            out("\\", 1, ud);
+            beg = i;
+        }
+    }
+    if(i > beg)
+        out(str + beg, i - beg, ud);
+    out("\"", 1, ud);
+}
+
+static void
+render_code_meta_json(MD_HTML* r)
+{
+    void (*out)(const MD_CHAR*, MD_SIZE, void*) = r->process_output;
+    void* ud = r->userdata;
+    char buf[64];
+    int i, n;
+
+    out("\0", 1, ud);
+    out("[", 1, ud);
+    for(i = 0; i < r->n_code_blocks; i++) {
+        MD_HTML_CODE_META* m = &r->code_blocks[i];
+        if(i > 0) out(",", 1, ud);
+
+        n = snprintf(buf, sizeof(buf), "{\"s\":%u,\"e\":%u",
+                     (unsigned)m->start, (unsigned)m->end);
+        out(buf, (MD_SIZE)n, ud);
+
+        if(m->lang_size > 0) {
+            out(",\"l\":", 5, ud);
+            emit_json_str(out, ud, m->lang, m->lang_size);
+        }
+        if(m->filename_size > 0) {
+            out(",\"f\":", 5, ud);
+            emit_json_str(out, ud, m->filename, m->filename_size);
+        }
+        if(m->highlight_count > 0) {
+            unsigned j;
+            out(",\"h\":[", 6, ud);
+            for(j = 0; j < m->highlight_count; j++) {
+                if(j > 0) out(",", 1, ud);
+                n = snprintf(buf, sizeof(buf), "%u", m->highlights[j]);
+                out(buf, (MD_SIZE)n, ud);
+            }
+            out("]", 1, ud);
+        }
+        out("}", 1, ud);
+    }
+    out("]", 1, ud);
+}
+
+
 static void
 render_open_alert_block(MD_HTML* r, const MD_BLOCK_ALERT_DETAIL* det)
 {
@@ -700,7 +815,34 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_LI:       render_open_li_block(r, (const MD_BLOCK_LI_DETAIL*)detail); break;
         case MD_BLOCK_HR:       RENDER_VERBATIM(r, "<hr>\n"); break;
         case MD_BLOCK_H:        RENDER_VERBATIM(r, head[((MD_BLOCK_H_DETAIL*)detail)->level - 1]); break;
-        case MD_BLOCK_CODE:     render_open_code_block(r, (const MD_BLOCK_CODE_DETAIL*) detail); break;
+        case MD_BLOCK_CODE:
+            render_open_code_block(r, (const MD_BLOCK_CODE_DETAIL*) detail);
+            if(r->flags & MD_HTML_FLAG_CODE_META) {
+                const MD_BLOCK_CODE_DETAIL* det = (const MD_BLOCK_CODE_DETAIL*) detail;
+                MD_HTML_CODE_META* meta = code_meta_push(r);
+                if(meta != NULL) {
+                    meta->start = r->output_offset;
+                    if(det->lang.text != NULL && det->lang.size > 0) {
+                        MD_SIZE sz = det->lang.size < sizeof(meta->lang) ? det->lang.size : sizeof(meta->lang) - 1;
+                        memcpy(meta->lang, det->lang.text, sz);
+                        meta->lang_size = sz;
+                    }
+                    if(det->filename.text != NULL && det->filename.size > 0) {
+                        MD_SIZE sz = det->filename.size < sizeof(meta->filename) ? det->filename.size : sizeof(meta->filename) - 1;
+                        memcpy(meta->filename, det->filename.text, sz);
+                        meta->filename_size = sz;
+                    }
+                    if(det->highlights != NULL && det->highlight_count > 0) {
+                        meta->highlights = (unsigned*) malloc(det->highlight_count * sizeof(unsigned));
+                        if(meta->highlights != NULL) {
+                            memcpy(meta->highlights, det->highlights, det->highlight_count * sizeof(unsigned));
+                            meta->highlight_count = det->highlight_count;
+                        }
+                    }
+                    r->in_code_block = 1;
+                }
+            }
+            break;
         case MD_BLOCK_HTML:     /* noop */ break;
         case MD_BLOCK_P:        RENDER_VERBATIM(r, "<p>"); break;
         case MD_BLOCK_TABLE:    RENDER_VERBATIM(r, "<table>\n"); break;
@@ -749,7 +891,14 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_LI:       RENDER_VERBATIM(r, "</li>\n"); break;
         case MD_BLOCK_HR:       /*noop*/ break;
         case MD_BLOCK_H:        RENDER_VERBATIM(r, head[((MD_BLOCK_H_DETAIL*)detail)->level - 1]); break;
-        case MD_BLOCK_CODE:     RENDER_VERBATIM(r, "</code></pre>\n"); break;
+        case MD_BLOCK_CODE:
+            if((r->flags & MD_HTML_FLAG_CODE_META) && r->in_code_block) {
+                r->code_blocks[r->n_code_blocks].end = r->output_offset;
+                r->n_code_blocks++;
+                r->in_code_block = 0;
+            }
+            RENDER_VERBATIM(r, "</code></pre>\n");
+            break;
         case MD_BLOCK_HTML:     /* noop */ break;
         case MD_BLOCK_P:        RENDER_VERBATIM(r, "</p>\n"); break;
         case MD_BLOCK_TABLE:    RENDER_VERBATIM(r, "</table>\n"); break;
@@ -945,6 +1094,12 @@ md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
     }
 
     ret = md_parse(input, input_size, &parser, (void*) &render);
+
+    if(renderer_flags & MD_HTML_FLAG_CODE_META) {
+        if(ret == 0)
+            render_code_meta_json(&render);
+        code_meta_cleanup(&render);
+    }
 
     free(render.fm_text);
 

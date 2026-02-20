@@ -124,6 +124,7 @@ fn addWasm(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
         "md4x_alloc",
         "md4x_free",
         "md4x_to_html",
+        "md4x_to_html_meta",
         "md4x_to_ast",
         "md4x_to_ansi",
         "md4x_to_meta",
