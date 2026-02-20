@@ -18,9 +18,7 @@ const bump = (args.find((a) => !a.startsWith("--")) || "patch") as
   | "minor"
   | "patch";
 if (!["major", "minor", "patch"].includes(bump)) {
-  console.error(
-    `Usage: bun scripts/release.ts [major|minor|patch] [--no-tag]`,
-  );
+  console.error(`Usage: bun scripts/release.ts [major|minor|patch] [--no-tag]`);
   process.exit(1);
 }
 
@@ -84,7 +82,10 @@ if (!noTag) {
     cwd: projectDir,
     stdio: "inherit",
   });
-  execSync(`git tag v${next}`, { cwd: projectDir, stdio: "inherit" });
+  execSync(`git tag -a v${next} -m "v${next}"`, {
+    cwd: projectDir,
+    stdio: "inherit",
+  });
   execSync(`git push --follow-tags`, { cwd: projectDir, stdio: "inherit" });
   console.log(`\nPublished v${next}`);
 }
