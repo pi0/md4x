@@ -1,5 +1,15 @@
 # MD4X Change Log
 
+## v0.0.8
+
+### Features
+
+- Add linux-musl and linux-arm NAPI targets
+
+### Fixes
+
+- Fix release script tag handling
+
 ## v0.0.6
 
 ### Full YAML frontmatter parsing with libyaml
