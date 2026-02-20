@@ -1,5 +1,10 @@
 # 📄 MD4X
 
+
+
+[![npm version](https://img.shields.io/npm/v/md4x?style=flat&colorA=18181B&colorB=F0DB4F)](https://npmx.dev/package/md4x)
+![md4x.wasm gzip size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3Dmd4x%2Fbuild%2Fmd4x.wasm&query=%24.size.compressedSize&label=md4x.wasm%20(gzip)&style=flat&colorA=18181B&colorB=F0DB4F)
+
 Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
 
 **[> Online Playground](https://md4x.pi0.io/#/playground)**
