@@ -22,5 +22,9 @@
     "vite": "^6.3.5",
     "vue": "^3.5.28",
     "vue-router": "^5.0.3"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0"
   }
 }

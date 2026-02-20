@@ -11,7 +11,7 @@ import {
 } from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
 import TabSelect from "../components/TabSelect.vue";
-import { ansiToHtml } from "../utils/ansi.ts";
+import AnsiTerminal from "../components/AnsiTerminal.vue";
 
 const examples = Object.fromEntries(
   Object.entries(
@@ -54,6 +54,7 @@ const fullHtml = ref(false);
 const example = ref("all");
 const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
+const outputAnsi = ref("");
 const sourceHtml = ref("");
 const mobileTab = ref<"editor" | "output">("output");
 
@@ -110,8 +111,7 @@ function render() {
         { lang: "json", theme: "github-light" },
       );
     } else if (m === "ansi") {
-      const ansi = renderToAnsi(md).replace(/\x1b\]8;[^\x1b]*\x1b\\/g, "");
-      outputHtml.value = ansiToHtml(ansi);
+      outputAnsi.value = renderToAnsi(md);
     } else if (m === "text") {
       const text = renderToText(md);
       const escaped = text
@@ -377,6 +377,11 @@ onMounted(async () => {
         class="output mode-raw size-full overflow-auto break-words text-sm leading-relaxed"
         v-html="sourceHtml"
       />
+      <AnsiTerminal
+        v-else-if="mode === 'ansi'"
+        :content="outputAnsi"
+        class="size-full"
+      />
       <div
         v-else
         ref="outputEl"
@@ -384,8 +389,6 @@ onMounted(async () => {
         :class="[
           `mode-${mode}`,
           mode === 'html' && 'prose max-w-none p-5 px-6',
-          mode === 'ansi' &&
-            'whitespace-pre-wrap break-words bg-linear-to-br from-[#0f0f1a] to-[#161625] p-5 px-6 font-mono text-[13.5px] leading-[1.65] text-[#c8cad8]',
           mode === 'text' &&
             'whitespace-pre-wrap break-words p-5 px-6 font-mono text-[13.5px] leading-[1.65]',
         ]"
