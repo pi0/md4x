@@ -1,0 +1,166 @@
+# JS Bindings
+
+## WASM Target
+
+```sh
+zig build wasm                     # outputs zig-out/bin/md4x.wasm (~163K)
+```
+
+Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` optimization. The WASM module requires minimal WASI imports (`fd_close`, `fd_seek`, `fd_write`, `proc_exit`) which can be stubbed for browser use.
+
+**Exported functions:**
+
+| Function                         | Description                              |
+| -------------------------------- | ---------------------------------------- |
+| `md4x_alloc(size) -> ptr`        | Allocate memory in WASM linear memory    |
+| `md4x_free(ptr)`                 | Free previously allocated memory         |
+| `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error)          |
+| `md4x_to_ast(ptr, size) -> int`  | Render to JSON AST                       |
+| `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
+| `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
+| `md4x_result_size() -> size`     | Get output buffer size (after render)    |
+
+**Usage from JS (via `lib/wasm.mjs` wrapper):**
+
+```js
+import { initWasm, renderToHtml } from "md4x/wasm";
+
+await initWasm(); // load WASM binary (call once before using render methods)
+
+const html = renderToHtml("# Hello"); // sync after init
+```
+
+`initWasm(input?)` accepts an optional input: `ArrayBuffer`, `Uint8Array`, `WebAssembly.Module`, `Response`, or `Promise<Response>`. When called with no arguments in Node.js, it reads the bundled `.wasm` file from disk. All render methods are **sync** after initialization. All extensions are enabled by default (`MD_DIALECT_ALL`).
+
+## NAPI Target (Node.js)
+
+```sh
+bunx nypm add node-api-headers
+zig build napi-all -Dnapi-include=node_modules/node-api-headers/include  # all 6 platforms
+```
+
+Individual platform targets:
+
+```sh
+zig build napi-linux-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-linux-arm64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-darwin-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-darwin-arm64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-win32-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-win32-arm64 -Dnapi-include=node_modules/node-api-headers/include
+```
+
+`zig build napi-all` outputs platform-specific binaries to `packages/md4x/build/`:
+
+| Output file              | Platform            |
+| ------------------------ | ------------------- |
+| `md4x.linux-x64.node`    | Linux x86_64        |
+| `md4x.linux-arm64.node`  | Linux aarch64       |
+| `md4x.darwin-x64.node`   | macOS x86_64        |
+| `md4x.darwin-arm64.node` | macOS Apple Silicon |
+| `md4x.win32-x64.node`    | Windows x86_64      |
+| `md4x.win32-arm64.node`  | Windows ARM64       |
+
+Windows targets use `zig dlltool` to generate import libraries from `node_modules/node-api-headers/def/node_api.def`. The `-Dnapi-def` build option can override the `.def` path.
+
+**Exported functions (C-level, raw strings):**
+
+| Function       | Signature                                 |
+| -------------- | ----------------------------------------- |
+| `renderToHtml` | `(input: string) => string`               |
+| `renderToAST`  | `(input: string) => string` (JSON string) |
+| `renderToAnsi` | `(input: string) => string`               |
+
+**Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
+
+```js
+import { renderToHtml } from "md4x/napi";
+
+const html = renderToHtml("# Hello");
+```
+
+The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToAST` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
+
+The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node`.
+
+## JS Package Exports
+
+Configured in `packages/md4x/package.json` via `exports`:
+
+| Subpath       | Module                                           | Description                                  |
+| ------------- | ------------------------------------------------ | -------------------------------------------- |
+| `md4x` (bare) | `lib/napi.mjs` (node) / `lib/wasm.mjs` (default) | Auto-selects NAPI on Node.js, WASM elsewhere |
+| `md4x/wasm`   | `lib/wasm.mjs`                                   | WASM-based API (sync after `initWasm()`)     |
+| `md4x/napi`   | `lib/napi.mjs`                                   | Sync NAPI-based API (ESM only)               |
+
+All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer flag configuration is exposed to JS consumers.
+
+**JS API functions:**
+
+| Function                      | NAPI         | WASM                                      |
+| ----------------------------- | ------------ | ----------------------------------------- |
+| `initWasm(input?)`            | —            | `Promise<void>` (call once before render) |
+| `renderToHtml(input: string)` | `string`     | `string`                                  |
+| `renderToAST(input: string)`  | `string`     | `string`                                  |
+| `parseAST(input: string)`     | `ComarkTree` | `ComarkTree`                              |
+| `renderToAnsi(input: string)` | `string`     | `string`                                  |
+
+`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
+
+## TypeScript Types (`lib/types.d.ts`)
+
+The package exports TypeScript types for the Comark AST:
+
+- `ComarkTree` — Root container: `{ type: "comark", value: ComarkNode[] }`
+- `ComarkNode` — Either a `ComarkElement` (tuple array) or `ComarkText` (plain string)
+- `ComarkElement` — Tuple: `[tag: string, props: ComarkElementAttributes, ...children: ComarkNode[]]`
+- `ComarkText` — Plain string representing text content
+- `ComarkElementAttributes` — Key-value record: `{ [key: string]: unknown }`
+
+## Comark AST Format
+
+The JSON renderer produces a **Comark AST** — a lightweight, array-based format. Each node is either a plain string (text) or an element tuple `[tag, props, ...children]`.
+
+**Property type conventions in AST output:**
+
+| MDC Syntax              | AST Props                        | Description                 |
+| ----------------------- | -------------------------------- | --------------------------- |
+| `prop="value"`          | `"prop": "value"`                | String prop                 |
+| `bool`                  | `":bool": "true"`                | Boolean (`:` prefix in key) |
+| `:count="5"`            | `":count": "5"`                  | Number/bind (`:` prefix)    |
+| `:data='{"k":"v"}'`     | `":data": "{\"k\":\"v\"}"`       | JSON passthrough            |
+| `#my-id`                | `"id": "my-id"`                  | ID shorthand                |
+| `.class-one .class-two` | `"class": "class-one class-two"` | Class shorthand (merged)    |
+
+**Key AST mappings:**
+
+- Headings: `["h1", {"id": "slug"}, "text"]` — auto-generated slug ID
+- Code blocks: `["pre", {"language": "js", "filename": "app.js", "highlights": [1,2]}, ["code", {"class": "language-js"}, "..."]]`
+- Components: `["component-name", {props}, ...children]`
+- Slots: `["template", {"name": "slot-name"}, ...children]`
+- Images: `["img", {"src": "url", "alt": "text"}]` (void, no children)
+
+## JS Package Testing
+
+Tests use vitest with a shared test suite (`packages/md4x/test/_suite.mjs`) that validates both NAPI and WASM bindings:
+
+```sh
+pnpm vitest run packages/md4x/test/napi.test.mjs   # NAPI tests
+pnpm vitest run packages/md4x/test/wasm.test.mjs   # WASM tests
+```
+
+## JS Package Benchmarks
+
+Benchmarks use `mitata` and compare against `md4w` and `markdown-it`:
+
+```sh
+bun packages/md4x/bench/index.mjs
+```
+
+## Workspace Setup
+
+The root `package.json` defines a bun workspace (`"workspaces": ["packages/*"]`) with:
+
+- `node-api-headers` — Required for NAPI builds
+- `prettier` — Code formatting
+- Package manager: `bun@1.3.9`
