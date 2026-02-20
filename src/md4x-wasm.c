@@ -113,9 +113,21 @@ static int render(md4x_render_fn fn, const char* input, unsigned input_size)
 }
 
 __attribute__((export_name("md4x_to_html")))
-int md4x_to_html(const char* input, unsigned input_size)
+int md4x_to_html(const char* input, unsigned input_size,
+                 unsigned renderer_flags)
 {
-    return render(md_html, input, input_size);
+    md4x_buf buf = { NULL, 0, 0 };
+    int ret = md_html(input, input_size, buf_append, &buf,
+                      MD_DIALECT_ALL, renderer_flags);
+    if(ret != 0) {
+        free(buf.data);
+        g_result_data = NULL;
+        g_result_size = 0;
+        return -1;
+    }
+    g_result_data = buf.data;
+    g_result_size = buf.size;
+    return 0;
 }
 
 __attribute__((export_name("md4x_to_ast")))

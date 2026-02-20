@@ -16,13 +16,13 @@ const wasiStub = {
   proc_exit: () => {},
 };
 
-function render(exports, fn, input) {
+function render(exports, fn, input, ...extra) {
   const { memory, md4x_alloc, md4x_free, md4x_result_ptr, md4x_result_size } =
     exports;
   const encoded = new TextEncoder().encode(input);
   const ptr = md4x_alloc(encoded.length);
   new Uint8Array(memory.buffer).set(encoded, ptr);
-  const ret = fn(ptr, encoded.length);
+  const ret = fn(ptr, encoded.length, ...extra);
   md4x_free(ptr);
   if (ret !== 0) {
     throw new Error("md4x: render failed");
@@ -77,8 +77,9 @@ export async function init(opts) {
   _instance = instance;
 }
 
-export function renderToHtml(input) {
-  return render(getExports(), getExports().md4x_to_html, input);
+export function renderToHtml(input, opts) {
+  const flags = opts?.full ? 0x0008 : 0;
+  return render(getExports(), getExports().md4x_to_html, input, flags);
 }
 
 export function renderToAST(input) {

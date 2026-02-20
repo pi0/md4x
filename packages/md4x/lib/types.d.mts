@@ -27,3 +27,8 @@ export type ComarkMeta = {
   headings: ComarkHeading[];
   [key: string]: unknown;
 };
+
+export interface HtmlOptions {
+  /** Generate a full HTML document with `<!DOCTYPE html>`, `<head>`, and `<body>`. */
+  full?: boolean;
+}

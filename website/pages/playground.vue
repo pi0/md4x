@@ -50,6 +50,7 @@ const modeOptions = [
 ];
 const mode = ref("html");
 const showSource = ref(false);
+const fullHtml = ref(false);
 const example = ref("all");
 const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
@@ -99,10 +100,10 @@ function render() {
     if (m === "html") {
       const html = renderToHtml(md);
       outputHtml.value = html;
-      sourceHtml.value = highlighter.codeToHtml(html, {
-        lang: "html",
-        theme: "github-light",
-      });
+      sourceHtml.value = highlighter.codeToHtml(
+        renderToHtml(md, { full: fullHtml.value || undefined }),
+        { lang: "html", theme: "github-light" },
+      );
     } else if (m === "json") {
       outputHtml.value = highlighter.codeToHtml(
         JSON.stringify(parseAST(md), null, 2),
@@ -226,6 +227,7 @@ watch(mode, () => {
   showSource.value = false;
   render();
 });
+watch(fullHtml, render);
 watch(example, () => {
   currentMd.value =
     example.value === "all" ? allExamplesMd : examples[example.value];
@@ -339,27 +341,37 @@ onMounted(async () => {
       class="relative min-w-0 min-h-0 flex-1 basis-0 overflow-auto"
       :data-hidden="mobileTab === 'editor' ? '' : undefined"
     >
-      <button
-        v-if="mode === 'html'"
-        class="source-toggle"
-        :class="showSource && 'active'"
-        :title="showSource ? 'Show rendered' : 'Show source'"
-        @click="showSource = !showSource"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          width="14"
-          height="14"
+      <div v-if="mode === 'html'" class="source-toggles">
+        <button
+          v-if="showSource"
+          class="source-toggle full-toggle"
+          :class="fullHtml && 'active'"
+          title="Toggle full HTML document"
+          @click="fullHtml = !fullHtml"
         >
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
-        </svg>
-      </button>
+          Full
+        </button>
+        <button
+          class="source-toggle"
+          :class="showSource && 'active'"
+          :title="showSource ? 'Show rendered' : 'Show source'"
+          @click="showSource = !showSource"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            width="14"
+            height="14"
+          >
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
+        </button>
+      </div>
       <div
         v-if="mode === 'html' && showSource"
         class="output mode-raw size-full overflow-auto break-words text-sm leading-relaxed"
@@ -392,22 +404,31 @@ onMounted(async () => {
     display: none;
   }
 }
-.source-toggle {
+.source-toggles {
   position: absolute;
   top: 12px;
   right: 20px;
   z-index: 10;
   display: flex;
+  gap: 6px;
+}
+.source-toggle {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
   height: 28px;
+  min-width: 28px;
   border-radius: 6px;
   border: 1px solid #9ca3af;
   background: #f3f4f6;
   color: #374151;
   cursor: pointer;
   transition: all 0.15s;
+}
+.source-toggle.full-toggle {
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
 }
 .source-toggle:hover {
   background: #e5e7eb;

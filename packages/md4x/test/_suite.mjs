@@ -147,6 +147,35 @@ export function defineSuite({
       expect(html).toContain("<h1>Content</h1>");
     });
 
+    it("renders full HTML document with { full: true }", async () => {
+      const html = await renderToHtml("# Hello", { full: true });
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("<html");
+      expect(html).toContain("<head>");
+      expect(html).toContain("<body>");
+      expect(html).toContain("<h1>Hello</h1>");
+      expect(html).toContain("</body>");
+      expect(html).toContain("</html>");
+    });
+
+    it("uses frontmatter title in full HTML mode", async () => {
+      const html = await renderToHtml(
+        "---\ntitle: My Page\ndescription: A test page\n---\n\n# Content",
+        { full: true },
+      );
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("<title>My Page</title>");
+      expect(html).toContain('name="description"');
+      expect(html).toContain("A test page");
+      expect(html).toContain("<h1>Content</h1>");
+    });
+
+    it("renders body-only HTML without full option", async () => {
+      const html = await renderToHtml("# Hello");
+      expect(html).not.toContain("<!DOCTYPE html>");
+      expect(html).toBe("<h1>Hello</h1>\n");
+    });
+
     it("renders aligned table", async () => {
       const html = await renderToHtml(
         "| Left | Right |\n|:-----|------:|\n| a    | b     |",

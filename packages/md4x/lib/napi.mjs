@@ -28,8 +28,9 @@ export function init(opts) {
   }
 }
 
-export function renderToHtml(input) {
-  return getBinding().renderToHtml(input);
+export function renderToHtml(input, opts) {
+  const flags = opts?.full ? 0x0008 : 0;
+  return getBinding().renderToHtml(input, flags);
 }
 
 export function renderToAST(input) {

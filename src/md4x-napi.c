@@ -105,7 +105,50 @@ render_impl(napi_env env, napi_callback_info info, md4x_render_fn fn)
 
 static napi_value md4x_napi_to_html(napi_env env, napi_callback_info info)
 {
-    return render_impl(env, info, md_html);
+    size_t argc = 2;
+    napi_value argv[2];
+    napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+
+    if(argc < 1) {
+        napi_throw_error(env, NULL, "Expected 1 argument");
+        return NULL;
+    }
+
+    /* Get input string */
+    size_t input_size;
+    napi_get_value_string_utf8(env, argv[0], NULL, 0, &input_size);
+    char* input = (char*) malloc(input_size + 1);
+    if(!input) {
+        napi_throw_error(env, NULL, "Allocation failed");
+        return NULL;
+    }
+    napi_get_value_string_utf8(env, argv[0], input, input_size + 1, &input_size);
+
+    /* Get optional renderer flags (second arg) */
+    unsigned renderer_flags = 0;
+    if(argc >= 2) {
+        uint32_t flags;
+        if(napi_get_value_uint32(env, argv[1], &flags) == napi_ok) {
+            renderer_flags = flags;
+        }
+    }
+
+    /* Render */
+    napi_buf buf = { NULL, 0, 0 };
+    int ret = md_html(input, (unsigned) input_size, napi_buf_append, &buf,
+                      MD_DIALECT_ALL, renderer_flags);
+    free(input);
+
+    if(ret != 0) {
+        free(buf.data);
+        napi_throw_error(env, NULL, "Markdown parsing failed");
+        return NULL;
+    }
+
+    napi_value result;
+    napi_create_string_utf8(env, buf.data ? buf.data : "", buf.size, &result);
+    free(buf.data);
+    return result;
 }
 
 static napi_value md4x_napi_to_ast(napi_env env, napi_callback_info info)
