@@ -2,7 +2,7 @@
 
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
-import { renderToHtml, renderToAnsi, renderToJson } from "./napi.mjs";
+import { renderToHtml, renderToAnsi, renderToAST } from "./napi.mjs";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -147,7 +147,7 @@ switch (format) {
     output = renderToHtml(input);
     break;
   case "json":
-    output = JSON.stringify(renderToJson(input));
+    output = JSON.stringify(renderToAST(input));
     break;
   case "ansi":
     output = renderToAnsi(input);

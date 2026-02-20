@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 export function defineSuite({
   renderToHtml,
-  renderToJson,
+  renderToAST,
   renderToAnsi,
   parseAST,
 }) {
@@ -159,20 +159,20 @@ export function defineSuite({
     });
   });
 
-  describe("renderToJson", () => {
+  describe("renderToAST", () => {
     it("returns a string", async () => {
-      const json = await renderToJson("# Hello");
+      const json = await renderToAST("# Hello");
       expect(typeof json).toBe("string");
     });
 
     it("returns valid JSON", async () => {
-      const json = await renderToJson("# Hello");
+      const json = await renderToAST("# Hello");
       const parsed = JSON.parse(json);
       expect(parsed.type).toBe("comark");
     });
 
     it("returns empty string for empty input", async () => {
-      const json = await renderToJson("");
+      const json = await renderToAST("");
       const parsed = JSON.parse(json);
       expect(parsed.value).toHaveLength(0);
     });

@@ -27,8 +27,8 @@ src/
     md4x-props.h       # Shared component property parser (header-only)
     md4x-html.c        # HTML renderer library (~500 LoC)
     md4x-html.h        # HTML renderer public API
-    md4x-json.c        # JSON AST renderer library (~530 LoC)
-    md4x-json.h        # JSON renderer public API
+    md4x-ast.c        # AST renderer library (~530 LoC)
+    md4x-ast.h        # AST renderer public API
     md4x-ansi.c        # ANSI terminal renderer library (~450 LoC)
     md4x-ansi.h        # ANSI renderer public API
   cli/
@@ -84,7 +84,7 @@ build.zig.zon            # Zig package manifest
 
 ## Building
 
-Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/libyaml) 0.2.5 (YAML parser for JSON renderer frontmatter, fetched automatically via `build.zig.zon`).
+Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/libyaml) 0.2.5 (YAML parser for AST renderer frontmatter, fetched automatically via `build.zig.zon`).
 
 ```sh
 zig build                          # build all (defaults to ReleaseFast)
@@ -100,7 +100,7 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 
 - **libmd4x** — Parser library (compiled with `-DMD4X_USE_UTF8`)
 - **libmd4x-html** — HTML renderer (links against libmd4x)
-- **libmd4x-json** — JSON AST renderer (links against libmd4x)
+- **libmd4x-ast** — AST renderer (links against libmd4x)
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
@@ -123,7 +123,7 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 | `md4x_alloc(size) -> ptr`        | Allocate memory in WASM linear memory    |
 | `md4x_free(ptr)`                 | Free previously allocated memory         |
 | `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error)          |
-| `md4x_to_json(ptr, size) -> int` | Render to JSON AST                       |
+| `md4x_to_ast(ptr, size) -> int`  | Render to JSON AST                       |
 | `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
 | `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
 | `md4x_result_size() -> size`     | Get output buffer size (after render)    |
@@ -176,7 +176,7 @@ Windows targets use `zig dlltool` to generate import libraries from `node_module
 | Function       | Signature                                 |
 | -------------- | ----------------------------------------- |
 | `renderToHtml` | `(input: string) => string`               |
-| `renderToJson` | `(input: string) => string` (JSON string) |
+| `renderToAST`  | `(input: string) => string` (JSON string) |
 | `renderToAnsi` | `(input: string) => string`               |
 
 **Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
@@ -187,7 +187,7 @@ import { renderToHtml } from "md4x/napi";
 const html = renderToHtml("# Hello");
 ```
 
-The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToJson` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
+The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToAST` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
 
 The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node`.
 
@@ -209,11 +209,11 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 | ----------------------------- | ------------ | ----------------------------------------- |
 | `initWasm(input?)`            | —            | `Promise<void>` (call once before render) |
 | `renderToHtml(input: string)` | `string`     | `string`                                  |
-| `renderToJson(input: string)` | `string`     | `string`                                  |
+| `renderToAST(input: string)`  | `string`     | `string`                                  |
 | `parseAST(input: string)`     | `ComarkTree` | `ComarkTree`                              |
 | `renderToAnsi(input: string)` | `string`     | `string`                                  |
 
-`renderToJson` returns the raw JSON string from the C renderer. `parseAST` calls `renderToJson` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
+`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
 
 ### TypeScript Types (`lib/types.d.ts`)
 
@@ -610,24 +610,24 @@ md_parse_props(raw, size, &parsed);
 
 All `key`/`value` pointers are zero-copy references into the original raw string (not null-terminated — use `*_size` fields).
 
-## JSON Renderer API (`md4x-json.h`)
+## AST Renderer API (`md4x-ast.h`)
 
 Renders Markdown into a Comark AST (array-based JSON format):
 
 ```c
-int md_json(const MD_CHAR* input, MD_SIZE input_size,
+int md_ast(const MD_CHAR* input, MD_SIZE input_size,
             void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
 ```
 
 Produces `{"type":"comark","value":[...]}` where each node is either a plain JSON string (text) or a tuple array `["tag", {props}, ...children]`.
 
-### Renderer Flags (`MD_JSON_FLAG_*`)
+### AST Renderer Flags (`MD_AST_FLAG_*`)
 
-| Flag                         | Value    | Description                                   |
-| ---------------------------- | -------- | --------------------------------------------- |
-| `MD_JSON_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr |
-| `MD_JSON_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                 |
+| Flag                        | Value    | Description                                   |
+| --------------------------- | -------- | --------------------------------------------- |
+| `MD_AST_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_AST_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                 |
 
 ## ANSI Renderer API (`md4x-ansi.h`)
 
@@ -705,7 +705,7 @@ Tag mappings — blocks: `blockquote`, `ul`, `ol` (start), `li` (task, checked),
 
 Code blocks serialize as `["pre", {language}, ["code", {class: "language-X"}, literal]]`. Images are void elements with alt text in props: `["img", {src, alt}]`.
 
-The JSON renderer is implemented as a library in `src/renderers/md4x-json.c` (public API in `src/renderers/md4x-json.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
+The AST renderer is implemented as a library in `src/renderers/md4x-ast.c` (public API in `src/renderers/md4x-ast.h`). It builds an in-memory AST during SAX-like parsing callbacks, then serializes it after parsing completes.
 
 ## Markdown Syntax Reference
 

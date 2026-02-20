@@ -23,8 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef MD4X_JSON_H
-#define MD4X_JSON_H
+#ifndef MD4X_AST_H
+#define MD4X_AST_H
 
 #include "md4x.h"
 
@@ -34,8 +34,8 @@
 
 
 /* If set, debug output from md_parse() is sent to stderr. */
-#define MD_JSON_FLAG_DEBUG              0x0001
-#define MD_JSON_FLAG_SKIP_UTF8_BOM     0x0002
+#define MD_AST_FLAG_DEBUG              0x0001
+#define MD_AST_FLAG_SKIP_UTF8_BOM     0x0002
 
 
 /* Render Markdown into a Comark AST (array-based JSON format).
@@ -47,12 +47,12 @@
  * Callback process_output() gets called with chunks of JSON output.
  * Param userdata is just propagated back to process_output() callback.
  * Param parser_flags are flags from md4x.h propagated to md_parse().
- * Param renderer_flags is bitmask of MD_JSON_FLAG_xxxx.
+ * Param renderer_flags is bitmask of MD_AST_FLAG_xxxx.
  *
  * Returns -1 on error (if md_parse() fails or memory allocation fails.)
  * Returns 0 on success.
  */
-int md_json(const MD_CHAR* input, MD_SIZE input_size,
+int md_ast(const MD_CHAR* input, MD_SIZE input_size,
             void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
             void* userdata, unsigned parser_flags, unsigned renderer_flags);
 
@@ -61,4 +61,4 @@ int md_json(const MD_CHAR* input, MD_SIZE input_size,
     }  /* extern "C" { */
 #endif
 
-#endif  /* MD4X_JSON_H */
+#endif  /* MD4X_AST_H */

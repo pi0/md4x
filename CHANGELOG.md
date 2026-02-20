@@ -18,13 +18,13 @@ Added `{...}` attribute syntax on native inline elements: `**bold**{.class}`, `*
 
 New parser types: `MD_SPAN_SPAN` (for `[text]{attrs}`), `MD_SPAN_ATTRS_DETAIL` (for em/strong/code/del/u with attrs), `MD_SPAN_SPAN_DETAIL`. Extended `MD_SPAN_A_DETAIL` and `MD_SPAN_IMG_DETAIL` with `raw_attrs`/`raw_attrs_size` fields. New flag: `MD_FLAG_ATTRIBUTES` (`0x40000`), included in `MD_DIALECT_ALL`.
 
-### `renderToJson` returns raw string, new `parseAST` function
+### `renderToAST` returns raw string, new `parseAST` function
 
-**Breaking:** `renderToJson` now returns the raw JSON string instead of a parsed `ComarkTree` object. A new `parseAST` function is added that calls `renderToJson` and parses the result into a `ComarkTree` object (equivalent to the previous `renderToJson` behavior).
+**Breaking:** `renderToAST` now returns the raw JSON string instead of a parsed `ComarkTree` object. A new `parseAST` function is added that calls `renderToAST` and parses the result into a `ComarkTree` object (equivalent to the previous `renderToAST` behavior).
 
 ### JSON renderer outputs Comark AST format
 
-**Breaking:** The JSON renderer (`md_json` / `renderToJson`) now outputs the Comark AST format instead of the previous mdast/unist-like format. The root is `{"type":"comark","value":[...]}` where each node is either a plain string (text) or a tuple array `["tag", {props}, ...children]`.
+**Breaking:** The JSON renderer (`md_ast` / `renderToAST`) now outputs the Comark AST format instead of the previous mdast/unist-like format. The root is `{"type":"comark","value":[...]}` where each node is either a plain string (text) or a tuple array `["tag", {props}, ...children]`.
 
 Key changes:
 
@@ -43,9 +43,9 @@ Replaced CMake with Zig build system. Build with `zig build` (defaults to `Relea
 
 The CLI tool has been renamed from `md2html` to `md4x` and moved from `md2html/` to `src/cli/`. It now supports a `--format` (`-t`) flag to select the output format (`html`, `text`, `json`, `ansi`). HTML remains the default.
 
-### JSON AST renderer (`libmd4x-json`)
+### AST renderer (`libmd4x-ast`)
 
-Added a new renderer library (`src/md4x-json.c`, `src/md4x-json.h`) that converts Markdown into a nested JSON AST tree compatible with the [commonmark.js](https://github.com/commonmark/commonmark.js) AST format. Each node has `"type"`, type-specific properties, and either `"children"` (container nodes) or `"literal"` (leaf nodes).
+Added a new renderer library (`src/md4x-ast.c`, `src/md4x-ast.h`) that converts Markdown into a nested JSON AST tree compatible with the [commonmark.js](https://github.com/commonmark/commonmark.js) AST format. Each node has `"type"`, type-specific properties, and either `"children"` (container nodes) or `"literal"` (leaf nodes).
 
 The CLI supports it via `--format=json`.
 
@@ -59,11 +59,11 @@ The CLI supports it via `--format=ansi`. Pass `MD_ANSI_FLAG_NO_COLOR` to suppres
 
 ### WASM target (`zig build wasm`)
 
-Added a WebAssembly build target (`wasm32-wasi`) that produces a ~163K `.wasm` binary. Exposes `md4x_to_html`, `md4x_to_json`, and `md4x_to_ansi` functions callable from JavaScript, along with `md4x_alloc`/`md4x_free` for memory management and `md4x_result_ptr`/`md4x_result_size` for reading output.
+Added a WebAssembly build target (`wasm32-wasi`) that produces a ~163K `.wasm` binary. Exposes `md4x_to_html`, `md4x_to_ast`, and `md4x_to_ansi` functions callable from JavaScript, along with `md4x_alloc`/`md4x_free` for memory management and `md4x_result_ptr`/`md4x_result_size` for reading output.
 
 ### Node.js NAPI addon (`zig build napi`)
 
-Added a Node-API native addon target that produces a `.node` shared library. Exposes `renderToHtml`, `renderToJson`, and `renderToAnsi` functions that take a string and optional parser/renderer flags, returning the rendered output as a string. Requires `node-api-headers` (`zig build napi -Dnapi-include=node_modules/node-api-headers/include`).
+Added a Node-API native addon target that produces a `.node` shared library. Exposes `renderToHtml`, `renderToAST`, and `renderToAnsi` functions that take a string and optional parser/renderer flags, returning the rendered output as a string. Requires `node-api-headers` (`zig build napi -Dnapi-include=node_modules/node-api-headers/include`).
 
 ### Frontmatter support (`MD_FLAG_FRONTMATTER`)
 

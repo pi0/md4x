@@ -28,7 +28,7 @@
 #include <string.h>
 #include "md4x.h"
 #include "md4x-html.h"
-#include "md4x-json.h"
+#include "md4x-ast.h"
 #include "md4x-ansi.h"
 
 
@@ -106,9 +106,9 @@ static napi_value md4x_napi_to_html(napi_env env, napi_callback_info info)
     return render_impl(env, info, md_html);
 }
 
-static napi_value md4x_napi_to_json(napi_env env, napi_callback_info info)
+static napi_value md4x_napi_to_ast(napi_env env, napi_callback_info info)
 {
-    return render_impl(env, info, md_json);
+    return render_impl(env, info, md_ast);
 }
 
 static napi_value md4x_napi_to_ansi(napi_env env, napi_callback_info info)
@@ -122,7 +122,7 @@ static napi_value init(napi_env env, napi_value exports)
 {
     napi_property_descriptor props[] = {
         { "renderToHtml", NULL, md4x_napi_to_html, NULL, NULL, NULL, napi_default, NULL },
-        { "renderToJson", NULL, md4x_napi_to_json, NULL, NULL, NULL, napi_default, NULL },
+        { "renderToAST", NULL, md4x_napi_to_ast, NULL, NULL, NULL, napi_default, NULL },
         { "renderToAnsi", NULL, md4x_napi_to_ansi, NULL, NULL, NULL, napi_default, NULL },
     };
     napi_define_properties(env, exports, 3, props);

@@ -51,12 +51,12 @@ export function renderToHtml(input) {
   return render(getExports(), getExports().md4x_to_html, input);
 }
 
-export function renderToJson(input) {
-  return render(getExports(), getExports().md4x_to_json, input);
+export function renderToAST(input) {
+  return render(getExports(), getExports().md4x_to_ast, input);
 }
 
 export function parseAST(input) {
-  return JSON.parse(renderToJson(input));
+  return JSON.parse(renderToAST(input));
 }
 
 export function renderToAnsi(input) {

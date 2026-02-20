@@ -29,7 +29,7 @@
 #include <time.h>
 
 #include "md4x-html.h"
-#include "md4x-json.h"
+#include "md4x-ast.h"
 #include "md4x-ansi.h"
 #include "cmdline.h"
 
@@ -187,11 +187,11 @@ process_file(const char* in_path, FILE* in, FILE* out)
                         (void*) &buf_out, p_flags, r_flags);
             break;
         case FORMAT_JSON: {
-            unsigned j_flags = MD_JSON_FLAG_DEBUG;
+            unsigned j_flags = MD_AST_FLAG_DEBUG;
 #ifndef MD4X_USE_ASCII
-            j_flags |= MD_JSON_FLAG_SKIP_UTF8_BOM;
+            j_flags |= MD_AST_FLAG_SKIP_UTF8_BOM;
 #endif
-            ret = md_json(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+            ret = md_ast(buf_in.data, (MD_SIZE)buf_in.size, process_output,
                         (void*) &buf_out, p_flags, j_flags);
             break;
         }

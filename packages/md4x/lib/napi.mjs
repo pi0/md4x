@@ -13,12 +13,12 @@ export function renderToHtml(input) {
   return binding.renderToHtml(input);
 }
 
-export function renderToJson(input) {
-  return binding.renderToJson(input);
+export function renderToAST(input) {
+  return binding.renderToAST(input);
 }
 
 export function parseAST(input) {
-  return JSON.parse(renderToJson(input));
+  return JSON.parse(renderToAST(input));
 }
 
 export function renderToAnsi(input) {

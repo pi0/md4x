@@ -36,10 +36,10 @@ Available as a native Node.js addon (NAPI) for maximum performance, or as a port
 The bare `md4x` import auto-selects NAPI on Node.js and WASM elsewhere.
 
 ```js
-import { renderToHtml, renderToJson, parseAST, renderToAnsi } from "md4x";
+import { renderToHtml, renderToAST, parseAST, renderToAnsi } from "md4x";
 
 const html = renderToHtml("# Hello, **world**!");
-const json = renderToJson("# Hello, **world**!"); // raw JSON string
+const json = renderToAST("# Hello, **world**!"); // raw JSON string
 const ast = parseAST("# Hello, **world**!"); // parsed ComarkTree object
 const ansi = renderToAnsi("# Hello, **world**!");
 ```
@@ -136,9 +136,9 @@ md_html(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 
 ```c
 #include "md4x.h"
-#include "md4x-json.h"
+#include "md4x-ast.h"
 
-md_json(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
+md_ast(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 ```
 
 #### ANSI Renderer

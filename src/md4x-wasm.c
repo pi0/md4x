@@ -27,7 +27,7 @@
 #include <string.h>
 #include "md4x.h"
 #include "md4x-html.h"
-#include "md4x-json.h"
+#include "md4x-ast.h"
 #include "md4x-ansi.h"
 
 
@@ -116,10 +116,10 @@ int md4x_to_html(const char* input, unsigned input_size)
     return render(md_html, input, input_size);
 }
 
-__attribute__((export_name("md4x_to_json")))
-int md4x_to_json(const char* input, unsigned input_size)
+__attribute__((export_name("md4x_to_ast")))
+int md4x_to_ast(const char* input, unsigned input_size)
 {
-    return render(md_json, input, input_size);
+    return render(md_ast, input, input_size);
 }
 
 __attribute__((export_name("md4x_to_ansi")))

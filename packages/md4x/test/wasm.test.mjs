@@ -2,7 +2,7 @@ import { beforeAll } from "vitest";
 import {
   initWasm,
   renderToHtml,
-  renderToJson,
+  renderToAST,
   renderToAnsi,
   parseAST,
 } from "../lib/wasm.mjs";
@@ -12,4 +12,4 @@ beforeAll(async () => {
   await initWasm();
 });
 
-defineSuite({ renderToHtml, renderToJson, renderToAnsi, parseAST });
+defineSuite({ renderToHtml, renderToAST, renderToAnsi, parseAST });

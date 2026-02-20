@@ -28,7 +28,7 @@
 #include <string.h>
 #include <yaml.h>
 
-#include "md4x-json.h"
+#include "md4x-ast.h"
 #include "md4x-props.h"
 
 
@@ -1260,9 +1260,9 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
  **************************************/
 
 int
-md_json(const MD_CHAR* input, MD_SIZE input_size,
-        void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
-        void* userdata, unsigned parser_flags, unsigned renderer_flags)
+md_ast(const MD_CHAR* input, MD_SIZE input_size,
+       void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+       void* userdata, unsigned parser_flags, unsigned renderer_flags)
 {
     JSON_CTX ctx;
     JSON_WRITER writer;
@@ -1276,7 +1276,7 @@ md_json(const MD_CHAR* input, MD_SIZE input_size,
         json_enter_span,
         json_leave_span,
         json_text,
-        (renderer_flags & MD_JSON_FLAG_DEBUG) ? json_debug_log : NULL,
+        (renderer_flags & MD_AST_FLAG_DEBUG) ? json_debug_log : NULL,
         NULL
     };
 
@@ -1284,7 +1284,7 @@ md_json(const MD_CHAR* input, MD_SIZE input_size,
 
 #ifndef MD4X_USE_ASCII
     /* Skip UTF-8 BOM. */
-    if(renderer_flags & MD_JSON_FLAG_SKIP_UTF8_BOM) {
+    if(renderer_flags & MD_AST_FLAG_SKIP_UTF8_BOM) {
         if(input_size >= 3 && (unsigned char)input[0] == 0xEF
            && (unsigned char)input[1] == 0xBB && (unsigned char)input[2] == 0xBF) {
             input += 3;

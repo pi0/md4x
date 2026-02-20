@@ -27,8 +27,8 @@ for (const [name, input] of Object.entries(inputs)) {
     });
 
     summary(() => {
-      bench(`md4x (napi) json (${name})`, () => napi.renderToJson(input));
-      bench(`md4x (wasm) json (${name})`, () => wasm.renderToJson(input));
+      bench(`md4x (napi) ast (${name})`, () => napi.renderToAST(input));
+      bench(`md4x (wasm) ast (${name})`, () => wasm.renderToAST(input));
     });
 
     summary(() => {
