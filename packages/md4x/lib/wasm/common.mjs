@@ -1,3 +1,5 @@
+import { parseHtmlWithHighlighting } from "../_shared.mjs";
+
 // --- internal ---
 
 let _instance;
@@ -61,7 +63,31 @@ export function renderToHtml(input, opts) {
   let flags = opts?.full ? 0x0008 : 0;
   if (opts?.heal) flags |= HEAL_FLAG;
   const exports = _getExports();
-  return render(exports, exports.md4x_to_html, input, flags);
+  if (!opts?.highlighter) {
+    return render(exports, exports.md4x_to_html, input, flags);
+  }
+  const {
+    memory,
+    md4x_alloc,
+    md4x_free,
+    md4x_to_html_meta,
+    md4x_result_ptr,
+    md4x_result_size,
+  } = exports;
+  const encoded = new TextEncoder().encode(str(input));
+  const ptr = md4x_alloc(encoded.length);
+  new Uint8Array(memory.buffer).set(encoded, ptr);
+  const ret = md4x_to_html_meta(ptr, encoded.length);
+  md4x_free(ptr);
+  if (ret !== 0) {
+    throw new Error("md4x: render failed");
+  }
+  const outPtr = md4x_result_ptr();
+  const outSize = md4x_result_size();
+  const bytes = new Uint8Array(memory.buffer, outPtr, outSize);
+  const result = parseHtmlWithHighlighting(bytes, opts.highlighter);
+  md4x_free(outPtr);
+  return result;
 }
 
 export function renderToAST(input, opts) {

@@ -69,7 +69,11 @@ const mobileTab = ref<"editor" | "output">("output");
 const editorEl = ref<HTMLElement>();
 const outputEl = ref<HTMLElement>();
 let editorView: any = null;
-let highlighter: Highlighter;
+
+let hl: Highlighter = await createHighlighter({
+  themes: ["github-light"],
+  langs: ["html", "json", "ts"],
+});
 
 // Restore state from query
 function restoreFromQuery() {
@@ -109,14 +113,22 @@ function render() {
   try {
     outputTree.value = null;
     if (m === "html") {
-      const html = renderToHtml(md, { heal });
+      const html = renderToHtml(md, {
+        heal,
+        highlighter(code, { lang }) {
+          return hl.codeToHtml(code, {
+            lang: lang || "txt",
+            theme: "github-light",
+          });
+        },
+      });
       outputHtml.value = html;
-      sourceHtml.value = highlighter.codeToHtml(
+      sourceHtml.value = hl.codeToHtml(
         renderToHtml(md, { full: fullHtml.value || undefined, heal }),
         { lang: "html", theme: "github-light" },
       );
     } else if (m === "json") {
-      outputHtml.value = highlighter.codeToHtml(
+      outputHtml.value = hl.codeToHtml(
         JSON.stringify(parseAST(md, { heal }), null, 2),
         { lang: "json", theme: "github-light" },
       );
@@ -133,13 +145,13 @@ function render() {
         .replace(/>/g, "&gt;");
       outputHtml.value = `<pre>${escaped}</pre>`;
     } else if (m === "meta") {
-      outputHtml.value = highlighter.codeToHtml(
+      outputHtml.value = hl.codeToHtml(
         JSON.stringify(parseMeta(md, { heal }), null, 2),
         { lang: "json", theme: "github-light" },
       );
     }
   } catch (e) {
-    outputHtml.value = `<pre>Error: ${(e as Error).message}</pre>`;
+    outputHtml.value = `<pre>Error: ${(e as Error).stack}</pre>`;
   }
   updateQuery();
 }
@@ -250,24 +262,17 @@ onMounted(async () => {
 
   const [
     ,
-    hl,
     { EditorView, basicSetup },
     { markdown },
     { languages },
     { EditorState },
   ] = await Promise.all([
     initMD4x(),
-    createHighlighter({
-      themes: ["github-light"],
-      langs: ["html", "json"],
-    }),
     import("codemirror"),
     import("@codemirror/lang-markdown"),
     import("@codemirror/language-data"),
     import("@codemirror/state"),
   ]);
-
-  highlighter = hl;
 
   const editorTheme = EditorView.theme({
     "&": { height: "100%" },

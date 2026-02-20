@@ -17,8 +17,11 @@ export type {
   RenderOptions,
 } from "./types.mjs";
 
+export type * from "./types.mjs";
+
 export interface NAPIBinding {
   renderToHtml(input: string, flags?: number): string;
+  renderToHtmlMeta(input: string): Buffer;
   renderToAST(input: string, flags?: number): string;
   renderToAnsi(input: string, flags?: number): string;
   renderToMeta(input: string, flags?: number): string;

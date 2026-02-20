@@ -34,11 +34,12 @@ extern "C"
 #endif
 
 /* If set, debug output from md_parse() is sent to stderr. */
-#define MD_HTML_FLAG_DEBUG 0x0001
-#define MD_HTML_FLAG_VERBATIM_ENTITIES 0x0002
-#define MD_HTML_FLAG_SKIP_UTF8_BOM 0x0004
-#define MD_HTML_FLAG_FULL_HTML 0x0008
-#define MD_HTML_FLAG_HEAL 0x0100
+#define MD_HTML_FLAG_DEBUG                  0x0001
+#define MD_HTML_FLAG_VERBATIM_ENTITIES      0x0002
+#define MD_HTML_FLAG_SKIP_UTF8_BOM          0x0004
+#define MD_HTML_FLAG_FULL_HTML              0x0008
+#define MD_HTML_FLAG_CODE_META              0x0010
+#define MD_HTML_FLAG_HEAL                   0x0100
 
     /* Options for md_html_ex(). */
     typedef struct MD_HTML_OPTS

@@ -1,3 +1,5 @@
+import { parseHtmlWithHighlighting } from "./_shared.mjs";
+
 // --- internal ---
 
 let binding;
@@ -40,7 +42,14 @@ const HEAL_FLAG = 0x0100;
 export function renderToHtml(input, opts) {
   let flags = opts?.full ? 0x0008 : 0;
   if (opts?.heal) flags |= HEAL_FLAG;
-  return getBinding().renderToHtml(str(input), flags);
+  if (!opts?.highlighter) {
+    return getBinding().renderToHtml(str(input), flags);
+  }
+  const buf = getBinding().renderToHtmlMeta(str(input));
+  return parseHtmlWithHighlighting(
+    new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
+    opts.highlighter,
+  );
 }
 
 export function renderToAST(input, opts) {

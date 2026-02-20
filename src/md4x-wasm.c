@@ -125,6 +125,23 @@ int md4x_to_html(const char* input, unsigned input_size,
     return render(md_html, input, input_size, renderer_flags);
 }
 
+__attribute__((export_name("md4x_to_html_meta")))
+int md4x_to_html_meta(const char* input, unsigned input_size)
+{
+    md4x_buf buf = { NULL, 0, 0, 0 };
+    int ret = md_html(input, input_size, buf_append, &buf,
+                      MD_DIALECT_ALL, MD_HTML_FLAG_CODE_META);
+    if(ret != 0 || buf.error) {
+        free(buf.data);
+        g_result_data = NULL;
+        g_result_size = 0;
+        return -1;
+    }
+    g_result_data = buf.data;
+    g_result_size = buf.size;
+    return 0;
+}
+
 __attribute__((export_name("md4x_to_ast")))
 int md4x_to_ast(const char* input, unsigned input_size,
                 unsigned renderer_flags)
