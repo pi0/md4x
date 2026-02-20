@@ -1,3 +1,5 @@
+import { parseHtmlWithHighlighting } from "./_shared.mjs";
+
 // --- internal ---
 
 let binding;
@@ -29,8 +31,16 @@ export function init(opts) {
 }
 
 export function renderToHtml(input, opts) {
-  const flags = opts?.full ? 0x0008 : 0;
-  return getBinding().renderToHtml(input, flags);
+  if (!opts?.highlighter) {
+    const flags = opts?.full ? 0x0008 : 0;
+    return getBinding().renderToHtml(input, flags);
+  }
+
+  const buf = getBinding().renderToHtmlMeta(input);
+  return parseHtmlWithHighlighting(
+    new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
+    opts.highlighter,
+  );
 }
 
 export function renderToAST(input) {
