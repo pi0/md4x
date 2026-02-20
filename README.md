@@ -5,16 +5,18 @@
 
 Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
 
-**[> Online Playground](https://md4x.pi0.io/#/playground)**
+> [!TIP]
+> [Online Playground](https://md4x.pi0.io/#/playground)
 
 ## CLI
 
 ```sh
 # Local files
-npx md4x README.md                          # ANSI output (default in TTY)
-npx md4x -t html doc.md                     # HTML output
-npx md4x -t text doc.md                     # Plain text output (strip markdown)
-npx md4x -t json doc.md                     # JSON AST output (comark)
+npx md4x README.md                          # ANSI output
+npx md4x README.md -t html                  # HTML output
+npx md4x README.md -t text                  # Plain text output (strip markdown)
+npx md4x README.md -t ast                   # JSON AST output (comark)
+npx md4x README.md -t meta                  # Metadata JSON output
 
 # Remote sources
 npx md4x https://nitro.build/guide          # Fetch and render any URL
@@ -22,15 +24,15 @@ npx md4x gh:nitrojs/nitro                   # GitHub repo → README.md
 npx md4x npm:vue@3                          # npm package at specific version
 
 # Stdin
-echo "# Hello" | npx md4x                   # Pipe markdown (HTML when piped)
-curl -s https://example.com/doc.md | npx md4x
-
-# Full HTML document
-npx md4x -f --html-title="My Doc" doc.md    # Wrap in full HTML with <head>
-npx md4x -f --html-css=style.css doc.md     # Add CSS link
+echo "# Hello" | npx md4x -t text
+cat README.md | npx md4x  -t html
 
 # Output to file
-npx md4x -t html -o out.html doc.md         # Write to file instead of stdout
+npx md4x README.md -t meta -o README.json
+
+# Full HTML document
+npx md4x README.md -t html -f --html-title="My Docs"  # Wrap in full HTML with <head>
+npx md4x README.md -t html -f --html-css=style.css    # Add CSS link
 ```
 
 ## JavaScript

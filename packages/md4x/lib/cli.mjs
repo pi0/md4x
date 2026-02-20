@@ -2,7 +2,13 @@
 
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
-import { renderToHtml, renderToAnsi, renderToAST } from "./napi.mjs";
+import {
+  renderToHtml,
+  renderToAnsi,
+  renderToText,
+  parseAST,
+  parseMeta,
+} from "./napi.mjs";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -11,7 +17,7 @@ const { values, positionals } = parseArgs({
     format: {
       type: "string",
       short: "t",
-      default: process.stdout.isTTY ? "ansi" : "html",
+      default: process.stdout.isTTY ? "ansi" : "text",
     },
     "full-html": { type: "boolean", short: "f", default: false },
     "html-title": { type: "string" },
@@ -37,7 +43,7 @@ ${_g("Usage:")} ${_b("md4x")} ${_d("[OPTION]... [FILE]")}
 
 ${_g("General options:")}
   ${_c("-o")}, ${_c("--output")}=${_d("FILE")}     Output file ${_d("(default: stdout)")}
-  ${_c("-t")}, ${_c("--format")}=${_d("FORMAT")}   Output format: html, json, ansi ${_d("(default: ansi for TTY, html otherwise)")}
+  ${_c("-t")}, ${_c("--format")}=${_d("FORMAT")}   Output format: ${_c("html")}, ${_c("text")}, ${_c("ast")}, ${_c("ansi")}, ${_c("meta")} ${_d("(default: ansi for TTY, text otherwise)")}
   ${_c("-s")}, ${_c("--stat")}            Measure parsing time
   ${_c("-h")}, ${_c("--help")}            Display this help and exit
   ${_c("-v")}, ${_c("--version")}         Display version and exit
@@ -53,13 +59,19 @@ ${_g("HTML options:")}
       ${_c("--html-css")}=${_d("URL")}      CSS link
 
 ${_g("Examples:")}
-  ${_d("$")} ${_b("md4x")} README.md                        ${_d("# Render to terminal")}
-  ${_d("$")} ${_b("md4x")} ${_c("-t html")} doc.md                   ${_d("# HTML output")}
-  ${_d("$")} ${_b("md4x")} ${_c("-t json")} doc.md                   ${_d("# JSON AST output")}
-  ${_d("$")} ${_b("md4x")} ${_c("gh:")}pi0/md4x                      ${_d("# GitHub repo README")}
-  ${_d("$")} ${_b("md4x")} ${_c("npm:")}vue@3                        ${_d("# npm package README")}
-  ${_d("$")} echo "# Hello" | ${_b("md4x")}                 ${_d("# Pipe from stdin")}
-  ${_d("$")} ${_b("md4x")} ${_c("-f --html-css")}=style.css doc.md   ${_d("# Full HTML with CSS")}
+  ${_d("$")} ${_b("md4x")} README.md                          ${_d("# ANSI output")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t html")}                  ${_d("# HTML output")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t text")}                  ${_d("# Plain text output (strip markdown)")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t ast")}                   ${_d("# JSON AST output (comark)")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t meta")}                  ${_d("# Metadata JSON output")}
+  ${_d("$")} ${_b("md4x")} ${_c("https://nitro.build/guide")}          ${_d("# Fetch and render any URL")}
+  ${_d("$")} ${_b("md4x")} ${_c("gh:")}nitrojs/nitro                   ${_d("# GitHub repo → README.md")}
+  ${_d("$")} ${_b("md4x")} ${_c("npm:")}vue@3                          ${_d("# npm package at specific version")}
+  ${_d("$")} echo "# Hello" | ${_b("md4x")} ${_c("-t text")}
+  ${_d("$")} cat README.md | ${_b("md4x")} ${_c("-t html")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t meta -o")} README.json   ${_d("# Write to file")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t html -f --html-title")}="My Docs"  ${_d("# Full HTML with <head>")}
+  ${_d("$")} ${_b("md4x")} README.md ${_c("-t html -f --html-css")}=style.css    ${_d("# Add CSS link")}
 `,
   );
 }
@@ -77,10 +89,11 @@ if (values.version) {
   process.exit(0);
 }
 
+const supportedFormats = ["html", "ast", "ansi", "text", "meta"];
 const format = values.format;
-if (!["html", "json", "ansi"].includes(format)) {
+if (!supportedFormats.includes(format)) {
   process.stderr.write(`Unknown format: ${format}\n`);
-  process.stderr.write("Supported formats: html, json, ansi\n");
+  process.stderr.write(`Supported formats: ${supportedFormats.join(", ")}\n`);
   process.exit(1);
 }
 
@@ -146,11 +159,17 @@ switch (format) {
   case "html":
     output = renderToHtml(input);
     break;
-  case "json":
-    output = JSON.stringify(renderToAST(input));
-    break;
   case "ansi":
     output = renderToAnsi(input);
+    break;
+  case "text":
+    output = renderToText(input);
+    break;
+  case "ast":
+    output = JSON.stringify(parseAST(input), null, 2);
+    break;
+  case "meta":
+    output = JSON.stringify(parseMeta(input), null, 2);
     break;
 }
 
