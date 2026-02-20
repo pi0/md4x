@@ -17,6 +17,7 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 | `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error)          |
 | `md4x_to_ast(ptr, size) -> int`  | Render to JSON AST                       |
 | `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
+| `md4x_to_meta(ptr, size) -> int` | Render to meta JSON                      |
 | `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
 | `md4x_result_size() -> size`     | Get output buffer size (after render)    |
 
@@ -76,6 +77,7 @@ Windows targets use `zig dlltool` to generate import libraries from `node_module
 | `renderToHtml` | `(input: string) => string`               |
 | `renderToAST`  | `(input: string) => string` (JSON string) |
 | `renderToAnsi` | `(input: string) => string`               |
+| `renderToMeta` | `(input: string) => string` (JSON string) |
 
 **Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
 
@@ -112,8 +114,10 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 | `renderToAST(input: string)`  | `string`                                 | `string`                                 |
 | `parseAST(input: string)`     | `ComarkTree`                             | `ComarkTree`                             |
 | `renderToAnsi(input: string)` | `string`                                 | `string`                                 |
+| `renderToMeta(input: string)` | `string`                                 | `string`                                 |
+| `parseMeta(input: string)`    | `ComarkMeta`                             | `ComarkMeta`                             |
 
-`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
+`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. `renderToMeta` returns the raw JSON string from the meta renderer. `parseMeta` calls `renderToMeta`, parses the result, and falls back to the first heading as `title` if no frontmatter title exists. See `lib/types.d.ts` for types.
 
 ## TypeScript Types (`lib/types.d.ts`)
 
@@ -124,6 +128,8 @@ The package exports TypeScript types for the Comark AST:
 - `ComarkElement` — Tuple: `[tag: string, props: ComarkElementAttributes, ...children: ComarkNode[]]`
 - `ComarkText` — Plain string representing text content
 - `ComarkElementAttributes` — Key-value record: `{ [key: string]: unknown }`
+- `ComarkMeta` — Metadata object: `{ title?: string, headings: ComarkHeading[], [key: string]: unknown }`
+- `ComarkHeading` — Heading entry: `{ level: number, text: string }`
 
 ## Comark AST Format
 

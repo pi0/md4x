@@ -43,3 +43,15 @@ export function parseAST(input) {
 export function renderToAnsi(input) {
   return getBinding().renderToAnsi(input);
 }
+
+export function renderToMeta(input) {
+  return getBinding().renderToMeta(input);
+}
+
+export function parseMeta(input) {
+  const meta = JSON.parse(renderToMeta(input));
+  if (!meta.title && meta.headings?.[0]) {
+    meta.title = meta.headings[0].text;
+  }
+  return meta;
+}

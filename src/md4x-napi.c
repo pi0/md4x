@@ -30,6 +30,7 @@
 #include "md4x-html.h"
 #include "md4x-ast.h"
 #include "md4x-ansi.h"
+#include "md4x-meta.h"
 
 
 /* Growable output buffer */
@@ -116,6 +117,11 @@ static napi_value md4x_napi_to_ansi(napi_env env, napi_callback_info info)
     return render_impl(env, info, md_ansi);
 }
 
+static napi_value md4x_napi_to_meta(napi_env env, napi_callback_info info)
+{
+    return render_impl(env, info, md_meta);
+}
+
 
 /* Module initialization */
 static napi_value init(napi_env env, napi_value exports)
@@ -124,8 +130,9 @@ static napi_value init(napi_env env, napi_value exports)
         { "renderToHtml", NULL, md4x_napi_to_html, NULL, NULL, NULL, napi_default, NULL },
         { "renderToAST", NULL, md4x_napi_to_ast, NULL, NULL, NULL, napi_default, NULL },
         { "renderToAnsi", NULL, md4x_napi_to_ansi, NULL, NULL, NULL, napi_default, NULL },
+        { "renderToMeta", NULL, md4x_napi_to_meta, NULL, NULL, NULL, napi_default, NULL },
     };
-    napi_define_properties(env, exports, 3, props);
+    napi_define_properties(env, exports, 4, props);
     return exports;
 }
 

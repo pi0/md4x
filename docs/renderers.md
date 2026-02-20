@@ -116,3 +116,58 @@ int md_ansi(const MD_CHAR* input, MD_SIZE input_size,
 - Entities resolved to UTF-8 characters
 
 Uses streaming renderer pattern (like HTML renderer), no AST construction.
+
+## Shared JSON Writer (`md4x-json.h`)
+
+Header-only utility providing JSON serialization and YAML-to-JSON conversion helpers. Used by both the AST and meta renderers.
+
+```c
+#include "md4x-json.h"
+```
+
+**Key components:**
+
+- `JSON_WRITER` — Streaming JSON writer struct with callback-based output
+- `json_write()` / `json_write_str()` — Raw and string output helpers
+- `json_write_escaped()` / `json_write_string()` — JSON-escaped string output
+- `json_write_yaml_props()` — Parses YAML frontmatter and writes key-value pairs as JSON properties (using libyaml)
+
+## Meta Renderer API (`md4x-meta.h`)
+
+Lightweight metadata extractor that parses frontmatter and headings from Markdown:
+
+```c
+int md_meta(const MD_CHAR* input, MD_SIZE input_size,
+            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+            void* userdata, unsigned parser_flags, unsigned renderer_flags);
+```
+
+Produces a flat JSON object with frontmatter properties spread at the top level plus a `headings` array. No AST construction — uses SAX callbacks to capture only frontmatter text and heading plain text.
+
+**Example output:**
+
+```json
+{
+  "title": "Hello",
+  "tags": ["a", "b"],
+  "headings": [
+    { "level": 1, "text": "My Doc" },
+    { "level": 2, "text": "Section 1" }
+  ]
+}
+```
+
+### Renderer Flags (`MD_META_FLAG_*`)
+
+| Flag                         | Value    | Description                                   |
+| ---------------------------- | -------- | --------------------------------------------- |
+| `MD_META_FLAG_DEBUG`         | `0x0001` | Send debug output from `md_parse()` to stderr |
+| `MD_META_FLAG_SKIP_UTF8_BOM` | `0x0002` | Skip UTF-8 BOM at input start                 |
+
+### Rendering Details
+
+- Frontmatter YAML properties are spread as top-level JSON keys (using libyaml for full YAML 1.1 support)
+- Headings are collected as `{"level": N, "text": "..."}` objects in the `headings` array
+- Heading text is extracted as plain text — inline formatting (bold, italic, code, etc.) is stripped
+- HTML entities in headings are resolved to UTF-8 characters
+- Uses streaming renderer pattern (like HTML renderer), no AST construction

@@ -13,7 +13,7 @@
     },
     "packages/md4x": {
       "name": "md4x",
-      "version": "0.0.5",
+      "version": "0.0.9",
       "bin": {
         "md4x": "./lib/cli.mjs",
       },

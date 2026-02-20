@@ -25,12 +25,15 @@ src/
   md4x-napi.c          # Node.js NAPI addon (module registration + renderer wrappers)
   renderers/
     md4x-props.h       # Shared component property parser (header-only)
+    md4x-json.h        # Shared JSON writer + YAML-to-JSON helpers (header-only)
     md4x-html.c        # HTML renderer library (~500 LoC)
     md4x-html.h        # HTML renderer public API
     md4x-ast.c        # AST renderer library (~530 LoC)
     md4x-ast.h        # AST renderer public API
     md4x-ansi.c        # ANSI terminal renderer library (~450 LoC)
     md4x-ansi.h        # ANSI renderer public API
+    md4x-meta.c        # Meta renderer library (~300 LoC)
+    md4x-meta.h        # Meta renderer public API
   cli/
     md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
     cmdline.c            # Command-line parser (from c-reusables)
@@ -97,7 +100,7 @@ build.zig.zon            # Zig package manifest
 
 ## Building
 
-Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/libyaml) 0.2.5 (YAML parser for AST renderer frontmatter, fetched automatically via `build.zig.zon`).
+Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/libyaml) 0.2.5 (YAML parser for AST/meta renderer frontmatter, fetched automatically via `build.zig.zon`).
 
 ```sh
 zig build                          # build all (defaults to ReleaseFast)
@@ -115,6 +118,7 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-html** — HTML renderer (links against libmd4x)
 - **libmd4x-ast** — AST renderer (links against libmd4x)
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
+- **libmd4x-meta** — Meta renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
 - **md4x.{platform}-{arch}[-musl].node** — Cross-compiled NAPI addons (`zig build napi-all`, 9 targets)

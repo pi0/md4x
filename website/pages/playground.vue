@@ -6,6 +6,7 @@ import {
   renderToHtml,
   parseAST,
   renderToAnsi,
+  parseMeta,
 } from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
 
@@ -76,6 +77,11 @@ function render() {
     } else if (m === "ansi") {
       const ansi = renderToAnsi(md).replace(/\x1b\]8;[^\x1b]*\x1b\\/g, "");
       outputHtml.value = ansiToHtml(ansi);
+    } else if (m === "meta") {
+      outputHtml.value = highlighter.codeToHtml(
+        JSON.stringify(parseMeta(md), null, 2),
+        { lang: "json", theme: "github-light" },
+      );
     }
   } catch (e) {
     outputHtml.value = `<pre>Error: ${(e as Error).message}</pre>`;
@@ -254,6 +260,7 @@ function ansiToHtml(str: string): string {
       <option value="raw">HTML (source)</option>
       <option value="json">JSON AST (comark)</option>
       <option value="ansi">ANSI (CLI)</option>
+      <option value="meta">Meta (JSON)</option>
     </select>
     <div class="mobile-tabs w-full border-b border-gray-300 -mx-4 -mb-1.5 mt-1">
       <button

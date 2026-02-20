@@ -6,7 +6,7 @@ const version = std.SemanticVersion.parse(zon.version) catch unreachable;
 // --- Source files ---
 
 const parser_source = "src/md4x.c";
-const renderer_sources = [_][]const u8{ "src/renderers/md4x-html.c", "src/renderers/md4x-ast.c", "src/renderers/md4x-ansi.c", "src/entity.c" };
+const renderer_sources = [_][]const u8{ "src/renderers/md4x-html.c", "src/renderers/md4x-ast.c", "src/renderers/md4x-ansi.c", "src/renderers/md4x-meta.c", "src/entity.c" };
 const cli_sources = renderer_sources ++ .{ "src/cli/md4x-cli.c", "src/cli/cmdline.c" };
 const wasm_sources = renderer_sources ++ .{"src/md4x-wasm.c"};
 const napi_sources = renderer_sources ++ .{"src/md4x-napi.c"};
@@ -126,6 +126,7 @@ fn addWasm(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
         "md4x_to_html",
         "md4x_to_ast",
         "md4x_to_ansi",
+        "md4x_to_meta",
         "md4x_result_ptr",
         "md4x_result_size",
     };

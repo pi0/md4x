@@ -36,7 +36,15 @@ Available as a native Node.js addon (NAPI) for maximum performance, or as a port
 The bare `md4x` import auto-selects NAPI on Node.js and WASM elsewhere.
 
 ```js
-import { init, renderToHtml, renderToAST, parseAST, renderToAnsi } from "md4x";
+import {
+  init,
+  renderToHtml,
+  renderToAST,
+  parseAST,
+  renderToAnsi,
+  renderToMeta,
+  parseMeta,
+} from "md4x";
 
 // await init(); // required for WASM, optional for NAPI
 
@@ -44,6 +52,8 @@ const html = renderToHtml("# Hello, **world**!");
 const json = renderToAST("# Hello, **world**!"); // raw JSON string
 const ast = parseAST("# Hello, **world**!"); // parsed ComarkTree object
 const ansi = renderToAnsi("# Hello, **world**!");
+const metaJson = renderToMeta("# Hello, **world**!"); // raw JSON string
+const meta = parseMeta("# Hello, **world**!"); // parsed meta
 ```
 
 Both NAPI and WASM export a unified API with `init()`. For WASM, `init()` must be called before rendering. For NAPI, it is optional (the native binding loads lazily on first render call).
@@ -154,6 +164,18 @@ md_ast(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 md_ansi(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 ```
 
+#### Meta Renderer
+
+Extracts frontmatter and headings as a flat JSON object:
+
+```c
+#include "md4x.h"
+#include "md4x-meta.h"
+
+md_meta(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
+// {"title":"Hello","headings":[{"level":1,"text":"Hello"}]}
+```
+
 #### Low-Level Parser
 
 For custom rendering, use the SAX-like parser directly:
@@ -194,6 +216,9 @@ All extensions are enabled by default in the JS and CLI interfaces (`MD_DIALECT_
 | Wiki links    | `MD_FLAG_WIKILINKS`           |
 | Underline     | `MD_FLAG_UNDERLINE`           |
 | Frontmatter   | `MD_FLAG_FRONTMATTER`         |
+| Components    | `MD_FLAG_COMPONENTS`          |
+| Attributes    | `MD_FLAG_ATTRIBUTES`          |
+| Alerts        | `MD_FLAG_ALERTS`              |
 
 Dialect presets: `MD_DIALECT_COMMONMARK` (strict), `MD_DIALECT_GITHUB`, `MD_DIALECT_ALL`.
 

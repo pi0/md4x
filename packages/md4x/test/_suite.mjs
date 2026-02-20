@@ -5,6 +5,8 @@ export function defineSuite({
   renderToAST,
   renderToAnsi,
   parseAST,
+  renderToMeta,
+  parseMeta,
 }) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
@@ -887,6 +889,97 @@ export function defineSuite({
 
     it("renders empty input", async () => {
       expect(await renderToAnsi("")).toBe("");
+    });
+  });
+
+  describe("renderToMeta", () => {
+    it("returns a string", async () => {
+      const json = await renderToMeta("# Hello");
+      expect(typeof json).toBe("string");
+    });
+
+    it("returns valid JSON", async () => {
+      const json = await renderToMeta("# Hello");
+      const parsed = JSON.parse(json);
+      expect(parsed.headings).toBeInstanceOf(Array);
+    });
+
+    it("returns empty headings for empty input", async () => {
+      const json = await renderToMeta("");
+      const parsed = JSON.parse(json);
+      expect(parsed.headings).toHaveLength(0);
+    });
+  });
+
+  describe("parseMeta", () => {
+    it("extracts title from frontmatter", async () => {
+      const meta = await parseMeta(
+        "---\ntitle: Hello\ntags: [a, b]\n---\n\n# My Doc\n\n## Section 1",
+      );
+      expect(meta.title).toBe("Hello");
+      expect(meta.tags).toEqual(["a", "b"]);
+      expect(meta.headings).toEqual([
+        { level: 1, text: "My Doc" },
+        { level: 2, text: "Section 1" },
+      ]);
+    });
+
+    it("falls back to first heading as title", async () => {
+      const meta = await parseMeta("# My Doc\n\n## Section 1");
+      expect(meta.title).toBe("My Doc");
+      expect(meta.headings).toEqual([
+        { level: 1, text: "My Doc" },
+        { level: 2, text: "Section 1" },
+      ]);
+    });
+
+    it("returns empty headings for empty input", async () => {
+      const meta = await parseMeta("");
+      expect(meta.headings).toHaveLength(0);
+      expect(meta.title).toBeUndefined();
+    });
+
+    it("extracts multiple headings at different levels", async () => {
+      const meta = await parseMeta("# H1\n\n## H2\n\n### H3\n\n#### H4");
+      expect(meta.headings).toEqual([
+        { level: 1, text: "H1" },
+        { level: 2, text: "H2" },
+        { level: 3, text: "H3" },
+        { level: 4, text: "H4" },
+      ]);
+    });
+
+    it("strips inline formatting from heading text", async () => {
+      const meta = await parseMeta("# **Bold** and *italic* heading");
+      expect(meta.headings[0].text).toBe("Bold and italic heading");
+    });
+
+    it("handles frontmatter with complex YAML", async () => {
+      const meta = await parseMeta(
+        "---\ntitle: Hello\nauthor:\n  name: John\ntags:\n  - js\n  - ts\ncount: 42\ndraft: true\n---",
+      );
+      expect(meta.title).toBe("Hello");
+      expect(meta.author).toEqual({ name: "John" });
+      expect(meta.tags).toEqual(["js", "ts"]);
+      expect(meta.count).toBe(42);
+      expect(meta.draft).toBe(true);
+    });
+
+    it("handles frontmatter without title and heading", async () => {
+      const meta = await parseMeta("---\ndraft: true\n---\n\nJust a paragraph");
+      expect(meta.draft).toBe(true);
+      expect(meta.title).toBeUndefined();
+      expect(meta.headings).toHaveLength(0);
+    });
+
+    it("handles heading with entity", async () => {
+      const meta = await parseMeta("# Hello &amp; World");
+      expect(meta.headings[0].text).toBe("Hello & World");
+    });
+
+    it("handles heading with inline code", async () => {
+      const meta = await parseMeta("# Using `parseMeta` API");
+      expect(meta.headings[0].text).toBe("Using parseMeta API");
     });
   });
 }

@@ -1,4 +1,4 @@
-import type { ComarkTree } from "./types.mjs";
+import type { ComarkTree, ComarkMeta } from "./types.mjs";
 
 export type {
   ComarkTree,
@@ -6,6 +6,8 @@ export type {
   ComarkElement,
   ComarkText,
   ComarkElementAttributes,
+  ComarkHeading,
+  ComarkMeta,
 } from "./types.mjs";
 
 export interface InitOptions {
@@ -22,3 +24,5 @@ export declare function renderToHtml(input: string): string;
 export declare function renderToAST(input: string): string;
 export declare function parseAST(input: string): ComarkTree;
 export declare function renderToAnsi(input: string): string;
+export declare function renderToMeta(input: string): string;
+export declare function parseMeta(input: string): ComarkMeta;
