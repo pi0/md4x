@@ -1,5 +1,30 @@
 # MD4X Change Log
 
+## v0.0.10
+
+### Features
+
+- Add text renderer for stripping markdown to plain text
+- Add GitHub-style alerts extension (`MD_FLAG_ALERTS`)
+- Add `parseMeta` for extracting frontmatter metadata and headings
+- Add full-HTML document mode with `md_html_ex()` and `MD_HTML_FLAG_FULL_HTML`
+- Add `{ full: true }` option to JS `renderToHtml()`
+- Render alerts and alert-like components with colored box style in ANSI renderer
+- Use xterm.js for ANSI terminal rendering in playground
+
+### Fixes
+
+- Allow indented `::` components inside block components
+
+### Breaking Changes
+
+- Unified JS API usage (`refactor!: unified js api usage`)
+
+### Other
+
+- Update CLI usage documentation
+- Various playground improvements
+
 ## v0.0.8
 
 ### Features
