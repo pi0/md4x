@@ -13,7 +13,8 @@
     "fmt": "prettier --write .",
     "vitest": "vitest",
     "test": "bun ./scripts/run-tests.ts && bun vitest",
-    "bench": "bun packages/md4x/bench/index.mjs"
+    "bench": "bun packages/md4x/bench/index.mjs",
+    "release": "bun scripts/release.ts"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
