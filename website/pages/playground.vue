@@ -9,6 +9,8 @@ import {
   parseMeta,
 } from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
+import TabSelect from "../components/TabSelect.vue";
+import { ansiToHtml } from "../utils/ansi.ts";
 
 const examples = Object.fromEntries(
   Object.entries(
@@ -26,13 +28,33 @@ const examples = Object.fromEntries(
 const route = useRoute();
 const router = useRouter();
 
+const allExamplesMd = Object.values(examples).join("\n\n---\n\n");
+const exampleOptions = [
+  { value: "all", label: "All" },
+  ...Object.keys(examples).map((key) => ({
+    value: key,
+    label: key
+      .replace(/^\d+\./, "")
+      .split("-")
+      .map((w) => w[0].toUpperCase() + w.slice(1))
+      .join(" "),
+  })),
+];
+const modeOptions = [
+  { value: "html", label: "HTML" },
+  { value: "raw", label: "Source" },
+  { value: "json", label: "AST" },
+  { value: "ansi", label: "ANSI" },
+  { value: "meta", label: "Meta" },
+];
 const mode = ref("html");
-const example = ref("basics");
-const currentMd = ref(examples.basics);
+const example = ref("all");
+const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
 const mobileTab = ref<"editor" | "output">("output");
 
 const editorEl = ref<HTMLElement>();
+const outputEl = ref<HTMLElement>();
 let editorView: any = null;
 let highlighter: Highlighter;
 
@@ -42,7 +64,10 @@ function restoreFromQuery() {
   const e = route.query.e as string;
   const c = route.query.c as string;
   if (m) mode.value = m;
-  if (e && examples[e]) {
+  if (e === "all") {
+    example.value = "all";
+    currentMd.value = allExamplesMd;
+  } else if (e && examples[e]) {
     example.value = e;
     currentMd.value = examples[e];
   }
@@ -52,8 +77,9 @@ function restoreFromQuery() {
 function updateQuery() {
   const query: Record<string, string> = {};
   if (mode.value !== "html") query.m = mode.value;
-  if (example.value !== "basics") query.e = example.value;
-  const exampleMd = examples[example.value];
+  if (example.value !== "all") query.e = example.value;
+  const exampleMd =
+    example.value === "all" ? allExamplesMd : examples[example.value];
   if (currentMd.value !== exampleMd) query.c = btoa(currentMd.value);
   router.replace({ query });
 }
@@ -89,8 +115,104 @@ function render() {
   updateQuery();
 }
 
-function onExampleChange() {
-  currentMd.value = examples[example.value];
+// --- Scroll sync: editor → preview ---
+let syncSource: "editor" | "preview" | null = null;
+let syncLock = 0;
+
+function stripMarkdown(line: string): string {
+  return line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}
+
+function findInPreview(lineText: string): HTMLElement | null {
+  const el = outputEl.value;
+  if (!el || !lineText) return null;
+  const plain = stripMarkdown(lineText);
+  if (!plain || plain.length < 2) return null;
+  const escaped = plain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(escaped.slice(0, 60));
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let node: Text | null;
+  while ((node = walker.nextNode() as Text | null)) {
+    if (re.test(node.textContent || "")) {
+      return node.parentElement;
+    }
+  }
+  return null;
+}
+
+function scrollPreviewTo(target: HTMLElement) {
+  if (syncSource === "preview") return;
+  syncSource = "editor";
+  clearTimeout(syncLock);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  syncLock = window.setTimeout(() => {
+    syncSource = null;
+  }, 300);
+}
+
+function getFirstVisibleLine(): string | null {
+  if (!editorView) return null;
+  const rect = editorView.dom.getBoundingClientRect();
+  // Get the document position at the top of the visible area
+  const topPos = editorView.posAtCoords({ x: rect.left + 1, y: rect.top + 1 });
+  if (topPos == null) return null;
+  const line = editorView.state.doc.lineAt(topPos);
+  // Skip empty lines — scan forward to find first non-empty
+  const doc = editorView.state.doc;
+  for (let i = line.number; i <= doc.lines; i++) {
+    const l = doc.line(i);
+    const text = l.text.trim();
+    if (text && text.length >= 2) return l.text;
+  }
+  return line.text;
+}
+
+// Debounced scroll handler for the editor's scroller
+let editorScrollTimer: ReturnType<typeof setTimeout> | undefined;
+function onEditorScroll() {
+  if (syncSource === "preview") return;
+  // Skip sync when near top of editor
+  const scroller = editorView?.scrollDOM;
+  if (!scroller || scroller.scrollTop < 50) return;
+  clearTimeout(editorScrollTimer);
+  editorScrollTimer = setTimeout(() => {
+    const lineText = getFirstVisibleLine();
+    if (lineText) {
+      const target = findInPreview(lineText);
+      if (target) scrollPreviewTo(target);
+    }
+  }, 100);
+}
+
+// Cursor/selection change handler
+let cursorSyncTimer: ReturnType<typeof setTimeout> | undefined;
+function onCursorActivity(update: any) {
+  if (!update.selectionSet) return;
+  clearTimeout(cursorSyncTimer);
+  cursorSyncTimer = setTimeout(() => {
+    const pos = update.state.selection.main.head;
+    const line = update.state.doc.lineAt(pos);
+    const target = findInPreview(line.text);
+    if (target) scrollPreviewTo(target);
+  }, 150);
+}
+
+watch(mode, () => {
+  mobileTab.value = "output";
+  render();
+});
+watch(example, () => {
+  currentMd.value =
+    example.value === "all" ? allExamplesMd : examples[example.value];
   if (editorView) {
     editorView.dispatch({
       changes: {
@@ -100,10 +222,9 @@ function onExampleChange() {
       },
     });
   }
+  mobileTab.value = "editor";
   render();
-}
-
-watch(mode, render);
+});
 
 onMounted(async () => {
   restoreFromQuery();
@@ -146,6 +267,11 @@ onMounted(async () => {
             currentMd.value = update.state.doc.toString();
             render();
           }
+          onCursorActivity(update);
+        }),
+        EditorView.lineWrapping,
+        EditorView.domEventHandlers({
+          scroll: onEditorScroll,
         }),
       ],
     }),
@@ -154,114 +280,14 @@ onMounted(async () => {
 
   render();
 });
-
-// --- ANSI helpers ---
-const ansiColors: Record<number, string | null> = {
-  30: "#545464",
-  31: "#ff6b6b",
-  32: "#69db7c",
-  33: "#ffd43b",
-  34: "#74c0fc",
-  35: "#da77f2",
-  36: "#66d9e8",
-  37: "#c8cad8",
-  39: null,
-  90: "#686878",
-  91: "#ff8787",
-  92: "#8ce99a",
-  93: "#ffe066",
-  94: "#91d5ff",
-  95: "#e599f7",
-  96: "#99e9f2",
-  97: "#e4e5eb",
-};
-
-function ansiToHtml(str: string): string {
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  let out = "",
-    styles = {
-      bold: false,
-      dim: false,
-      italic: false,
-      underline: false,
-      strike: false,
-      color: null as string | null,
-    };
-  const parts = str.split(/\x1b\[([\d;]*)m/);
-  for (let i = 0; i < parts.length; i++) {
-    if (i % 2 === 0) {
-      const text = parts[i];
-      if (!text) continue;
-      const css: string[] = [];
-      if (styles.bold) css.push("font-weight:bold");
-      if (styles.dim) css.push("opacity:0.6");
-      if (styles.italic) css.push("font-style:italic");
-      if (styles.underline) css.push("text-decoration:underline");
-      if (styles.strike) css.push("text-decoration:line-through");
-      if (styles.color) css.push(`color:${styles.color}`);
-      out += css.length
-        ? `<span style="${css.join(";")}">${esc(text)}</span>`
-        : esc(text);
-    } else {
-      for (const c of (parts[i] || "0").split(";")) {
-        const n = Number(c);
-        if (n === 0) {
-          styles = {
-            bold: false,
-            dim: false,
-            italic: false,
-            underline: false,
-            strike: false,
-            color: null,
-          };
-        } else if (n === 1) styles.bold = true;
-        else if (n === 2) styles.dim = true;
-        else if (n === 3) styles.italic = true;
-        else if (n === 4) styles.underline = true;
-        else if (n === 9) styles.strike = true;
-        else if (n === 22) {
-          styles.bold = false;
-          styles.dim = false;
-        } else if (n === 23) styles.italic = false;
-        else if (n === 24) styles.underline = false;
-        else if (n === 29) styles.strike = false;
-        else if (ansiColors[n] !== undefined) styles.color = ansiColors[n];
-      }
-    }
-  }
-  return out;
-}
 </script>
 
 <template>
   <div
     class="flex flex-wrap items-center justify-center gap-2 border-b border-gray-300 bg-gray-50 px-4 py-1.5 md:gap-3"
   >
-    <select
-      v-model="example"
-      class="min-w-0 flex-1 basis-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
-      @change="onExampleChange"
-    >
-      <option v-for="(_, key) in examples" :key="key" :value="key">
-        {{
-          key
-            .split("-")
-            .map((w) => w[0].toUpperCase() + w.slice(1))
-            .join(" ")
-        }}
-      </option>
-    </select>
-    <select
-      v-model="mode"
-      class="min-w-0 flex-1 basis-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
-    >
-      <option value="html">HTML (rendered)</option>
-      <option value="raw">HTML (source)</option>
-      <option value="json">JSON AST (comark)</option>
-      <option value="ansi">ANSI (CLI)</option>
-      <option value="meta">Meta (JSON)</option>
-    </select>
+    <TabSelect v-model="example" :options="exampleOptions" />
+    <TabSelect v-model="mode" :options="modeOptions" />
     <div class="mobile-tabs w-full border-b border-gray-300 -mx-4 -mb-1.5 mt-1">
       <button
         class="flex-1 cursor-pointer border-b-2 bg-transparent py-1.5 font-inherit text-[13px] transition-colors"
@@ -294,6 +320,7 @@ function ansiToHtml(str: string): string {
       :data-hidden="mobileTab === 'output' ? '' : undefined"
     />
     <div
+      ref="outputEl"
       class="output min-w-0 min-h-0 flex-1 basis-0 overflow-auto break-words text-sm leading-relaxed"
       :class="[
         `mode-${mode}`,
