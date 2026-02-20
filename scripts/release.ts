@@ -27,12 +27,22 @@ const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
 const current = pkgJson.version as string;
 const [major, minor, patch] = current.split(".").map(Number);
 
+// Pre-1.0 version collapsing:
+// 0.0.x — all bumps increment last digit (single digit covers everything)
+// 0.x.y — major bumps second digit, minor+patch bump last digit
+// x.y.z (x≥1) — standard semver
 const next =
-  bump === "major"
-    ? `${major + 1}.0.0`
-    : bump === "minor"
-      ? `${major}.${minor + 1}.0`
-      : `${major}.${minor}.${patch + 1}`;
+  major === 0 && minor === 0
+    ? `0.0.${patch + 1}`
+    : major === 0
+      ? bump === "major"
+        ? `0.${minor + 1}.0`
+        : `0.${minor}.${patch + 1}`
+      : bump === "major"
+        ? `${major + 1}.0.0`
+        : bump === "minor"
+          ? `${major}.${minor + 1}.0`
+          : `${major}.${minor}.${patch + 1}`;
 
 console.log(`${current} → ${next}`);
 
