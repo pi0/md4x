@@ -2,6 +2,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const selfPath = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +65,16 @@ if (updatedChangelog !== changelog) {
 }
 
 if (!noTag) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise<string>((r) =>
+    rl.question(`Tag and push v${next}? (y/N) `, r),
+  );
+  rl.close();
+  if (answer.toLowerCase() !== "y") {
+    console.log("Aborted.");
+    process.exit(0);
+  }
+
   // Git commit and tag
   execSync(`git add "${pkgJsonPath}" "${zigZonPath}" "${changelogPath}"`, {
     cwd: projectDir,
@@ -74,6 +85,6 @@ if (!noTag) {
     stdio: "inherit",
   });
   execSync(`git tag v${next}`, { cwd: projectDir, stdio: "inherit" });
-  console.log(`\nTagged v${next}`);
-  console.log(`Run \`git push --follow-tags\` to publish`);
+  execSync(`git push --follow-tags`, { cwd: projectDir, stdio: "inherit" });
+  console.log(`\nPublished v${next}`);
 }
