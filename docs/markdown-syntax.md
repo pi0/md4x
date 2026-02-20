@@ -54,6 +54,27 @@ YAML-style frontmatter delimited by `---` at the very start of the document. The
 
 **JSON renderer YAML parsing:** The JSON renderer uses [libyaml](https://github.com/yaml/libyaml) to parse frontmatter into the element's props object. Full YAML 1.1 is supported including nested objects, arrays (block and flow), and multi-line values (literal `|` and folded `>`). Plain scalars have type coercion: numbers (int/float), booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty). Quoted scalars (`""`/`''`) are always strings. The raw text is preserved as a child string: `["frontmatter", {"title": "Hello", "count": 42}, "title: Hello\ncount: 42\n"]`.
 
+## Extension: Alerts (`MD_FLAG_ALERTS`)
+
+GitHub-style alert/admonition syntax. A blockquote whose first line is `> [!TYPE]` becomes an alert block:
+
+```
+> [!NOTE]
+> This is a note
+
+> [!WARNING]
+> This is a warning
+```
+
+- TYPE is any alphanumeric/hyphenated name (`[a-zA-Z][a-zA-Z0-9_-]*`), case-insensitive
+- The `[!TYPE]` line must be the **first line** of the blockquote and the **only content** on that line
+- Text after `[!TYPE]` on the same line disqualifies it (treated as normal blockquote)
+- `[!TYPE]` not on the first line is treated as literal text
+- Supports all GitHub types (NOTE, TIP, IMPORTANT, WARNING, CAUTION) plus custom types
+- Content supports full markdown (inline formatting, lists, nested blockquotes, code blocks)
+
+HTML renderer: `<blockquote class="alert alert-{type}">` (type lowercased in class). JSON renderer: `["alert", {"type": "NOTE"}, ...children]`. ANSI renderer: bold yellow type label with quote-bar prefix.
+
 ## Extension: Inline Components (`MD_FLAG_COMPONENTS`)
 
 Inline components use the MDC syntax: `:component-name`, `:component[content]`, `:component[content]{props}`, `:component{props}`.

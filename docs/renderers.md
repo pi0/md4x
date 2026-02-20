@@ -27,6 +27,7 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Task lists render with `<input type="checkbox">` elements
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
+- Alerts render as `<blockquote class="alert alert-{type}">` (type lowercased in class)
 
 ## Shared Property Parser (`md4x-props.h`)
 

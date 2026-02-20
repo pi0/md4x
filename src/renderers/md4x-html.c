@@ -480,6 +480,25 @@ render_close_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
 }
 
 
+static void
+render_open_alert_block(MD_HTML* r, const MD_BLOCK_ALERT_DETAIL* det)
+{
+    MD_SIZE i;
+
+    RENDER_VERBATIM(r, "<blockquote class=\"alert alert-");
+    /* Lowercase the type name for the CSS class. */
+    if(det->type_name.text != NULL) {
+        for(i = 0; i < det->type_name.size; i++) {
+            char ch = det->type_name.text[i];
+            if(ch >= 'A' && ch <= 'Z')
+                ch += 32;
+            render_verbatim(r, &ch, 1);
+        }
+    }
+    RENDER_VERBATIM(r, "\">\n");
+}
+
+
 /**************************************
  ***  HTML renderer implementation  ***
  **************************************/
@@ -509,6 +528,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "<x-frontmatter>"); break;
         case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_ALERT:        render_open_alert_block(r, (const MD_BLOCK_ALERT_DETAIL*) detail); break;
         case MD_BLOCK_TEMPLATE: {
             const MD_BLOCK_TEMPLATE_DETAIL* det = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
             RENDER_VERBATIM(r, "<template name=\"");
@@ -546,6 +566,7 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
         case MD_BLOCK_FRONTMATTER:  RENDER_VERBATIM(r, "</x-frontmatter>\n"); break;
         case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_ALERT:        RENDER_VERBATIM(r, "</blockquote>\n"); break;
         case MD_BLOCK_TEMPLATE:     RENDER_VERBATIM(r, "</template>\n"); break;
     }
 

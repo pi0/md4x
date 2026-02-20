@@ -391,6 +391,24 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             render_ansi(r, ANSI_COLOR_CYAN);
             break;
 
+        case MD_BLOCK_ALERT: {
+            const MD_BLOCK_ALERT_DETAIL* det = (const MD_BLOCK_ALERT_DETAIL*) detail;
+            if(r->need_newline) {
+                render_newline(r);
+                r->need_newline = 0;
+            }
+            r->quote_depth++;
+            render_indent(r);
+            render_ansi(r, ANSI_BOLD);
+            render_ansi(r, ANSI_COLOR_YELLOW);
+            if(det->type_name.text != NULL && det->type_name.size > 0)
+                render_verbatim(r, det->type_name.text, det->type_name.size);
+            render_ansi(r, ANSI_COLOR_DEFAULT);
+            render_ansi(r, ANSI_BOLD_OFF);
+            render_newline(r);
+            break;
+        }
+
         case MD_BLOCK_TEMPLATE:
             /* Transparent — content renders normally within parent component. */
             break;
@@ -487,6 +505,11 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
 
         case MD_BLOCK_COMPONENT:
             render_ansi(r, ANSI_COLOR_DEFAULT);
+            r->need_newline = 1;
+            break;
+
+        case MD_BLOCK_ALERT:
+            r->quote_depth--;
             r->need_newline = 1;
             break;
 

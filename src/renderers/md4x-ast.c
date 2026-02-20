@@ -77,6 +77,7 @@ struct JSON_NODE {
         struct { char* target; } wikilink;
         struct { char* raw_props; MD_SIZE raw_props_size; } component;
         struct { char* name; } tmpl;
+        struct { char* type_name; } alert;
     } detail;
 
     /* Non-zero if the tag is heap-allocated (dynamic component tag). */
@@ -154,6 +155,8 @@ json_node_free(JSON_NODE* node)
             if(node->detail.wikilink.target) free(node->detail.wikilink.target);
         } else if(strcmp(node->tag, "template") == 0) {
             if(node->detail.tmpl.name) free(node->detail.tmpl.name);
+        } else if(strcmp(node->tag, "alert") == 0) {
+            if(node->detail.alert.type_name) free(node->detail.alert.type_name);
         }
         if(node->tag_is_dynamic) {
             if(node->detail.component.raw_props) free(node->detail.component.raw_props);
@@ -280,11 +283,17 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_FRONTMATTER:  tag = "frontmatter"; break;
         case MD_BLOCK_COMPONENT:    tag = NULL; break;  /* handled below */
         case MD_BLOCK_TEMPLATE:     tag = NULL; break;  /* handled below */
+        case MD_BLOCK_ALERT:        tag = "alert"; break;
         default:                    tag = "unknown"; break;
     }
 
     if(type == MD_BLOCK_DOC) {
         node = json_node_new(NULL, JSON_NODE_DOCUMENT);
+    } else if(type == MD_BLOCK_ALERT) {
+        const MD_BLOCK_ALERT_DETAIL* d = (const MD_BLOCK_ALERT_DETAIL*) detail;
+        node = json_node_new("alert", JSON_NODE_ELEMENT);
+        if(node == NULL) { ctx->error = 1; return -1; }
+        node->detail.alert.type_name = json_attr_to_str(&d->type_name);
     } else if(type == MD_BLOCK_COMPONENT) {
         const MD_BLOCK_COMPONENT_DETAIL* d = (const MD_BLOCK_COMPONENT_DETAIL*) detail;
         tag = json_attr_to_str(&d->tag_name);
@@ -1145,6 +1154,13 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
         if(node->detail.tmpl.name != NULL) {
             json_write_str(w, "\"name\":");
             json_write_string(w, node->detail.tmpl.name, (MD_SIZE) strlen(node->detail.tmpl.name));
+            has_prop = 1;
+        }
+    }
+    else if(strcmp(node->tag, "alert") == 0) {
+        if(node->detail.alert.type_name != NULL) {
+            json_write_str(w, "\"type\":");
+            json_write_string(w, node->detail.alert.type_name, (MD_SIZE) strlen(node->detail.alert.type_name));
             has_prop = 1;
         }
     }
