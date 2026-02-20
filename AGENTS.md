@@ -42,7 +42,7 @@ packages/md4x/           # npm package
   LICENSE.md             # MIT license
   build/
     md4x.wasm            # Prebuilt WASM binary
-    md4x.node            # Prebuilt NAPI binary
+    md4x.*.node          # Prebuilt NAPI binaries (per-platform)
   lib/
     wasm.mjs             # JS entrypoint for WASM (async API, ESM)
     wasm.d.mts           # TypeScript declarations for WASM API
@@ -117,7 +117,7 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
-- **md4x.{platform}-{arch}.node** — Cross-compiled NAPI addons (`zig build napi-all`, 6 targets)
+- **md4x.{platform}-{arch}[-musl].node** — Cross-compiled NAPI addons (`zig build napi-all`, 9 targets)
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
 

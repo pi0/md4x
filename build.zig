@@ -157,7 +157,10 @@ fn addNapi(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
 
     const napi_targets = [_]NapiTarget{
         .{ .name = "linux-x64", .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu, .output_name = "md4x.linux-x64.node", .dlltool_machine = null },
+        .{ .name = "linux-x64-musl", .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl, .output_name = "md4x.linux-x64-musl.node", .dlltool_machine = null },
         .{ .name = "linux-arm64", .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu, .output_name = "md4x.linux-arm64.node", .dlltool_machine = null },
+        .{ .name = "linux-arm64-musl", .cpu_arch = .aarch64, .os_tag = .linux, .abi = .musl, .output_name = "md4x.linux-arm64-musl.node", .dlltool_machine = null },
+        .{ .name = "linux-arm", .cpu_arch = .arm, .os_tag = .linux, .abi = .gnueabihf, .output_name = "md4x.linux-arm.node", .dlltool_machine = null },
         .{ .name = "darwin-x64", .cpu_arch = .x86_64, .os_tag = .macos, .abi = .none, .output_name = "md4x.darwin-x64.node", .dlltool_machine = null },
         .{ .name = "darwin-arm64", .cpu_arch = .aarch64, .os_tag = .macos, .abi = .none, .output_name = "md4x.darwin-arm64.node", .dlltool_machine = null },
         .{ .name = "win32-x64", .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu, .output_name = "md4x.win32-x64.node", .dlltool_machine = "i386:x86-64" },

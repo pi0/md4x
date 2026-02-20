@@ -3,8 +3,19 @@ import { arch, platform } from "node:process";
 
 const require = createRequire(import.meta.url);
 
+function isMusl() {
+  if (platform !== "linux") return false;
+  try {
+    // glibc sets glibcVersionRuntime; musl does not
+    return !process.report?.getReport?.()?.header?.glibcVersionRuntime;
+  } catch {
+    return false;
+  }
+}
+
 function loadBinding() {
-  return require(`../build/md4x.${platform}-${arch}.node`);
+  const suffix = isMusl() ? "-musl" : "";
+  return require(`../build/md4x.${platform}-${arch}${suffix}.node`);
 }
 
 const binding = loadBinding();

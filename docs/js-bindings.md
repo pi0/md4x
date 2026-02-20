@@ -36,14 +36,17 @@ const html = renderToHtml("# Hello"); // sync after init
 
 ```sh
 bunx nypm add node-api-headers
-zig build napi-all -Dnapi-include=node_modules/node-api-headers/include  # all 6 platforms
+zig build napi-all -Dnapi-include=node_modules/node-api-headers/include  # all 9 platforms
 ```
 
 Individual platform targets:
 
 ```sh
 zig build napi-linux-x64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-linux-x64-musl -Dnapi-include=node_modules/node-api-headers/include
 zig build napi-linux-arm64 -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-linux-arm64-musl -Dnapi-include=node_modules/node-api-headers/include
+zig build napi-linux-arm -Dnapi-include=node_modules/node-api-headers/include
 zig build napi-darwin-x64 -Dnapi-include=node_modules/node-api-headers/include
 zig build napi-darwin-arm64 -Dnapi-include=node_modules/node-api-headers/include
 zig build napi-win32-x64 -Dnapi-include=node_modules/node-api-headers/include
@@ -52,14 +55,17 @@ zig build napi-win32-arm64 -Dnapi-include=node_modules/node-api-headers/include
 
 `zig build napi-all` outputs platform-specific binaries to `packages/md4x/build/`:
 
-| Output file              | Platform            |
-| ------------------------ | ------------------- |
-| `md4x.linux-x64.node`    | Linux x86_64        |
-| `md4x.linux-arm64.node`  | Linux aarch64       |
-| `md4x.darwin-x64.node`   | macOS x86_64        |
-| `md4x.darwin-arm64.node` | macOS Apple Silicon |
-| `md4x.win32-x64.node`    | Windows x86_64      |
-| `md4x.win32-arm64.node`  | Windows ARM64       |
+| Output file                  | Platform                |
+| ---------------------------- | ----------------------- |
+| `md4x.linux-x64.node`        | Linux x86_64 (glibc)    |
+| `md4x.linux-x64-musl.node`   | Linux x86_64 (musl)     |
+| `md4x.linux-arm64.node`      | Linux aarch64 (glibc)   |
+| `md4x.linux-arm64-musl.node` | Linux aarch64 (musl)    |
+| `md4x.linux-arm.node`        | Linux ARMv7 (gnueabihf) |
+| `md4x.darwin-x64.node`       | macOS x86_64            |
+| `md4x.darwin-arm64.node`     | macOS Apple Silicon     |
+| `md4x.win32-x64.node`        | Windows x86_64          |
+| `md4x.win32-arm64.node`      | Windows ARM64           |
 
 Windows targets use `zig dlltool` to generate import libraries from `node_modules/node-api-headers/def/node_api.def`. The `-Dnapi-def` build option can override the `.def` path.
 
