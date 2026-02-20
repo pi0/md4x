@@ -143,6 +143,9 @@ fn addNapi(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
     const napi_include = b.option([]const u8, "napi-include", "Path to node-api-headers include directory") orelse "node_modules/node-api-headers/include";
     const napi_def = b.option([]const u8, "napi-def", "Path to node_api.def file (for Windows targets)") orelse "node_modules/node-api-headers/def/node_api.def";
 
+    // Ensure node_modules are installed (provides node-api-headers)
+    const bun_install = b.addSystemCommand(&.{ "bun", "install", "--frozen-lockfile" });
+
     const NapiTarget = struct {
         name: []const u8,
         cpu_arch: std.Target.Cpu.Arch,
@@ -205,6 +208,7 @@ fn addNapi(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
             .dest_sub_path = nt.output_name,
         });
         cross_install.step.dependOn(opts.clean_step);
+        cross_install.step.dependOn(&bun_install.step);
 
         const cross_step = b.step("napi-" ++ nt.name, "Build NAPI addon for " ++ nt.name);
         cross_step.dependOn(&cross_install.step);
