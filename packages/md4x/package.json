@@ -22,7 +22,7 @@
     }
   },
   "scripts": {
-    "prepack": "rm -rf build && mkdir build && cd ../.. && bun run build"
+    "prepack": "cd ../.. && zig build --verbose"
   },
   "files": [
     "build",

@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "zig build",
+    "build": "zig build --verbose",
     "dev": "cd packages/demo && bun run dev",
     "fmt": "prettier --write .",
     "vitest": "vitest",

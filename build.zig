@@ -1,147 +1,106 @@
 const std = @import("std");
+const zon = @import("build.zig.zon");
+
+const version = std.SemanticVersion.parse(zon.version) catch unreachable;
+
+// --- Source files ---
+
+const parser_source = "src/md4x.c";
+const renderer_sources = [_][]const u8{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c" };
+const cli_sources = renderer_sources ++ .{ "src/cli/md4x-cli.c", "src/cli/cmdline.c" };
+const wasm_sources = renderer_sources ++ .{"src/md4x-wasm.c"};
+const napi_sources = renderer_sources ++ .{"src/md4x-napi.c"};
+
+// --- Compiler flags ---
+
+const c_flags: []const []const u8 = &.{
+    std.fmt.comptimePrint("-DMD_VERSION_MAJOR={d}", .{version.major}),
+    std.fmt.comptimePrint("-DMD_VERSION_MINOR={d}", .{version.minor}),
+    std.fmt.comptimePrint("-DMD_VERSION_RELEASE={d}", .{version.patch}),
+    "-Wall",
+    "-Wextra",
+    "-Wshadow",
+    "-Wdeclaration-after-statement",
+    "-O2",
+};
+const c_flags_utf8 = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"};
+const napi_c_flags = c_flags ++ &[_][]const u8{"-DNODE_GYP_MODULE_NAME=md4x"};
+
+const libyaml_c_flags: []const []const u8 = &.{
+    "-DYAML_DECLARE_STATIC",
+    "-DYAML_VERSION_MAJOR=0",
+    "-DYAML_VERSION_MINOR=2",
+    "-DYAML_VERSION_PATCH=5",
+    "-DYAML_VERSION_STRING=\"0.2.5\"",
+};
+
+// --- Build options passed to WASM/NAPI targets ---
+
+const PkgBuildOptions = struct {
+    optimize: std.builtin.OptimizeMode,
+    strip: bool,
+    libyaml_src: std.Build.Module.AddCSourceFilesOptions,
+    include_paths: []const std.Build.LazyPath,
+    clean_step: *std.Build.Step,
+};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .ReleaseFast;
 
-    const version = std.SemanticVersion{ .major = 0, .minor = 5, .patch = 2 };
-
-    const c_flags: []const []const u8 = &.{
-        "-DMD_VERSION_MAJOR=0",
-        "-DMD_VERSION_MINOR=5",
-        "-DMD_VERSION_RELEASE=2",
-        "-Wall",
-        "-Wextra",
-        "-Wshadow",
-        "-Wdeclaration-after-statement",
-        "-O2",
-    };
-
     const strip = optimize != .Debug;
+
+    const mod_opts: std.Build.Module.CreateOptions = .{
+        .target = target,
+        .optimize = optimize,
+        .strip = strip,
+        .link_libc = true,
+    };
 
     // --- libyaml (YAML parser for JSON renderer frontmatter) ---
 
     const libyaml = b.dependency("libyaml", .{});
-    const libyaml_c_flags: []const []const u8 = &.{
-        "-DYAML_DECLARE_STATIC",
-        "-DYAML_VERSION_MAJOR=0",
-        "-DYAML_VERSION_MINOR=2",
-        "-DYAML_VERSION_PATCH=5",
-        "-DYAML_VERSION_STRING=\"0.2.5\"",
-    };
     const libyaml_src: std.Build.Module.AddCSourceFilesOptions = .{
         .root = libyaml.path(""),
         .files = &.{ "src/api.c", "src/reader.c", "src/scanner.c", "src/parser.c" },
         .flags = libyaml_c_flags,
     };
-    const libyaml_include = libyaml.path("include");
 
-    // --- Libraries ---
-
-    const md4x = b.addLibrary(.{
-        .name = "md4x",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .strip = strip,
-        }),
-        .version = version,
-    });
-    md4x.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
-    md4x.addIncludePath(b.path("src"));
-    md4x.installHeader(b.path("src/md4x.h"), "md4x.h");
-
-    const entity_src: std.Build.Module.CSourceFile = .{ .file = b.path("src/entity.c"), .flags = c_flags };
-
-    const md4x_html = b.addLibrary(.{
-        .name = "md4x-html",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .strip = strip,
-        }),
-        .version = version,
-    });
-    md4x_html.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-html.c"}, .flags = c_flags });
-    md4x_html.addCSourceFile(entity_src);
-    md4x_html.addIncludePath(b.path("src"));
-    md4x_html.addIncludePath(b.path("src/renderers"));
-    md4x_html.linkLibrary(md4x);
-    md4x_html.installHeader(b.path("src/renderers/md4x-html.h"), "md4x-html.h");
-
-    const md4x_json = b.addLibrary(.{
-        .name = "md4x-json",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .strip = strip,
-        }),
-        .version = version,
-    });
-    md4x_json.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-json.c"}, .flags = c_flags });
-    md4x_json.addCSourceFiles(libyaml_src);
-    md4x_json.addIncludePath(b.path("src"));
-    md4x_json.addIncludePath(b.path("src/renderers"));
-    md4x_json.addIncludePath(libyaml_include);
-    md4x_json.linkLibrary(md4x);
-    md4x_json.installHeader(b.path("src/renderers/md4x-json.h"), "md4x-json.h");
-
-    const md4x_ansi = b.addLibrary(.{
-        .name = "md4x-ansi",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .strip = strip,
-        }),
-        .version = version,
-    });
-    md4x_ansi.addCSourceFiles(.{ .files = &.{"src/renderers/md4x-ansi.c"}, .flags = c_flags });
-    md4x_ansi.addCSourceFile(entity_src);
-    md4x_ansi.addIncludePath(b.path("src"));
-    md4x_ansi.addIncludePath(b.path("src/renderers"));
-    md4x_ansi.linkLibrary(md4x);
-    md4x_ansi.installHeader(b.path("src/renderers/md4x-ansi.h"), "md4x-ansi.h");
-
-    b.installArtifact(md4x);
-    b.installArtifact(md4x_html);
-    b.installArtifact(md4x_json);
-    b.installArtifact(md4x_ansi);
+    const include_paths: []const std.Build.LazyPath = &.{ b.path("src"), b.path("src/renderers"), libyaml.path("include") };
 
     // --- CLI executable ---
 
     const exe = b.addExecutable(.{
         .name = "md4x",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .strip = strip,
-        }),
+        .root_module = b.createModule(mod_opts),
     });
-    exe.addCSourceFiles(.{ .files = &.{ "src/cli/md4x-cli.c", "src/cli/cmdline.c" }, .flags = c_flags });
-    exe.addIncludePath(b.path("src"));
-    exe.addIncludePath(b.path("src/renderers"));
-    exe.linkLibrary(md4x_html);
-    exe.linkLibrary(md4x_json);
-    exe.linkLibrary(md4x_ansi);
+    exe.addCSourceFile(.{ .file = b.path(parser_source), .flags = c_flags_utf8 });
+    exe.addCSourceFiles(.{ .files = &cli_sources, .flags = c_flags });
+    exe.addCSourceFiles(libyaml_src);
+    for (include_paths) |p| exe.addIncludePath(p);
     b.installArtifact(exe);
 
-    // --- Run step ---
+    // --- Clean packages/md4x/build before rebuilding ---
 
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-    const run_step = b.step("run", "Run md4x CLI");
-    run_step.dependOn(&run_cmd.step);
+    const clean_build = b.addRemoveDirTree(b.path("packages/md4x/build"));
 
-    // --- WASM library ---
+    // --- WASM & NAPI targets ---
 
+    const pkg_opts: PkgBuildOptions = .{
+        .optimize = optimize,
+        .strip = strip,
+        .libyaml_src = libyaml_src,
+        .include_paths = include_paths,
+        .clean_step = &clean_build.step,
+    };
+    const wasm_step = addWasm(b, pkg_opts);
+    const napi_all_step = addNapi(b, pkg_opts);
+
+    b.getInstallStep().dependOn(wasm_step);
+    b.getInstallStep().dependOn(napi_all_step);
+}
+
+fn addWasm(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
     const wasm_target = b.resolveTargetQuery(.{
         .cpu_arch = .wasm32,
         .os_tag = .wasi,
@@ -157,15 +116,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
     md4x_wasm.rdynamic = true;
-    md4x_wasm.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"} });
-    md4x_wasm.addCSourceFiles(.{
-        .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-wasm.c" },
-        .flags = c_flags,
-    });
-    md4x_wasm.addCSourceFiles(libyaml_src);
-    md4x_wasm.addIncludePath(b.path("src"));
-    md4x_wasm.addIncludePath(b.path("src/renderers"));
-    md4x_wasm.addIncludePath(libyaml_include);
+    md4x_wasm.addCSourceFile(.{ .file = b.path(parser_source), .flags = c_flags_utf8 });
+    md4x_wasm.addCSourceFiles(.{ .files = &wasm_sources, .flags = c_flags });
+    md4x_wasm.addCSourceFiles(opts.libyaml_src);
+    for (opts.include_paths) |p| md4x_wasm.addIncludePath(p);
     md4x_wasm.root_module.export_symbol_names = &.{
         "md4x_alloc",
         "md4x_free",
@@ -179,18 +133,15 @@ pub fn build(b: *std.Build) void {
     const wasm_install = b.addInstallArtifact(md4x_wasm, .{
         .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
     });
-    const wasm_log = b.addSystemCommand(&.{ "echo", "Built WASM -> packages/md4x/build/md4x.wasm" });
-    wasm_log.step.dependOn(&wasm_install.step);
+    wasm_install.step.dependOn(opts.clean_step);
     const wasm_step = b.step("wasm", "Build WASM library");
-    wasm_step.dependOn(&wasm_log.step);
+    wasm_step.dependOn(&wasm_install.step);
+    return wasm_step;
+}
 
-    // --- NAPI shared libraries ---
-
+fn addNapi(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
     const napi_include = b.option([]const u8, "napi-include", "Path to node-api-headers include directory") orelse "node_modules/node-api-headers/include";
     const napi_def = b.option([]const u8, "napi-def", "Path to node_api.def file (for Windows targets)") orelse "node_modules/node-api-headers/def/node_api.def";
-
-    const napi_c_flags = c_flags ++ &[_][]const u8{"-DNODE_GYP_MODULE_NAME=md4x"};
-    const napi_parser_flags = c_flags ++ &[_][]const u8{"-DMD4X_USE_UTF8"};
 
     const NapiTarget = struct {
         name: []const u8,
@@ -210,7 +161,6 @@ pub fn build(b: *std.Build) void {
         .{ .name = "win32-arm64", .cpu_arch = .aarch64, .os_tag = .windows, .abi = .gnu, .output_name = "md4x.win32-arm64.node", .dlltool_machine = "arm64" },
     };
 
-    // Cross-platform NAPI targets
     const napi_all_step = b.step("napi-all", "Build NAPI addon for all platforms");
 
     inline for (napi_targets) |nt| {
@@ -225,24 +175,18 @@ pub fn build(b: *std.Build) void {
             .name = "md4x",
             .root_module = b.createModule(.{
                 .target = cross_target,
-                .optimize = optimize,
+                .optimize = opts.optimize,
                 .link_libc = true,
-                .strip = strip,
+                .strip = opts.strip,
             }),
         });
-        napi_lib.addCSourceFile(.{ .file = b.path("src/md4x.c"), .flags = napi_parser_flags });
-        napi_lib.addCSourceFiles(.{
-            .files = &.{ "src/renderers/md4x-html.c", "src/renderers/md4x-json.c", "src/renderers/md4x-ansi.c", "src/entity.c", "src/md4x-napi.c" },
-            .flags = napi_c_flags,
-        });
-        napi_lib.addCSourceFiles(libyaml_src);
-        napi_lib.addIncludePath(b.path("src"));
-        napi_lib.addIncludePath(b.path("src/renderers"));
-        napi_lib.addIncludePath(libyaml_include);
+        napi_lib.addCSourceFile(.{ .file = b.path(parser_source), .flags = c_flags_utf8 });
+        napi_lib.addCSourceFiles(.{ .files = &napi_sources, .flags = napi_c_flags });
+        napi_lib.addCSourceFiles(opts.libyaml_src);
+        for (opts.include_paths) |p| napi_lib.addIncludePath(p);
         napi_lib.addIncludePath(.{ .cwd_relative = napi_include });
 
         if (nt.dlltool_machine) |machine| {
-            // Windows: generate import library from .def file using zig dlltool
             const dlltool = b.addSystemCommand(&.{
                 "zig", "dlltool",
                 "-d",  napi_def,
@@ -260,12 +204,12 @@ pub fn build(b: *std.Build) void {
             .dest_dir = .{ .override = .{ .custom = "../packages/md4x/build" } },
             .dest_sub_path = nt.output_name,
         });
+        cross_install.step.dependOn(opts.clean_step);
 
         const cross_step = b.step("napi-" ++ nt.name, "Build NAPI addon for " ++ nt.name);
         cross_step.dependOn(&cross_install.step);
         napi_all_step.dependOn(&cross_install.step);
     }
 
-    b.getInstallStep().dependOn(wasm_step);
-    b.getInstallStep().dependOn(napi_all_step);
+    return napi_all_step;
 }
