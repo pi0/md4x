@@ -23,14 +23,14 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 **Usage from JS (via `lib/wasm.mjs` wrapper):**
 
 ```js
-import { initWasm, renderToHtml } from "md4x/wasm";
+import { init, renderToHtml } from "md4x/wasm";
 
-await initWasm(); // load WASM binary (call once before using render methods)
+await init(); // load WASM binary (call once before using render methods)
 
 const html = renderToHtml("# Hello"); // sync after init
 ```
 
-`initWasm(input?)` accepts an optional input: `ArrayBuffer`, `Uint8Array`, `WebAssembly.Module`, `Response`, or `Promise<Response>`. When called with no arguments in Node.js, it reads the bundled `.wasm` file from disk. All render methods are **sync** after initialization. All extensions are enabled by default (`MD_DIALECT_ALL`).
+`init(opts?)` accepts an optional options object with a `wasm` property: `ArrayBuffer`, `Uint8Array`, `WebAssembly.Module`, `Response`, or `Promise<Response>`. When called with no arguments in Node.js, it reads the bundled `.wasm` file from disk. All render methods are **sync** after initialization. All extensions are enabled by default (`MD_DIALECT_ALL`).
 
 ## NAPI Target (Node.js)
 
@@ -87,6 +87,8 @@ const html = renderToHtml("# Hello");
 
 The NAPI API is sync. All extensions are enabled by default (`MD_DIALECT_ALL`). `renderToAST` returns the raw JSON string from the C renderer. `parseAST` parses it into a `ComarkTree` object.
 
+`init(opts?)` is optional for NAPI — the native binding loads lazily on first render call. It accepts an optional options object with a `binding` property to provide a custom NAPI binding.
+
 The JS loader (`lib/napi.mjs`) auto-detects the platform via `process.platform` and `process.arch`, loading `md4x.{platform}-{arch}.node`.
 
 ## JS Package Exports
@@ -96,20 +98,20 @@ Configured in `packages/md4x/package.json` via `exports`:
 | Subpath       | Module                                           | Description                                  |
 | ------------- | ------------------------------------------------ | -------------------------------------------- |
 | `md4x` (bare) | `lib/napi.mjs` (node) / `lib/wasm.mjs` (default) | Auto-selects NAPI on Node.js, WASM elsewhere |
-| `md4x/wasm`   | `lib/wasm.mjs`                                   | WASM-based API (sync after `initWasm()`)     |
+| `md4x/wasm`   | `lib/wasm.mjs`                                   | WASM-based API (sync after `init()`)         |
 | `md4x/napi`   | `lib/napi.mjs`                                   | Sync NAPI-based API (ESM only)               |
 
 All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer flag configuration is exposed to JS consumers.
 
-**JS API functions:**
+**JS API functions (unified across NAPI and WASM):**
 
-| Function                      | NAPI         | WASM                                      |
-| ----------------------------- | ------------ | ----------------------------------------- |
-| `initWasm(input?)`            | —            | `Promise<void>` (call once before render) |
-| `renderToHtml(input: string)` | `string`     | `string`                                  |
-| `renderToAST(input: string)`  | `string`     | `string`                                  |
-| `parseAST(input: string)`     | `ComarkTree` | `ComarkTree`                              |
-| `renderToAnsi(input: string)` | `string`     | `string`                                  |
+| Function                      | NAPI                                     | WASM                                     |
+| ----------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `init(opts?)`                 | `Promise<void>` (optional, lazy loading) | `Promise<void>` (required before render) |
+| `renderToHtml(input: string)` | `string`                                 | `string`                                 |
+| `renderToAST(input: string)`  | `string`                                 | `string`                                 |
+| `parseAST(input: string)`     | `ComarkTree`                             | `ComarkTree`                             |
+| `renderToAnsi(input: string)` | `string`                                 | `string`                                 |
 
 `renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. See `lib/types.d.ts` for the Comark AST types (`ComarkTree`, `ComarkNode`, `ComarkElement`, `ComarkText`, `ComarkElementAttributes`).
 

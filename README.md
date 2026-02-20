@@ -36,13 +36,17 @@ Available as a native Node.js addon (NAPI) for maximum performance, or as a port
 The bare `md4x` import auto-selects NAPI on Node.js and WASM elsewhere.
 
 ```js
-import { renderToHtml, renderToAST, parseAST, renderToAnsi } from "md4x";
+import { init, renderToHtml, renderToAST, parseAST, renderToAnsi } from "md4x";
+
+// await init(); // required for WASM, optional for NAPI
 
 const html = renderToHtml("# Hello, **world**!");
 const json = renderToAST("# Hello, **world**!"); // raw JSON string
 const ast = parseAST("# Hello, **world**!"); // parsed ComarkTree object
 const ansi = renderToAnsi("# Hello, **world**!");
 ```
+
+Both NAPI and WASM export a unified API with `init()`. For WASM, `init()` must be called before rendering. For NAPI, it is optional (the native binding loads lazily on first render call).
 
 #### NAPI (Node.js native)
 
@@ -57,13 +61,13 @@ import { renderToHtml } from "md4x/napi";
 Works anywhere with WebAssembly support. Requires a one-time async initialization.
 
 ```js
-import { initWasm, renderToHtml } from "md4x/wasm";
+import { init, renderToHtml } from "md4x/wasm";
 
-await initWasm(); // call once before rendering
+await init(); // call once before rendering
 const html = renderToHtml("# Hello");
 ```
 
-`initWasm()` accepts an optional input (`ArrayBuffer`, `Response`, `WebAssembly.Module`, or `Promise<Response>`). When called with no arguments, it loads the bundled `.wasm` file automatically.
+`init()` accepts an optional options object with a `wasm` property (`ArrayBuffer`, `Response`, `WebAssembly.Module`, or `Promise<Response>`). When called with no arguments, it loads the bundled `.wasm` file automatically.
 
 ### Benchmarks
 

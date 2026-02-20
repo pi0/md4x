@@ -1,16 +1,46 @@
+// --- internal ---
+
 let _instance;
 
 function getExports() {
   if (!_instance) {
-    throw new Error(
-      "md4x: WASM not initialized. Call `await initWasm()` first.",
-    );
+    throw new Error("md4x: WASM not initialized. Call `await init()` first.");
   }
   return _instance.exports;
 }
 
-export async function initWasm(input) {
+const wasiStub = {
+  fd_close: () => 0,
+  fd_seek: () => 0,
+  fd_write: () => 0,
+  proc_exit: () => {},
+};
+
+function render(exports, fn, input) {
+  const { memory, md4x_alloc, md4x_free, md4x_result_ptr, md4x_result_size } =
+    exports;
+  const encoded = new TextEncoder().encode(input);
+  const ptr = md4x_alloc(encoded.length);
+  new Uint8Array(memory.buffer).set(encoded, ptr);
+  const ret = fn(ptr, encoded.length);
+  md4x_free(ptr);
+  if (ret !== 0) {
+    throw new Error("md4x: render failed");
+  }
+  const outPtr = md4x_result_ptr();
+  const outSize = md4x_result_size();
+  const result = new TextDecoder().decode(
+    new Uint8Array(memory.buffer, outPtr, outSize),
+  );
+  md4x_free(outPtr);
+  return result;
+}
+
+// --- exports ----
+
+export async function init(opts) {
   if (_instance) return;
+  const input = opts?.wasm;
   let bytes;
   if (input instanceof ArrayBuffer || input instanceof Uint8Array) {
     bytes = input;
@@ -61,33 +91,4 @@ export function parseAST(input) {
 
 export function renderToAnsi(input) {
   return render(getExports(), getExports().md4x_to_ansi, input);
-}
-
-// --- internals ---
-
-const wasiStub = {
-  fd_close: () => 0,
-  fd_seek: () => 0,
-  fd_write: () => 0,
-  proc_exit: () => {},
-};
-
-function render(exports, fn, input) {
-  const { memory, md4x_alloc, md4x_free, md4x_result_ptr, md4x_result_size } =
-    exports;
-  const encoded = new TextEncoder().encode(input);
-  const ptr = md4x_alloc(encoded.length);
-  new Uint8Array(memory.buffer).set(encoded, ptr);
-  const ret = fn(ptr, encoded.length);
-  md4x_free(ptr);
-  if (ret !== 0) {
-    throw new Error("md4x: render failed");
-  }
-  const outPtr = md4x_result_ptr();
-  const outSize = md4x_result_size();
-  const result = new TextDecoder().decode(
-    new Uint8Array(memory.buffer, outPtr, outSize),
-  );
-  md4x_free(outPtr);
-  return result;
 }

@@ -13,12 +13,16 @@ const changelogPath = resolve(projectDir, "CHANGELOG.md");
 
 const args = process.argv.slice(2);
 const noTag = args.includes("--no-tag");
-const bump = (args.find((a) => !a.startsWith("--")) || "patch") as
+const yes =
+  args.includes("-y") || args.includes("--yes") || !process.stdin.isTTY;
+const bump = (args.find((a) => !a.startsWith("-")) || "patch") as
   | "major"
   | "minor"
   | "patch";
 if (!["major", "minor", "patch"].includes(bump)) {
-  console.error(`Usage: bun scripts/release.ts [major|minor|patch] [--no-tag]`);
+  console.error(
+    `Usage: bun scripts/release.ts [major|minor|patch] [--no-tag] [-y|--yes]`,
+  );
   process.exit(1);
 }
 
@@ -73,14 +77,19 @@ if (updatedChangelog !== changelog) {
 }
 
 if (!noTag) {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await new Promise<string>((r) =>
-    rl.question(`Tag and push v${next}? (y/N) `, r),
-  );
-  rl.close();
-  if (answer.toLowerCase() !== "y") {
-    console.log("Aborted.");
-    process.exit(0);
+  if (!yes) {
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const answer = await new Promise<string>((r) =>
+      rl.question(`Tag and push v${next}? (y/N) `, r),
+    );
+    rl.close();
+    if (answer.toLowerCase() !== "y") {
+      console.log("Aborted.");
+      process.exit(0);
+    }
   }
 
   // Git commit and tag

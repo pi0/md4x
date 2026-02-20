@@ -1,4 +1,4 @@
-import type { ComarkTree } from "./types.js";
+import type { ComarkTree } from "./types.mjs";
 
 export type {
   ComarkTree,
@@ -6,8 +6,19 @@ export type {
   ComarkElement,
   ComarkText,
   ComarkElementAttributes,
-} from "./types.js";
+} from "./types.mjs";
 
+export interface NAPIBinding {
+  renderToHtml(input: string): string;
+  renderToAST(input: string): string;
+  renderToAnsi(input: string): string;
+}
+
+export interface InitOptions {
+  binding?: NAPIBinding;
+}
+
+export declare function init(opts?: InitOptions): Promise<void>;
 export declare function renderToHtml(input: string): string;
 export declare function renderToAST(input: string): string;
 export declare function parseAST(input: string): ComarkTree;

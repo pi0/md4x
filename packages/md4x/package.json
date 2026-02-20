@@ -1,35 +1,29 @@
 {
   "name": "md4x",
   "version": "0.0.9",
+  "repository": "pi0/md4x",
   "license": "MIT",
   "type": "module",
-  "repository": "pi0/md4x",
-  "bin": {
-    "md4x": "./lib/cli.mjs"
-  },
   "exports": {
+    "./wasm": "./lib/wasm.mjs",
+    "./napi": "./lib/napi.mjs",
     ".": {
-      "types": "./lib/napi.d.mts",
       "node": "./lib/napi.mjs",
       "default": "./lib/wasm.mjs"
-    },
-    "./wasm": {
-      "types": "./lib/wasm.d.mts",
-      "default": "./lib/wasm.mjs"
-    },
-    "./napi": {
-      "types": "./lib/napi.d.mts",
-      "default": "./lib/napi.mjs"
     }
   },
-  "scripts": {
-    "prepack": "cd ../.. && zig build --verbose"
+  "types": "./lib/types.d.mts",
+  "bin": {
+    "md4x": "./lib/cli.mjs"
   },
   "files": [
     "build",
     "lib",
     "README.md"
   ],
+  "scripts": {
+    "prepack": "cd ../.. && zig build --verbose"
+  },
   "devDependencies": {
     "markdown-it": "^14.1.1",
     "markdown-it-mdc": "^0.2.12",

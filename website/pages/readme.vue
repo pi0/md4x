@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { initWasm, renderToHtml } from "md4x/wasm";
+import { init, renderToHtml } from "md4x/wasm";
 import readmeRaw from "../../README.md?raw";
 
 const html = ref("");
 
 onMounted(async () => {
-  await initWasm();
+  await init();
   html.value = renderToHtml(readmeRaw);
 });
 </script>

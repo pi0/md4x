@@ -1,6 +1,6 @@
 import { beforeAll } from "vitest";
 import {
-  initWasm,
+  init,
   renderToHtml,
   renderToAST,
   renderToAnsi,
@@ -9,7 +9,7 @@ import {
 import { defineSuite } from "./_suite.mjs";
 
 beforeAll(async () => {
-  await initWasm();
+  await init();
 });
 
 defineSuite({ renderToHtml, renderToAST, renderToAnsi, parseAST });

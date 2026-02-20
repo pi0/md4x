@@ -5,7 +5,7 @@ import * as wasm from "../lib/wasm.mjs";
 import MarkdownIt from "markdown-it";
 import pluginMdc from "markdown-it-mdc";
 
-await wasm.initWasm();
+await wasm.init();
 
 const markdownItMdc = new MarkdownIt().use(pluginMdc);
 

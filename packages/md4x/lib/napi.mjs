@@ -1,31 +1,39 @@
-import { createRequire } from "node:module";
-import { arch, platform } from "node:process";
+// --- internal ---
 
-const require = createRequire(import.meta.url);
+let binding;
 
-function isMusl() {
-  if (platform !== "linux") return false;
+function getBinding(opts) {
+  if (binding) return binding;
+  if (opts?.binding) {
+    return (binding = opts.binding);
+  }
+  const { arch, platform } = globalThis.process || {};
+  const { createRequire } = globalThis.process?.getBuiltinModule?.("module");
+  const isMusl =
+    platform === "linux" &&
+    !process.report?.getReport?.()?.header?.glibcVersionRuntime;
+  return (binding = createRequire(import.meta.url)(
+    `../build/md4x.${platform}-${arch}${isMusl ? "-musl" : ""}.node`,
+  ));
+}
+
+// --- exports ----
+
+export function init(opts) {
   try {
-    // glibc sets glibcVersionRuntime; musl does not
-    return !process.report?.getReport?.()?.header?.glibcVersionRuntime;
-  } catch {
-    return false;
+    getBinding(opts);
+    return Promise.resolve(binding);
+  } catch (err) {
+    return Promise.reject(err);
   }
 }
 
-function loadBinding() {
-  const suffix = isMusl() ? "-musl" : "";
-  return require(`../build/md4x.${platform}-${arch}${suffix}.node`);
-}
-
-const binding = loadBinding();
-
 export function renderToHtml(input) {
-  return binding.renderToHtml(input);
+  return getBinding().renderToHtml(input);
 }
 
 export function renderToAST(input) {
-  return binding.renderToAST(input);
+  return getBinding().renderToAST(input);
 }
 
 export function parseAST(input) {
@@ -33,5 +41,5 @@ export function parseAST(input) {
 }
 
 export function renderToAnsi(input) {
-  return binding.renderToAnsi(input);
+  return getBinding().renderToAnsi(input);
 }

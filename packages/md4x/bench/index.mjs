@@ -8,7 +8,8 @@ import * as fixtures from "./_fixtures.mjs";
 const markdownIt = new MarkdownIt();
 
 // Initialize WASM instances
-await wasm.initWasm();
+await wasm.init();
+await napi.init();
 await md4w.init();
 
 const inputs = {
@@ -24,6 +25,11 @@ for (const [name, input] of Object.entries(inputs)) {
       bench(`md4x-wasm`, () => wasm.renderToHtml(input));
       bench(`md4w`, () => md4w.mdToHtml(input));
       bench(`markdown-it`, () => markdownIt.render(input));
+
+      // const bunToHTML = global.Bun.markdown.html;
+      // if (bunToHTML) {
+      //   bench(`Bun.markdown.html`, () => bunToHTML(input));
+      // }
     });
 
     summary(() => {

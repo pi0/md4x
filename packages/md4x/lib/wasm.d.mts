@@ -1,4 +1,4 @@
-import type { ComarkTree } from "./types.js";
+import type { ComarkTree } from "./types.mjs";
 
 export type {
   ComarkTree,
@@ -6,16 +6,18 @@ export type {
   ComarkElement,
   ComarkText,
   ComarkElementAttributes,
-} from "./types.js";
+} from "./types.mjs";
 
-export declare function initWasm(
-  input?:
+export interface InitOptions {
+  wasm?:
     | ArrayBuffer
     | Uint8Array
     | WebAssembly.Module
     | Response
-    | Promise<Response>,
-): Promise<void>;
+    | Promise<Response>;
+}
+
+export declare function init(opts?: InitOptions): Promise<void>;
 export declare function renderToHtml(input: string): string;
 export declare function renderToAST(input: string): string;
 export declare function parseAST(input: string): ComarkTree;

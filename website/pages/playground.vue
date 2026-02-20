@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { initWasm, renderToHtml, parseAST, renderToAnsi } from "md4x/wasm";
+import {
+  init as initMD4x,
+  renderToHtml,
+  parseAST,
+  renderToAnsi,
+} from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
 
 const examples = Object.fromEntries(
@@ -105,7 +110,7 @@ onMounted(async () => {
     { languages },
     { EditorState },
   ] = await Promise.all([
-    initWasm(),
+    initMD4x(),
     createHighlighter({
       themes: ["github-light"],
       langs: ["html", "json"],
