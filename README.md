@@ -2,7 +2,7 @@
 
 Fast and Small markdown parser and renderer based on [mity/md4c](https://github.com/mity/md4c/).
 
-**[> Online Playground](https://pi0.github.io/md4x)**
+**[> Online Playground](https://md4x.pi0.io/#/playground)**
 
 ## CLI
 
