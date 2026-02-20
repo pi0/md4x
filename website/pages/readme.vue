@@ -12,9 +12,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main
-    class="prose mx-auto w-full max-w-[860px] flex-1 overflow-auto px-4 py-8 max-md:px-4 max-md:py-5 md:px-10"
-  >
-    <div v-html="html" />
+  <main class="flex-1 overflow-auto">
+    <div
+      class="prose mx-auto w-full max-w-none px-4 py-8 max-md:px-4 max-md:py-5 md:max-w-4xl md:px-10"
+      v-html="html"
+    />
   </main>
 </template>

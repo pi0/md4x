@@ -225,11 +225,11 @@ function ansiToHtml(str: string): string {
 
 <template>
   <div
-    class="flex items-center justify-center gap-3 border-b border-gray-300 bg-gray-50 px-4 py-1.5"
+    class="flex flex-wrap items-center justify-center gap-2 border-b border-gray-300 bg-gray-50 px-4 py-1.5 md:gap-3"
   >
     <select
       v-model="example"
-      class="min-w-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
+      class="min-w-0 flex-1 basis-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
       @change="onExampleChange"
     >
       <option v-for="(_, key) in examples" :key="key" :value="key">
@@ -241,54 +241,67 @@ function ansiToHtml(str: string): string {
         }}
       </option>
     </select>
-    <div class="hidden max-md:flex max-md:gap-1">
-      <button
-        class="cursor-pointer rounded border border-gray-500 bg-transparent px-3 py-1 font-inherit text-[13px] text-gray-500"
-        :class="
-          mobileTab === 'editor' &&
-          '!border-gray-300 !bg-gray-200 !text-gray-800'
-        "
-        @click="mobileTab = 'editor'"
-      >
-        Editor
-      </button>
-      <button
-        class="cursor-pointer rounded border border-gray-500 bg-transparent px-3 py-1 font-inherit text-[13px] text-gray-500"
-        :class="
-          mobileTab === 'output' &&
-          '!border-gray-300 !bg-gray-200 !text-gray-800'
-        "
-        @click="mobileTab = 'output'"
-      >
-        Output
-      </button>
-    </div>
     <select
       v-model="mode"
-      class="min-w-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
+      class="min-w-0 flex-1 basis-0 rounded border border-gray-300 bg-white px-2 py-1 text-[13px] text-gray-700"
     >
       <option value="html">HTML (rendered)</option>
       <option value="raw">HTML (source)</option>
       <option value="json">JSON AST (comark)</option>
       <option value="ansi">ANSI (CLI)</option>
     </select>
+    <div class="mobile-tabs w-full border-b border-gray-300 -mx-4 -mb-1.5 mt-1">
+      <button
+        class="flex-1 cursor-pointer border-b-2 bg-transparent py-1.5 font-inherit text-[13px] transition-colors"
+        :class="
+          mobileTab === 'editor'
+            ? 'border-gray-800 text-gray-800 font-medium'
+            : 'border-transparent text-gray-400'
+        "
+        @click="mobileTab = 'editor'"
+      >
+        Editor
+      </button>
+      <button
+        class="flex-1 cursor-pointer border-b-2 bg-transparent py-1.5 font-inherit text-[13px] transition-colors"
+        :class="
+          mobileTab === 'output'
+            ? 'border-gray-800 text-gray-800 font-medium'
+            : 'border-transparent text-gray-400'
+        "
+        @click="mobileTab = 'output'"
+      >
+        Output
+      </button>
+    </div>
   </div>
-  <main class="flex min-h-0 flex-1 max-md:flex-col" :data-tab="mobileTab">
+  <main class="flex min-h-0 flex-1 flex-col md:flex-row" :data-tab="mobileTab">
     <div
       ref="editorEl"
-      class="editor min-w-0 flex-1 basis-0 overflow-auto border-r border-gray-300 max-md:w-full max-md:min-h-0 max-md:border-r-0"
-      :class="mobileTab === 'output' && 'max-md:!hidden'"
+      class="editor w-full min-w-0 min-h-0 flex-1 basis-0 overflow-auto md:border-r md:border-gray-300"
+      :data-hidden="mobileTab === 'output' ? '' : undefined"
     />
     <div
-      class="output min-w-0 flex-1 basis-0 overflow-auto text-sm leading-relaxed max-md:min-h-0 max-md:break-words"
+      class="output min-w-0 min-h-0 flex-1 basis-0 overflow-auto break-words text-sm leading-relaxed"
       :class="[
         `mode-${mode}`,
         mode === 'html' && 'prose max-w-none p-5 px-6',
         mode === 'ansi' &&
           'whitespace-pre-wrap break-words bg-linear-to-br from-[#0f0f1a] to-[#161625] p-5 px-6 font-mono text-[13.5px] leading-[1.65] text-[#c8cad8]',
-        mobileTab === 'editor' && 'max-md:!hidden',
       ]"
+      :data-hidden="mobileTab === 'editor' ? '' : undefined"
       v-html="outputHtml"
     />
   </main>
 </template>
+
+<style scoped>
+.mobile-tabs {
+  display: flex;
+}
+@media (min-width: 768px) {
+  .mobile-tabs {
+    display: none;
+  }
+}
+</style>

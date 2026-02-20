@@ -14,7 +14,7 @@ import { RouterLink, RouterView } from "vue-router";
         to="/"
         class="rounded px-3 py-1 text-[13px] text-gray-400 no-underline transition-colors hover:text-gray-200"
         exact-active-class="!bg-header-active !text-white"
-        >README</RouterLink
+        >DOCS</RouterLink
       >
       <RouterLink
         to="/playground"

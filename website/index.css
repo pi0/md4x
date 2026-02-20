@@ -66,6 +66,10 @@ body {
 
 /* Mobile: wrap pre content */
 @media (max-width: 768px) {
+  [data-hidden] {
+    display: none !important;
+  }
+
   .output pre {
     white-space: pre-wrap;
     word-break: break-all;
