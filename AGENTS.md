@@ -181,6 +181,35 @@ The `scripts/` directory contains TypeScript generators for lookup tables compil
 
 These are run manually when updating Unicode compliance (currently Unicode 15.1).
 
+## Development Best Practices
+
+### AST Renderer: Union Safety with Dynamic Components
+
+The AST renderer (`md4x-ast.c`) uses a `JSON_NODE` struct with a C union for type-specific detail data. **Dynamic components** (`tag_is_dynamic = 1`) always use `detail.component` and have a heap-allocated tag name. Since a user can create a component with any name (e.g. `::alert{...}`, `::pre{...}`, `::a{...}`), the tag name may collide with built-in static tags.
+
+**Critical rule:** In `json_node_free`, `json_write_props`, and `json_serialize_node`, always check `node->tag_is_dynamic` **before** any `strcmp(node->tag, ...)` dispatch. If dynamic, use the component code path exclusively — never fall through to static tag handlers. Violating this causes:
+
+1. **Double-free** — `json_node_free` frees the same union pointer via both the static tag cleanup and the dynamic cleanup (heap corruption, OOB in WASM)
+2. **Wrong serialization** — `json_write_props` reads the union as the wrong type (e.g. interprets `raw_props` pointer as `alert.type_name`)
+
+### WASM Binary
+
+The WASM binary (`packages/md4x/build/md4x.wasm`) is gitignored and must be rebuilt with `zig build wasm` after C source changes. The `zig build wasm` step installs directly to `packages/md4x/build/`. Run `bun vitest run packages/md4x/test/wasm.test.mjs` to verify.
+
+### Adding New Block/Span Types
+
+When adding a new block or span type with its own detail struct:
+
+1. Add the detail struct to the `JSON_NODE` union in `md4x-ast.c`
+2. Handle it in `json_enter_block`/`json_enter_span` (build the node)
+3. Handle it in `json_write_props` (serialize props) — place **after** the `tag_is_dynamic` check
+4. Handle it in `json_node_free` (free heap strings) — place **after** the `tag_is_dynamic` check
+5. If needed, handle it in `json_serialize_node` (special child rendering)
+6. Update all three renderers (HTML, AST, ANSI) and the CLI
+7. Add a test suite in `test/spec-*.txt` and update `scripts/run-tests.ts`
+8. Add JS binding tests in `packages/md4x/test/_suite.mjs`
+9. Rebuild WASM with `zig build wasm` and run `bun vitest run packages/md4x/test/wasm.test.mjs`
+
 ## Detailed Reference
 
 @docs/parser-api.md
