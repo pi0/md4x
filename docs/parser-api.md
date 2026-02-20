@@ -96,6 +96,7 @@ Unicode matters for: word boundary classification (emphasis), case-insensitive l
 | `MD_BLOCK_FRONTMATTER` | `<x-frontmatter>` | —                           |
 | `MD_BLOCK_COMPONENT`   | _(dynamic tag)_   | `MD_BLOCK_COMPONENT_DETAIL` |
 | `MD_BLOCK_TEMPLATE`    | `<template>`      | `MD_BLOCK_TEMPLATE_DETAIL`  |
+| `MD_BLOCK_ALERT`       | `<blockquote>`    | `MD_BLOCK_ALERT_DETAIL`     |
 
 ## Span Types (`MD_SPANTYPE`)
 
@@ -212,6 +213,10 @@ typedef struct MD_BLOCK_COMPONENT_DETAIL {
 typedef struct MD_BLOCK_TEMPLATE_DETAIL {
     MD_ATTRIBUTE name;              /* Slot name (e.g. "header", "footer") */
 } MD_BLOCK_TEMPLATE_DETAIL;
+
+typedef struct MD_BLOCK_ALERT_DETAIL {
+    MD_ATTRIBUTE type_name;         /* Alert type (e.g. "NOTE", "WARNING") */
+} MD_BLOCK_ALERT_DETAIL;
 ```
 
 ## `MD_ATTRIBUTE`
@@ -251,11 +256,12 @@ Invariants: `substr_offsets[0] == 0`, `substr_offsets[LAST+1] == size`. Only `MD
 | `MD_FLAG_FRONTMATTER`              | `0x10000` | Enable frontmatter extension                                                      |
 | `MD_FLAG_COMPONENTS`               | `0x20000` | Enable components (inline `:name[content]{props}` and block `::name{props}...::`) |
 | `MD_FLAG_ATTRIBUTES`               | `0x40000` | Enable `{...}` attributes on inline elements and `[text]{.class}` spans           |
+| `MD_FLAG_ALERTS`                   | `0x80000` | Enable `> [!TYPE]` alert/admonition syntax                                        |
 
 **Compound flags:**
 
 - `MD_FLAG_PERMISSIVEAUTOLINKS` = email + URL + WWW autolinks
 - `MD_FLAG_NOHTML` = no HTML blocks + no HTML spans
 - `MD_DIALECT_COMMONMARK` = `0` (strict CommonMark)
-- `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists
-- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter + components + attributes)
+- `MD_DIALECT_GITHUB` = permissive autolinks + tables + strikethrough + task lists + alerts
+- `MD_DIALECT_ALL` = all additive extensions (autolinks + tables + strikethrough + tasklists + latex math + wikilinks + underline + frontmatter + components + attributes + alerts)

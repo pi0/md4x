@@ -1,0 +1,230 @@
+
+# Alerts (GitHub-style admonitions)
+
+## Basic NOTE alert
+
+```````````````````````````````` example
+> [!NOTE]
+> This is a note
+.
+<blockquote class="alert alert-note">
+<p>This is a note</p>
+</blockquote>
+````````````````````````````````
+
+## Basic WARNING alert
+
+```````````````````````````````` example
+> [!WARNING]
+> This is a warning
+.
+<blockquote class="alert alert-warning">
+<p>This is a warning</p>
+</blockquote>
+````````````````````````````````
+
+## TIP alert
+
+```````````````````````````````` example
+> [!TIP]
+> Tip content
+.
+<blockquote class="alert alert-tip">
+<p>Tip content</p>
+</blockquote>
+````````````````````````````````
+
+## IMPORTANT alert
+
+```````````````````````````````` example
+> [!IMPORTANT]
+> Important content
+.
+<blockquote class="alert alert-important">
+<p>Important content</p>
+</blockquote>
+````````````````````````````````
+
+## CAUTION alert
+
+```````````````````````````````` example
+> [!CAUTION]
+> Caution content
+.
+<blockquote class="alert alert-caution">
+<p>Caution content</p>
+</blockquote>
+````````````````````````````````
+
+## Custom alert type
+
+```````````````````````````````` example
+> [!CUSTOM]
+> Custom alert
+.
+<blockquote class="alert alert-custom">
+<p>Custom alert</p>
+</blockquote>
+````````````````````````````````
+
+## Alert with inline formatting
+
+```````````````````````````````` example
+> [!NOTE]
+> This **is** a *formatted* message
+.
+<blockquote class="alert alert-note">
+<p>This <strong>is</strong> a <em>formatted</em> message</p>
+</blockquote>
+````````````````````````````````
+
+## Alert with multiple paragraphs
+
+```````````````````````````````` example
+> [!NOTE]
+> First paragraph
+>
+> Second paragraph
+.
+<blockquote class="alert alert-note">
+<p>First paragraph</p>
+<p>Second paragraph</p>
+</blockquote>
+````````````````````````````````
+
+## Empty alert (just the type line)
+
+```````````````````````````````` example
+> [!NOTE]
+.
+<blockquote class="alert alert-note">
+</blockquote>
+````````````````````````````````
+
+## Not an alert: [!TYPE] not on first line
+
+```````````````````````````````` example
+> Some text
+> [!NOTE]
+> More text
+.
+<blockquote>
+<p>Some text
+[!NOTE]
+More text</p>
+</blockquote>
+````````````````````````````````
+
+## Not an alert: text after [!TYPE] on same line
+
+```````````````````````````````` example
+> [!NOTE] extra text
+> Content
+.
+<blockquote>
+<p>[!NOTE] extra text
+Content</p>
+</blockquote>
+````````````````````````````````
+
+## Nested blockquote inside alert
+
+```````````````````````````````` example
+> [!NOTE]
+> Content
+>
+> > Nested quote
+.
+<blockquote class="alert alert-note">
+<p>Content</p>
+<blockquote>
+<p>Nested quote</p>
+</blockquote>
+</blockquote>
+````````````````````````````````
+
+## Alert with list content
+
+```````````````````````````````` example
+> [!TIP]
+> - Item 1
+> - Item 2
+.
+<blockquote class="alert alert-tip">
+<ul>
+<li>Item 1</li>
+<li>Item 2</li>
+</ul>
+</blockquote>
+````````````````````````````````
+
+## Normal blockquote (no alert syntax)
+
+```````````````````````````````` example
+> Normal blockquote
+.
+<blockquote>
+<p>Normal blockquote</p>
+</blockquote>
+````````````````````````````````
+
+## Lowercase type accepted
+
+```````````````````````````````` example
+> [!note]
+> Content
+.
+<blockquote class="alert alert-note">
+<p>Content</p>
+</blockquote>
+````````````````````````````````
+
+## Mixed case type accepted
+
+```````````````````````````````` example
+> [!Note]
+> Content
+.
+<blockquote class="alert alert-note">
+<p>Content</p>
+</blockquote>
+````````````````````````````````
+
+## Alert type with hyphens
+
+```````````````````````````````` example
+> [!my-custom-alert]
+> Content
+.
+<blockquote class="alert alert-my-custom-alert">
+<p>Content</p>
+</blockquote>
+````````````````````````````````
+
+## Alert with code block
+
+```````````````````````````````` example
+> [!NOTE]
+> Example:
+>
+> ```js
+> console.log("hello")
+> ```
+.
+<blockquote class="alert alert-note">
+<p>Example:</p>
+<pre><code class="language-js">console.log(&quot;hello&quot;)
+</code></pre>
+</blockquote>
+````````````````````````````````
+
+## Alert with link
+
+```````````````````````````````` example
+> [!NOTE]
+> See [example](http://example.com) for details
+.
+<blockquote class="alert alert-note">
+<p>See <a href="http://example.com">example</a> for details</p>
+</blockquote>
+````````````````````````````````

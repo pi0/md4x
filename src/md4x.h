@@ -114,7 +114,12 @@ typedef enum MD_BLOCKTYPE {
     /* Template/slot within a block component (#slot-name).
      * Note: Recognized only when MD_FLAG_COMPONENTS is enabled.
      * Detail: Structure MD_BLOCK_TEMPLATE_DETAIL. */
-    MD_BLOCK_TEMPLATE
+    MD_BLOCK_TEMPLATE,
+
+    /* Alert/admonition block (> [!TYPE] ... syntax).
+     * Note: Recognized only when MD_FLAG_ALERTS is enabled.
+     * Detail: Structure MD_BLOCK_ALERT_DETAIL. */
+    MD_BLOCK_ALERT
 } MD_BLOCKTYPE;
 
 /* Span represents an in-line piece of a document which should be rendered with
@@ -353,6 +358,11 @@ typedef struct MD_BLOCK_TEMPLATE_DETAIL {
     MD_ATTRIBUTE name;              /* Slot name (e.g. "header", "footer"). */
 } MD_BLOCK_TEMPLATE_DETAIL;
 
+/* Detailed info for MD_BLOCK_ALERT. */
+typedef struct MD_BLOCK_ALERT_DETAIL {
+    MD_ATTRIBUTE type_name;         /* Alert type (e.g. "NOTE", "WARNING"). */
+} MD_BLOCK_ALERT_DETAIL;
+
 /* Detailed info for inline spans with trailing attributes {.class #id key="value"}.
  * Used for MD_SPAN_EM, MD_SPAN_STRONG, MD_SPAN_CODE, MD_SPAN_DEL, MD_SPAN_U
  * when followed by {...}. NULL is passed when no attributes are present. */
@@ -391,6 +401,7 @@ typedef struct MD_SPAN_SPAN_DETAIL {
 #define MD_FLAG_FRONTMATTER                 0x10000 /* Enable frontmatter extension. */
 #define MD_FLAG_COMPONENTS                  0x20000 /* Enable inline/block component syntax. */
 #define MD_FLAG_ATTRIBUTES                  0x40000 /* Enable trailing {attrs} on inline elements. */
+#define MD_FLAG_ALERTS                      0x80000 /* Enable > [!TYPE] alert/admonition syntax. */
 
 #define MD_FLAG_PERMISSIVEAUTOLINKS         (MD_FLAG_PERMISSIVEEMAILAUTOLINKS | MD_FLAG_PERMISSIVEURLAUTOLINKS | MD_FLAG_PERMISSIVEWWWAUTOLINKS)
 #define MD_FLAG_NOHTML                      (MD_FLAG_NOHTMLBLOCKS | MD_FLAG_NOHTMLSPANS)
@@ -405,8 +416,8 @@ typedef struct MD_SPAN_SPAN_DETAIL {
  * extensions, bringing the dialect closer to the original, are implemented.
  */
 #define MD_DIALECT_COMMONMARK               0
-#define MD_DIALECT_GITHUB                   (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS)
-#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER | MD_FLAG_COMPONENTS | MD_FLAG_ATTRIBUTES)
+#define MD_DIALECT_GITHUB                   (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_ALERTS)
+#define MD_DIALECT_ALL                      (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS | MD_FLAG_LATEXMATHSPANS | MD_FLAG_WIKILINKS | MD_FLAG_UNDERLINE | MD_FLAG_FRONTMATTER | MD_FLAG_COMPONENTS | MD_FLAG_ATTRIBUTES | MD_FLAG_ALERTS)
 
 /* Parser structure.
  */

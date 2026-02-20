@@ -290,6 +290,16 @@ struct MD_CTX_tag {
     int n_slots;                    /* Number of entries used. */
     int alloc_slots;                /* Allocated capacity. */
 
+    /* Alert info array.
+     * Each blockquote-based alert (> [!TYPE]) pushes its type offsets here.
+     * The index is stored in the container's start field for later lookup. */
+    struct {
+        OFF type_beg;               /* Offset of type name in source. */
+        OFF type_end;
+    } *block_alert_info;
+    int n_block_alerts;             /* Number of entries used. */
+    int alloc_block_alerts;         /* Allocated capacity. */
+
     /* Inline attribute info array.
      * Resolved trailing {attrs} on inline spans (emphasis, code, links, etc.).
      * Built by md_resolve_attrs() after all other mark resolution. */
@@ -5371,6 +5381,7 @@ struct MD_CONTAINER_tag {
     CHAR ch;
     unsigned is_loose    : 8;
     unsigned is_task     : 8;
+    unsigned is_alert    : 8;
     unsigned start;
     unsigned mark_indent;
     unsigned contents_indent;
@@ -5818,6 +5829,7 @@ md_process_all_blocks(MD_CTX* ctx)
             MD_BLOCK_LI_DETAIL li;
             MD_BLOCK_COMPONENT_DETAIL component;
             MD_BLOCK_TEMPLATE_DETAIL tmpl;
+            MD_BLOCK_ALERT_DETAIL alert;
         } det;
 
         memset(&det, 0, sizeof(det));
@@ -5875,6 +5887,20 @@ md_process_all_blocks(MD_CTX* ctx)
                 break;
             }
 
+            case MD_BLOCK_ALERT: {
+                int alert_idx = (int) block->data;
+                if(alert_idx >= 0 && alert_idx < ctx->n_block_alerts) {
+                    OFF type_beg = ctx->block_alert_info[alert_idx].type_beg;
+                    OFF type_end = ctx->block_alert_info[alert_idx].type_end;
+
+                    memset(&comp_name_build, 0, sizeof(comp_name_build));
+                    MD_CHECK(md_build_attribute(ctx, STR(type_beg), type_end - type_beg,
+                                                0, &det.alert.type_name, &comp_name_build));
+                    clean_component_detail = TRUE;
+                }
+                break;
+            }
+
             default:
                 /* noop */
                 break;
@@ -5885,7 +5911,8 @@ md_process_all_blocks(MD_CTX* ctx)
                 MD_LEAVE_BLOCK(block->type, &det);
 
                 if(block->type == MD_BLOCK_UL || block->type == MD_BLOCK_OL || block->type == MD_BLOCK_QUOTE
-                   || block->type == MD_BLOCK_COMPONENT || block->type == MD_BLOCK_TEMPLATE)
+                   || block->type == MD_BLOCK_COMPONENT || block->type == MD_BLOCK_TEMPLATE
+                   || block->type == MD_BLOCK_ALERT)
                     ctx->n_containers--;
             }
 
@@ -5895,8 +5922,8 @@ md_process_all_blocks(MD_CTX* ctx)
                 if(block->type == MD_BLOCK_UL || block->type == MD_BLOCK_OL) {
                     ctx->containers[ctx->n_containers].is_loose = (block->flags & MD_BLOCK_LOOSE_LIST);
                     ctx->n_containers++;
-                } else if(block->type == MD_BLOCK_QUOTE) {
-                    /* This causes that any text in a block quote, even if
+                } else if(block->type == MD_BLOCK_QUOTE || block->type == MD_BLOCK_ALERT) {
+                    /* This causes that any text in a block quote/alert, even if
                      * nested inside a tight list item, is wrapped with
                      * <p>...</p>. */
                     ctx->containers[ctx->n_containers].is_loose = TRUE;
@@ -6224,6 +6251,31 @@ md_push_slot_info(MD_CTX* ctx, OFF name_beg, OFF name_end)
         int idx = ctx->n_slots++;
         ctx->slot_info[idx].name_beg = name_beg;
         ctx->slot_info[idx].name_end = name_end;
+        return idx;
+    }
+}
+
+/* Push a block alert info entry. Returns the index, or -1 on error. */
+static int
+md_push_block_alert_info(MD_CTX* ctx, OFF type_beg, OFF type_end)
+{
+    if(ctx->n_block_alerts >= ctx->alloc_block_alerts) {
+        int new_alloc = (ctx->alloc_block_alerts > 0
+                ? ctx->alloc_block_alerts + ctx->alloc_block_alerts / 2
+                : 16);
+        void* new_arr = realloc(ctx->block_alert_info, new_alloc * sizeof(ctx->block_alert_info[0]));
+        if(new_arr == NULL) {
+            MD_LOG("realloc() failed.");
+            return -1;
+        }
+        ctx->block_alert_info = new_arr;
+        ctx->alloc_block_alerts = new_alloc;
+    }
+
+    {
+        int idx = ctx->n_block_alerts++;
+        ctx->block_alert_info[idx].type_beg = type_beg;
+        ctx->block_alert_info[idx].type_end = type_end;
         return idx;
     }
 }
@@ -6820,7 +6872,10 @@ md_enter_child_containers(MD_CTX* ctx, int n_children)
                 break;
 
             case _T('>'):
-                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0, 0, MD_BLOCK_CONTAINER_OPENER));
+                if(c->is_alert)
+                    MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_ALERT, 0, c->start, MD_BLOCK_CONTAINER_OPENER));
+                else
+                    MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0, 0, MD_BLOCK_CONTAINER_OPENER));
                 break;
 
             case _T(':'):
@@ -6868,8 +6923,12 @@ md_leave_child_containers(MD_CTX* ctx, int n_keep)
                 break;
 
             case _T('>'):
-                MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0,
-                                0, MD_BLOCK_CONTAINER_CLOSER));
+                if(c->is_alert)
+                    MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_ALERT, 0,
+                                    c->start, MD_BLOCK_CONTAINER_CLOSER));
+                else
+                    MD_CHECK(md_push_container_bytes(ctx, MD_BLOCK_QUOTE, 0,
+                                    0, MD_BLOCK_CONTAINER_CLOSER));
                 break;
 
             case _T(':'):
@@ -7264,6 +7323,41 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
             }
     #endif
             ctx->last_line_has_list_loosening_effect = FALSE;
+        }
+
+        /* Check for alert syntax > [!TYPE] inside a newly opened blockquote.
+         * Only on the first line of a new blockquote (n_children > 0). */
+        if((ctx->parser.flags & MD_FLAG_ALERTS)  &&  n_children > 0  &&
+           line->indent < ctx->code_indent_offset  &&
+           off < ctx->size  &&  CH(off) == _T('['))
+        {
+            int last_cont = ctx->n_containers - 1;
+            if(last_cont >= 0  &&  ctx->containers[last_cont].ch == _T('>')  &&
+               !ctx->containers[last_cont].is_alert)
+            {
+                OFF tmp = off + 1;
+                if(tmp < ctx->size  &&  CH(tmp) == _T('!')) {
+                    OFF type_beg, type_end;
+                    tmp++;
+                    type_beg = tmp;
+                    while(tmp < ctx->size  &&  (ISALPHA(tmp) || ISDIGIT(tmp) || CH(tmp) == _T('-') || CH(tmp) == _T('_')))
+                        tmp++;
+                    type_end = tmp;
+                    if(type_end > type_beg  &&  tmp < ctx->size  &&  CH(tmp) == _T(']')) {
+                        tmp++;
+                        while(tmp < ctx->size  &&  ISBLANK(tmp))
+                            tmp++;
+                        if(tmp >= ctx->size  ||  ISNEWLINE(tmp)) {
+                            int alert_idx = md_push_block_alert_info(ctx, type_beg, type_end);
+                            if(alert_idx < 0) { ret = -1; goto abort; }
+                            ctx->containers[last_cont].is_alert = TRUE;
+                            ctx->containers[last_cont].start = (unsigned) alert_idx;
+                            line->type = MD_LINE_BLANK;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         /* Check whether we are Setext underline. */
@@ -7824,6 +7918,7 @@ md_parse(const MD_CHAR* text, MD_SIZE size, const MD_PARSER* parser, void* userd
     free(ctx.containers);
     free(ctx.block_component_info);
     free(ctx.slot_info);
+    free(ctx.block_alert_info);
     free(ctx.inline_attrs);
 
     return ret;

@@ -12,6 +12,14 @@
 
 ## v0.0.6
 
+### Alerts (`MD_FLAG_ALERTS`)
+
+Added GitHub-style alert/admonition syntax. A blockquote whose first line is `> [!TYPE]` (where TYPE is any alphanumeric/hyphenated name, case-insensitive) becomes an alert block (`MD_BLOCK_ALERT`). The `[!TYPE]` line is consumed and not emitted as text content.
+
+HTML renderer: `<blockquote class="alert alert-{type}">` (type lowercased in class). JSON renderer: `["alert", {"type": "NOTE"}, ...children]`. ANSI renderer: bold yellow type label with quote-bar prefix.
+
+New flag: `MD_FLAG_ALERTS` (`0x80000`), included in `MD_DIALECT_GITHUB` and `MD_DIALECT_ALL`. Supports all GitHub types (NOTE, TIP, IMPORTANT, WARNING, CAUTION) plus custom types.
+
 ### Full YAML frontmatter parsing with libyaml
 
 The JSON renderer now uses [libyaml](https://github.com/yaml/libyaml) (0.2.5) for frontmatter parsing, replacing the previous hand-written flat parser. This adds support for nested objects, arrays (block and flow), and multi-line values (literal `|` and folded `>`). Plain scalar type coercion is preserved: numbers, booleans (`true`/`false`/`yes`/`no`/`on`/`off`), null (`null`/`~`/empty). Quoted scalars are always strings. The raw text is still preserved as a child string.

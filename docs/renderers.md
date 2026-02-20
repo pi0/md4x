@@ -27,6 +27,7 @@ Only `<body>` contents are generated — caller handles HTML header/footer.
 - Task lists render with `<input type="checkbox">` elements
 - Table cells get `align` attribute when alignment is specified
 - URL attributes are percent-encoded; HTML content is entity-escaped
+- Alerts render as `<blockquote class="alert alert-{type}">` (type lowercased in class)
 
 ## Shared Property Parser (`md4x-props.h`)
 
@@ -69,6 +70,8 @@ int md_ast(const MD_CHAR* input, MD_SIZE input_size,
 ```
 
 Produces `{"type":"comark","value":[...]}` where each node is either a plain JSON string (text) or a tuple array `["tag", {props}, ...children]`.
+
+**Internal architecture:** Unlike the streaming HTML/ANSI renderers, the AST renderer builds an in-memory tree of `JSON_NODE` structs during parsing, then serializes the tree to JSON. Each node has a `detail` union for type-specific data (code block info, link href, component props, etc.). Nodes with `tag_is_dynamic = 1` are user-defined components — their tag name is heap-allocated and they use the `detail.component` union member exclusively. All dispatch on `node->tag` (in `json_node_free`, `json_write_props`, `json_serialize_node`) must check `tag_is_dynamic` first to avoid union misinterpretation when a component name collides with a built-in tag.
 
 ### AST Renderer Flags (`MD_AST_FLAG_*`)
 

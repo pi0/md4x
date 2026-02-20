@@ -77,6 +77,7 @@ struct JSON_NODE {
         struct { char* target; } wikilink;
         struct { char* raw_props; MD_SIZE raw_props_size; } component;
         struct { char* name; } tmpl;
+        struct { char* type_name; } alert;
     } detail;
 
     /* Non-zero if the tag is heap-allocated (dynamic component tag). */
@@ -136,8 +137,14 @@ json_node_free(JSON_NODE* node)
     if(node->text_value)
         free(node->text_value);
 
-    /* Free heap-allocated detail strings. */
-    if(node->tag != NULL) {
+    /* Free heap-allocated detail strings.
+     * Dynamic components (tag_is_dynamic) use detail.component union member,
+     * so must be checked first to avoid double-free when a component name
+     * collides with a static tag (e.g. ::alert{...} vs MD_BLOCK_ALERT). */
+    if(node->tag_is_dynamic) {
+        if(node->detail.component.raw_props) free(node->detail.component.raw_props);
+        free((char*)node->tag);
+    } else if(node->tag != NULL) {
         if(strcmp(node->tag, "pre") == 0) {
             if(node->detail.code.info) free(node->detail.code.info);
             if(node->detail.code.lang) free(node->detail.code.lang);
@@ -154,10 +161,8 @@ json_node_free(JSON_NODE* node)
             if(node->detail.wikilink.target) free(node->detail.wikilink.target);
         } else if(strcmp(node->tag, "template") == 0) {
             if(node->detail.tmpl.name) free(node->detail.tmpl.name);
-        }
-        if(node->tag_is_dynamic) {
-            if(node->detail.component.raw_props) free(node->detail.component.raw_props);
-            free((char*)node->tag);
+        } else if(strcmp(node->tag, "alert") == 0) {
+            if(node->detail.alert.type_name) free(node->detail.alert.type_name);
         }
     }
 
@@ -280,11 +285,17 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_FRONTMATTER:  tag = "frontmatter"; break;
         case MD_BLOCK_COMPONENT:    tag = NULL; break;  /* handled below */
         case MD_BLOCK_TEMPLATE:     tag = NULL; break;  /* handled below */
+        case MD_BLOCK_ALERT:        tag = "alert"; break;
         default:                    tag = "unknown"; break;
     }
 
     if(type == MD_BLOCK_DOC) {
         node = json_node_new(NULL, JSON_NODE_DOCUMENT);
+    } else if(type == MD_BLOCK_ALERT) {
+        const MD_BLOCK_ALERT_DETAIL* d = (const MD_BLOCK_ALERT_DETAIL*) detail;
+        node = json_node_new("alert", JSON_NODE_ELEMENT);
+        if(node == NULL) { ctx->error = 1; return -1; }
+        node->detail.alert.type_name = json_attr_to_str(&d->type_name);
     } else if(type == MD_BLOCK_COMPONENT) {
         const MD_BLOCK_COMPONENT_DETAIL* d = (const MD_BLOCK_COMPONENT_DETAIL*) detail;
         tag = json_attr_to_str(&d->tag_name);
@@ -1048,7 +1059,17 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
 
     json_write(w, "{", 1);
 
-    if(strcmp(node->tag, "ol") == 0) {
+    /* Dynamic components (tag_is_dynamic) use detail.component union member,
+     * so must be checked first to avoid misinterpreting the union when a
+     * component name collides with a static tag (e.g. ::alert{...}). */
+    if(node->tag_is_dynamic) {
+        /* Component: parse raw props string. */
+        if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {
+            has_prop = json_write_component_props(w, node->detail.component.raw_props,
+                                                  node->detail.component.raw_props_size);
+        }
+    }
+    else if(strcmp(node->tag, "ol") == 0) {
         if(node->detail.ol.start != 1) {
             char buf[32];
             json_snprintf(buf, sizeof(buf), "\"start\":%u", node->detail.ol.start);
@@ -1148,16 +1169,16 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
             has_prop = 1;
         }
     }
+    else if(strcmp(node->tag, "alert") == 0) {
+        if(node->detail.alert.type_name != NULL) {
+            json_write_str(w, "\"type\":");
+            json_write_string(w, node->detail.alert.type_name, (MD_SIZE) strlen(node->detail.alert.type_name));
+            has_prop = 1;
+        }
+    }
     else if(strcmp(node->tag, "frontmatter") == 0) {
         if(node->text_value != NULL && node->text_size > 0) {
             has_prop = json_write_yaml_props(w, node->text_value, node->text_size) > 0;
-        }
-    }
-    else if(node->tag_is_dynamic) {
-        /* Component: parse raw props string. */
-        if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {
-            has_prop = json_write_component_props(w, node->detail.component.raw_props,
-                                                  node->detail.component.raw_props_size);
         }
     }
 
@@ -1207,8 +1228,9 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
             /* Write props. */
             json_write_props(w, node);
 
-            /* Special handling for code_block ("pre"): emit inner ["code", {}, literal]. */
-            if(strcmp(node->tag, "pre") == 0) {
+            /* Special handling for built-in tags.
+             * Dynamic components always use the regular container path. */
+            if(!node->tag_is_dynamic && strcmp(node->tag, "pre") == 0) {
                 json_write_str(w, ",[\"code\",{");
                 if(node->detail.code.lang != NULL && node->detail.code.lang[0] != '\0') {
                     json_write_str(w, "\"class\":\"language-");
@@ -1223,14 +1245,14 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
                 json_write(w, "]", 1);
             }
             /* html_block and frontmatter: emit literal as text child. */
-            else if(node->text_value != NULL
+            else if(!node->tag_is_dynamic && node->text_value != NULL
                     && (strcmp(node->tag, "html_block") == 0
                         || strcmp(node->tag, "frontmatter") == 0)) {
                 json_write(w, ",", 1);
                 json_write_string(w, node->text_value, node->text_size);
             }
             /* Inline code, math, math-display: emit literal as text child. */
-            else if(node->text_value != NULL
+            else if(!node->tag_is_dynamic && node->text_value != NULL
                     && (strcmp(node->tag, "code") == 0
                         || strcmp(node->tag, "math") == 0
                         || strcmp(node->tag, "math-display") == 0)) {
@@ -1238,7 +1260,7 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
                 json_write_string(w, node->text_value, node->text_size);
             }
             /* img: void element, no children (alt is in props). */
-            else if(strcmp(node->tag, "img") == 0) {
+            else if(!node->tag_is_dynamic && strcmp(node->tag, "img") == 0) {
                 /* No children emitted. */
             }
             /* Regular container: emit children. */
