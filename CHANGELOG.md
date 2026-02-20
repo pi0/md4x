@@ -1,6 +1,6 @@
 # MD4X Change Log
 
-## Next
+## v0.0.6
 
 ### Full YAML frontmatter parsing with libyaml
 
