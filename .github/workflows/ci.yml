@@ -34,13 +34,13 @@ jobs:
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: bun run build
-        working-directory: packages/demo
+        working-directory: website
 
       - name: Upload Pages Artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/demo/dist
+          path: website/dist
 
   deploy:
     needs: build

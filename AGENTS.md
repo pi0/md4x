@@ -75,7 +75,20 @@ scripts/
   _unicode-map.ts         # Shared helper for punct/whitespace map generators
   coverity.sh             # Coverity Scan integration
   unicode/                # Unicode data files (CaseFolding.txt, DerivedGeneralCategory.txt)
-package.json             # Root workspace package (bun, workspaces: packages/*)
+website/                 # Docs + playground (Vite + Vue)
+  package.json           # Website package manifest (md4x-demo)
+  vite.config.mjs        # Vite config (base: /md4x/)
+  index.html             # HTML entry
+  index.ts               # App entry point
+  index.css              # Styles
+  App.vue                # Root component with navigation
+  router.ts              # Vue Router config
+  env.d.ts               # TypeScript env types
+  pages/
+    readme.vue           # Renders README.md via md4x/wasm
+    playground.vue       # Interactive markdown editor + renderer
+  samples/               # Example markdown files for playground
+package.json             # Root workspace package (bun, workspaces: packages/*, website)
 build.zig                # Zig build script
 build.zig.zon            # Zig package manifest
 .github/workflows/

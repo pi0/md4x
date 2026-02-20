@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-header: #1a1a2e;
+  --color-header-active: #2a2a40;
+}
+
+/* Full-height app shell */
+body {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* CodeMirror: hide gutters, ensure full height */
+.editor .cm-gutters {
+  display: none;
+}
+
+/* Shiki code blocks in raw/json mode */
+.output.mode-raw pre.shiki,
+.output.mode-json pre.shiki {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+  height: 100%;
+  overflow: auto;
+}
+
+/* ANSI output: spans must be transparent bg */
+.output.mode-ansi span {
+  background: transparent;
+}
+
+/* Prose overrides for md4x-specific elements */
+.prose x-equation {
+  font-family: ui-monospace, monospace;
+  color: #6639a6;
+}
+
+.prose x-wikilink {
+  color: #0969da;
+  border-bottom: 1px dashed #0969da;
+}
+
+.prose del {
+  color: #656d76;
+}
+
+.prose details {
+  margin: 0.75em 0;
+}
+
+.prose details summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Mobile: wrap pre content */
+@media (max-width: 768px) {
+  .output pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .editor .cm-editor {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .editor .cm-content {
+    font-size: 16px;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+}

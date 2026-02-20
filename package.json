@@ -4,11 +4,12 @@
   "license": "MIT",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "website"
   ],
   "scripts": {
     "build": "zig build --verbose",
-    "dev": "cd packages/demo && bun run dev",
+    "dev": "cd website && bun run dev",
     "fmt": "prettier --write .",
     "vitest": "vitest",
     "test": "bun ./scripts/run-tests.ts && bun vitest",
