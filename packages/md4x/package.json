@@ -3,6 +3,7 @@
   "version": "0.0.6",
   "license": "MIT",
   "type": "module",
+  "repository": "pi0/md4x",
   "bin": {
     "md4x": "./lib/cli.mjs"
   },
