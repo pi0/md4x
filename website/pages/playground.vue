@@ -43,16 +43,17 @@ const exampleOptions = [
 ];
 const modeOptions = [
   { value: "html", label: "HTML" },
-  { value: "raw", label: "Source" },
   { value: "json", label: "AST" },
   { value: "ansi", label: "ANSI" },
   { value: "text", label: "Text" },
   { value: "meta", label: "Meta" },
 ];
 const mode = ref("html");
+const showSource = ref(false);
 const example = ref("all");
 const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
+const sourceHtml = ref("");
 const mobileTab = ref<"editor" | "output">("output");
 
 const editorEl = ref<HTMLElement>();
@@ -65,7 +66,12 @@ function restoreFromQuery() {
   const m = route.query.m as string;
   const e = route.query.e as string;
   const c = route.query.c as string;
-  if (m) mode.value = m;
+  if (m === "raw") {
+    mode.value = "html";
+    showSource.value = true;
+  } else if (m) {
+    mode.value = m;
+  }
   if (e === "all") {
     example.value = "all";
     currentMd.value = allExamplesMd;
@@ -91,9 +97,9 @@ function render() {
   const m = mode.value;
   try {
     if (m === "html") {
-      outputHtml.value = renderToHtml(md);
-    } else if (m === "raw") {
-      outputHtml.value = highlighter.codeToHtml(renderToHtml(md), {
+      const html = renderToHtml(md);
+      outputHtml.value = html;
+      sourceHtml.value = highlighter.codeToHtml(html, {
         lang: "html",
         theme: "github-light",
       });
@@ -217,6 +223,7 @@ function onCursorActivity(update: any) {
 
 watch(mode, () => {
   mobileTab.value = "output";
+  showSource.value = false;
   render();
 });
 watch(example, () => {
@@ -329,19 +336,50 @@ onMounted(async () => {
       :data-hidden="mobileTab === 'output' ? '' : undefined"
     />
     <div
-      ref="outputEl"
-      class="output min-w-0 min-h-0 flex-1 basis-0 overflow-auto break-words text-sm leading-relaxed"
-      :class="[
-        `mode-${mode}`,
-        mode === 'html' && 'prose max-w-none p-5 px-6',
-        mode === 'ansi' &&
-          'whitespace-pre-wrap break-words bg-linear-to-br from-[#0f0f1a] to-[#161625] p-5 px-6 font-mono text-[13.5px] leading-[1.65] text-[#c8cad8]',
-        mode === 'text' &&
-          'whitespace-pre-wrap break-words p-5 px-6 font-mono text-[13.5px] leading-[1.65]',
-      ]"
+      class="relative min-w-0 min-h-0 flex-1 basis-0 overflow-auto"
       :data-hidden="mobileTab === 'editor' ? '' : undefined"
-      v-html="outputHtml"
-    />
+    >
+      <button
+        v-if="mode === 'html'"
+        class="source-toggle"
+        :class="showSource && 'active'"
+        :title="showSource ? 'Show rendered' : 'Show source'"
+        @click="showSource = !showSource"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          width="14"
+          height="14"
+        >
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      </button>
+      <div
+        v-if="mode === 'html' && showSource"
+        class="output mode-raw size-full overflow-auto break-words text-sm leading-relaxed"
+        v-html="sourceHtml"
+      />
+      <div
+        v-else
+        ref="outputEl"
+        class="output size-full overflow-auto break-words text-sm leading-relaxed"
+        :class="[
+          `mode-${mode}`,
+          mode === 'html' && 'prose max-w-none p-5 px-6',
+          mode === 'ansi' &&
+            'whitespace-pre-wrap break-words bg-linear-to-br from-[#0f0f1a] to-[#161625] p-5 px-6 font-mono text-[13.5px] leading-[1.65] text-[#c8cad8]',
+          mode === 'text' &&
+            'whitespace-pre-wrap break-words p-5 px-6 font-mono text-[13.5px] leading-[1.65]',
+        ]"
+        v-html="outputHtml"
+      />
+    </div>
   </main>
 </template>
 
@@ -353,5 +391,32 @@ onMounted(async () => {
   .mobile-tabs {
     display: none;
   }
+}
+.source-toggle {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #9ca3af;
+  background: #f3f4f6;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.source-toggle:hover {
+  background: #e5e7eb;
+  color: #111827;
+  border-color: #6b7280;
+}
+.source-toggle.active {
+  background: #d1d5db;
+  color: #111827;
+  border-color: #6b7280;
 }
 </style>
