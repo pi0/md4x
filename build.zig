@@ -128,6 +128,7 @@ fn addWasm(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
         "md4x_to_ansi",
         "md4x_to_meta",
         "md4x_to_text",
+        "md4x_yaml_to_json",
         "md4x_result_ptr",
         "md4x_result_size",
     };

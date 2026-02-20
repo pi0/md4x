@@ -17,6 +17,7 @@ export function defineSuite({
   renderToMeta,
   parseMeta,
   renderToText,
+  parseYaml,
 }) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
@@ -1239,6 +1240,49 @@ export function defineSuite({
     it("renders real-world content without error", async () => {
       const text = await renderToText(nitroIndex);
       expect(text.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("parseYaml", () => {
+    it("parses a mapping", async () => {
+      expect(await parseYaml("title: Hello\ncount: 42")).toEqual({
+        title: "Hello",
+        count: 42,
+      });
+    });
+
+    it("parses a sequence", async () => {
+      expect(await parseYaml("- a\n- b")).toEqual(["a", "b"]);
+    });
+
+    it("parses nested YAML", async () => {
+      const result = await parseYaml(
+        "author:\n  name: John\ntags:\n  - js\n  - ts",
+      );
+      expect(result).toEqual({ author: { name: "John" }, tags: ["js", "ts"] });
+    });
+
+    it("parses scalars", async () => {
+      expect(await parseYaml("hello")).toBe("hello");
+      expect(await parseYaml("42")).toBe(42);
+      expect(await parseYaml("true")).toBe(true);
+      expect(await parseYaml("null")).toBe(null);
+    });
+
+    it("parses flow syntax", async () => {
+      expect(await parseYaml("{}")).toEqual({});
+      expect(await parseYaml("[1, 2, 3]")).toEqual([1, 2, 3]);
+    });
+
+    it("handles YAML type coercion", async () => {
+      const result = await parseYaml("yes_val: yes\nno_val: no\nnull_val: ~");
+      expect(result.yes_val).toBe(true);
+      expect(result.no_val).toBe(false);
+      expect(result.null_val).toBe(null);
+    });
+
+    it("preserves quoted strings", async () => {
+      expect(await parseYaml('"42"')).toBe("42");
     });
   });
 }

@@ -10,17 +10,18 @@ Builds a `wasm32-wasi` WASM binary with exported functions. Uses `ReleaseSmall` 
 
 **Exported functions:**
 
-| Function                         | Description                              |
-| -------------------------------- | ---------------------------------------- |
-| `md4x_alloc(size) -> ptr`        | Allocate memory in WASM linear memory    |
-| `md4x_free(ptr)`                 | Free previously allocated memory         |
-| `md4x_to_html(ptr, size) -> int` | Render to HTML (0=ok, -1=error)          |
-| `md4x_to_ast(ptr, size) -> int`  | Render to JSON AST                       |
-| `md4x_to_ansi(ptr, size) -> int` | Render to ANSI                           |
-| `md4x_to_meta(ptr, size) -> int` | Render to meta JSON                      |
-| `md4x_to_text(ptr, size) -> int` | Render to plain text                     |
-| `md4x_result_ptr() -> ptr`       | Get output buffer pointer (after render) |
-| `md4x_result_size() -> size`     | Get output buffer size (after render)    |
+| Function                              | Description                              |
+| ------------------------------------- | ---------------------------------------- |
+| `md4x_alloc(size) -> ptr`             | Allocate memory in WASM linear memory    |
+| `md4x_free(ptr)`                      | Free previously allocated memory         |
+| `md4x_to_html(ptr, size) -> int`      | Render to HTML (0=ok, -1=error)          |
+| `md4x_to_ast(ptr, size) -> int`       | Render to JSON AST                       |
+| `md4x_to_ansi(ptr, size) -> int`      | Render to ANSI                           |
+| `md4x_to_meta(ptr, size) -> int`      | Render to meta JSON                      |
+| `md4x_to_text(ptr, size) -> int`      | Render to plain text                     |
+| `md4x_yaml_to_json(ptr, size) -> int` | Convert YAML to JSON                     |
+| `md4x_result_ptr() -> ptr`            | Get output buffer pointer (after render) |
+| `md4x_result_size() -> size`          | Get output buffer size (after render)    |
 
 **Usage from JS (via `lib/wasm.mjs` wrapper):**
 
@@ -80,6 +81,7 @@ Windows targets use `zig dlltool` to generate import libraries from `node_module
 | `renderToAnsi` | `(input: string) => string`               |
 | `renderToMeta` | `(input: string) => string` (JSON string) |
 | `renderToText` | `(input: string) => string`               |
+| `yamlToJson`   | `(input: string) => string` (JSON string) |
 
 **Usage (via `lib/napi.mjs` wrapper, which parses JSON):**
 
@@ -119,8 +121,9 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 | `renderToMeta(input: string)` | `string`                                 | `string`                                 |
 | `parseMeta(input: string)`    | `ComarkMeta`                             | `ComarkMeta`                             |
 | `renderToText(input: string)` | `string`                                 | `string`                                 |
+| `parseYaml(input: string)`    | `unknown`                                | `unknown`                                |
 
-`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. `renderToMeta` returns the raw JSON string from the meta renderer. `parseMeta` calls `renderToMeta`, parses the result, and falls back to the first heading as `title` if no frontmatter title exists. See `lib/types.d.ts` for types.
+`renderToAST` returns the raw JSON string from the C renderer. `parseAST` calls `renderToAST` and parses the result into a `ComarkTree` object. `renderToMeta` returns the raw JSON string from the meta renderer. `parseMeta` calls `renderToMeta`, parses the result, and falls back to the first heading as `title` if no frontmatter title exists. `parseYaml` converts a YAML document to a JS value using the bundled libyaml (supports any top-level value: mapping, sequence, or scalar, with full YAML 1.1 type coercion). See `lib/types.d.ts` for types.
 
 ## TypeScript Types (`lib/types.d.ts`)
 

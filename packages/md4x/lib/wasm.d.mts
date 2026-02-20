@@ -28,3 +28,4 @@ export declare function renderToAnsi(input: string): string;
 export declare function renderToMeta(input: string): string;
 export declare function parseMeta(input: string): ComarkMeta;
 export declare function renderToText(input: string): string;
+export declare function parseYaml(input: string): unknown;

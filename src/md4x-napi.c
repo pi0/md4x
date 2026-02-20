@@ -32,6 +32,7 @@
 #include "md4x-ansi.h"
 #include "md4x-meta.h"
 #include "md4x-text.h"
+#include "md4x-json.h"
 
 
 /* Growable output buffer */
@@ -172,6 +173,43 @@ static napi_value md4x_napi_to_text(napi_env env, napi_callback_info info)
 }
 
 
+static napi_value md4x_napi_yaml_to_json(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+
+    if(argc < 1) {
+        napi_throw_error(env, NULL, "Expected 1 argument");
+        return NULL;
+    }
+
+    size_t input_size;
+    napi_get_value_string_utf8(env, argv[0], NULL, 0, &input_size);
+    char* input = (char*) malloc(input_size + 1);
+    if(!input) {
+        napi_throw_error(env, NULL, "Allocation failed");
+        return NULL;
+    }
+    napi_get_value_string_utf8(env, argv[0], input, input_size + 1, &input_size);
+
+    napi_buf buf = { NULL, 0, 0 };
+    int ret = md_yaml_to_json(input, (unsigned) input_size, napi_buf_append, &buf);
+    free(input);
+
+    if(ret != 0) {
+        free(buf.data);
+        napi_throw_error(env, NULL, "YAML parsing failed");
+        return NULL;
+    }
+
+    napi_value result;
+    napi_create_string_utf8(env, buf.data ? buf.data : "", buf.size, &result);
+    free(buf.data);
+    return result;
+}
+
+
 /* Module initialization */
 static napi_value init(napi_env env, napi_value exports)
 {
@@ -181,8 +219,9 @@ static napi_value init(napi_env env, napi_value exports)
         { "renderToAnsi", NULL, md4x_napi_to_ansi, NULL, NULL, NULL, napi_default, NULL },
         { "renderToMeta", NULL, md4x_napi_to_meta, NULL, NULL, NULL, napi_default, NULL },
         { "renderToText", NULL, md4x_napi_to_text, NULL, NULL, NULL, napi_default, NULL },
+        { "yamlToJson", NULL, md4x_napi_yaml_to_json, NULL, NULL, NULL, napi_default, NULL },
     };
-    napi_define_properties(env, exports, 5, props);
+    napi_define_properties(env, exports, 6, props);
     return exports;
 }
 

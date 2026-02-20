@@ -369,5 +369,45 @@ done:
     return n_written;
 }
 
+/* Convert a YAML document to JSON.
+ * Handles any top-level value (mapping, sequence, scalar).
+ * Returns 0 on success, -1 on error. */
+static int
+md_yaml_to_json(const MD_CHAR* input, MD_SIZE input_size,
+                void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
+                void* userdata)
+{
+    yaml_parser_t yp;
+    yaml_event_t event;
+    JSON_WRITER w;
+    int ret = -1;
+
+    w.process_output = process_output;
+    w.userdata = userdata;
+
+    if(!yaml_parser_initialize(&yp))
+        return -1;
+
+    yaml_parser_set_input_string(&yp, (const unsigned char*) input, input_size);
+
+    /* Consume STREAM_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_STREAM_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Consume DOCUMENT_START. */
+    if(!yaml_parser_parse(&yp, &event)) goto done;
+    if(event.type != YAML_DOCUMENT_START_EVENT) { yaml_event_delete(&event); goto done; }
+    yaml_event_delete(&event);
+
+    /* Write the top-level value (any type). */
+    if(json_write_yaml_value(&w, &yp) == 0)
+        ret = 0;
+
+done:
+    yaml_parser_delete(&yp);
+    return ret;
+}
+
 
 #endif  /* MD4X_JSON_H */

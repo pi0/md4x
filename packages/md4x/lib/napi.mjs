@@ -53,6 +53,10 @@ export function renderToText(input) {
   return getBinding().renderToText(input);
 }
 
+export function parseYaml(input) {
+  return JSON.parse(getBinding().yamlToJson(input));
+}
+
 export function parseMeta(input) {
   const meta = JSON.parse(renderToMeta(input));
   if (!meta.title && meta.headings?.[0]) {

@@ -49,6 +49,7 @@ import {
   renderToText,
   renderToMeta,
   parseMeta,
+  parseYaml,
 } from "md4x";
 
 // await init(); // required for WASM, optional for NAPI
@@ -60,6 +61,7 @@ const ansi = renderToAnsi("# Hello, **world**!");
 const text = renderToText("# Hello, **world**!"); // plain text (stripped)
 const metaJson = renderToMeta("# Hello, **world**!"); // raw JSON string
 const meta = parseMeta("# Hello, **world**!"); // parsed meta
+const yaml = parseYaml("title: Hello\ncount: 42"); // { title: "Hello", count: 42 }
 ```
 
 Both NAPI and WASM export a unified API with `init()`. For WASM, `init()` must be called before rendering. For NAPI, it is optional (the native binding loads lazily on first render call).

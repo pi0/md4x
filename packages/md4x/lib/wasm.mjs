@@ -102,6 +102,12 @@ export function renderToText(input) {
   return render(getExports(), getExports().md4x_to_text, input);
 }
 
+export function parseYaml(input) {
+  return JSON.parse(
+    render(getExports(), getExports().md4x_yaml_to_json, input),
+  );
+}
+
 export function parseMeta(input) {
   const meta = JSON.parse(renderToMeta(input));
   if (!meta.title && meta.headings?.[0]) {
