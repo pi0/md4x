@@ -135,23 +135,10 @@ function render() {
 let syncSource: "editor" | "preview" | null = null;
 let syncLock = 0;
 
-function stripMarkdown(line: string): string {
-  return line
-    .replace(/^#{1,6}\s+/, "")
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
-    .replace(/_{1,3}([^_]+)_{1,3}/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/~~([^~]+)~~/g, "$1")
-    .replace(/<[^>]+>/g, "")
-    .trim();
-}
-
 function findInPreview(lineText: string): HTMLElement | null {
   const el = outputEl.value;
   if (!el || !lineText) return null;
-  const plain = stripMarkdown(lineText);
+  const plain = renderToText(lineText).trim();
   if (!plain || plain.length < 2) return null;
   const escaped = plain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(escaped.slice(0, 60));
