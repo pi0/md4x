@@ -107,7 +107,7 @@ Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/li
 ```sh
 zig build                          # build all (defaults to ReleaseFast)
 zig build -Doptimize=Debug         # debug build
-zig build run -- --help            # run md4x CLI
+zig build && zig-out/bin/md4x --help  # run md4x CLI
 ```
 
 Outputs to `zig-out/` (`bin/md4x`, `lib/libmd4x*.a`, `include/md4x*.h`).
