@@ -45,10 +45,10 @@ for (const [name, input] of Object.entries(inputs)) {
       bench(`md4x (wasm) parseAST (${name})`, () => wasm.parseAST(input));
       bench(`md4w parseAST (${name})`, () => md4w.mdToJSON(input));
       bench(`markdown-it parseAST (${name})`, () =>
-        JSON.stringify(markdownIt.parse(input, {})),
+        markdownIt.parse(input, {}),
       );
       bench(`markdown-exit parseAST (${name})`, () =>
-        JSON.stringify(markdownExit.parse(input, {})),
+        markdownExit.parse(input, {}),
       );
     });
   });
