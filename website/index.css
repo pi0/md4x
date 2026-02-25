@@ -64,6 +64,172 @@ body {
   font-weight: 500;
 }
 
+/* GitHub-style alerts */
+.prose blockquote.alert {
+  position: relative;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 0.9em 1em 0.8em;
+  background: #f6f8fa;
+}
+
+.prose blockquote.alert::before {
+  content: "Alert";
+  display: block;
+  margin-bottom: 0.5em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #57606a;
+}
+
+.prose blockquote.alert.alert-note {
+  border-left-color: #1f6feb;
+  background: #eff6ff;
+}
+.prose blockquote.alert.alert-note::before {
+  content: "Note";
+  color: #1f6feb;
+}
+
+.prose blockquote.alert.alert-tip {
+  border-left-color: #1a7f37;
+  background: #eef9f0;
+}
+.prose blockquote.alert.alert-tip::before {
+  content: "Tip";
+  color: #1a7f37;
+}
+
+.prose blockquote.alert.alert-important {
+  border-left-color: #8250df;
+  background: #f5f0ff;
+}
+.prose blockquote.alert.alert-important::before {
+  content: "Important";
+  color: #8250df;
+}
+
+.prose blockquote.alert.alert-warning {
+  border-left-color: #9a6700;
+  background: #fff8c5;
+}
+.prose blockquote.alert.alert-warning::before {
+  content: "Warning";
+  color: #9a6700;
+}
+
+.prose blockquote.alert.alert-caution {
+  border-left-color: #cf222e;
+  background: #ffebe9;
+}
+.prose blockquote.alert.alert-caution::before {
+  content: "Caution";
+  color: #cf222e;
+}
+
+/* Component-like tags rendered from MDC syntax */
+.prose alert,
+.prose note,
+.prose tip,
+.prose important,
+.prose warning,
+.prose caution {
+  display: block;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 0.9em 1em 0.8em;
+  background: #f6f8fa;
+}
+
+.prose alert[type="info"],
+.prose note {
+  border-left-color: #1f6feb;
+  background: #eff6ff;
+}
+.prose alert[type="tip"],
+.prose alert[type="success"],
+.prose tip {
+  border-left-color: #1a7f37;
+  background: #eef9f0;
+}
+.prose alert[type="important"],
+.prose important {
+  border-left-color: #8250df;
+  background: #f5f0ff;
+}
+.prose alert[type="warning"],
+.prose warning {
+  border-left-color: #9a6700;
+  background: #fff8c5;
+}
+.prose alert[type="caution"],
+.prose alert[type="danger"],
+.prose caution {
+  border-left-color: #cf222e;
+  background: #ffebe9;
+}
+
+.prose card {
+  display: block;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  padding: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.prose layout {
+  display: grid;
+  gap: 12px;
+  margin: 1rem 0;
+}
+.prose layout[cols="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.prose layout[cols="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.prose layout[cols="4"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.prose badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #d0d7de;
+  background: #f6f8fa;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.78em;
+  font-weight: 600;
+  line-height: 1.4;
+  vertical-align: baseline;
+}
+
+.prose tooltip {
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 1px dashed #6e7781;
+  color: #24292f;
+  cursor: help;
+}
+
+.prose icon-star::before {
+  content: "★";
+  color: #bf8700;
+}
+.prose icon-heart::before {
+  content: "♥";
+  color: #cf222e;
+}
+
 /* Mobile: wrap pre content */
 @media (max-width: 768px) {
   [data-hidden] {
@@ -82,6 +248,10 @@ body {
 
   .editor .cm-content {
     font-size: 16px;
+  }
+
+  .prose layout[cols] {
+    grid-template-columns: 1fr;
   }
 
   header {
