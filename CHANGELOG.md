@@ -1,6 +1,6 @@
 # MD4X Change Log
 
-## v0.0.11 (WIP)
+## v0.0.11
 
 ### Breaking Changes
 
@@ -10,7 +10,13 @@
 
 ### Features
 
+- Align Comark AST output with spec
 - **HTML comment extraction**: HTML comments (`<!-- ... -->`) are now represented as `[null, {}, "comment body"]` instead of raw `html_block` passthrough. Both block-level and inline comments are supported.
+
+### Other
+
+- Fix AST benchmarks
+- Add markdown-exit benchmark
 
 ## v0.0.10
 

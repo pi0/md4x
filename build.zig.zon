@@ -1,6 +1,6 @@
 .{
     .name = .md4x,
-    .version = "0.0.10",
+    .version = "0.0.11",
     .dependencies = .{
         .libyaml = .{
             .url = "https://github.com/yaml/libyaml/archive/refs/tags/0.2.5.tar.gz",
