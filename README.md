@@ -92,34 +92,42 @@ const html = renderToHtml("# Hello");
 (source: [packages/md4x/bench](./packages/md4x/bench))
 
 ```
-clk: ~5.51 GHz
-cpu: AMD Ryzen 9 9950X3D 16-Core Processor
-runtime: bun 1.3.9 (x64-linux)
-
-benchmark                   avg (min … max) p75 / p99    (min … top 1%)
- ------------------------------------------ -------------------------------
-md4x-napi                      3.04 µs/iter   3.08 µs   3.13 µs ▂▂▆█▁▃▄▅▄▃▂
-md4x-wasm                      5.19 µs/iter   5.28 µs   8.08 µs ██▅▂▂▁▁▁▁▁▁
-md4w                           5.77 µs/iter   5.80 µs   9.10 µs ▂█▆▂▂▁▁▁▁▁▁
-markdown-it                   21.27 µs/iter  21.00 µs  39.77 µs ▁█▅▂▁▁▁▁▁▁▁
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+---------------------------------------------- -------------------------------
+md4x-napi                         3.27 µs/iter   3.28 µs   3.35 µs ▄▅▇█▅▇▂▂▂▂▂
+md4x-wasm                         5.62 µs/iter   5.69 µs   8.39 µs █▅▅▂▂▁▁▁▁▁▁
+md4w                              5.80 µs/iter   5.82 µs   9.24 µs ▁█▆▂▂▁▁▁▁▁▁
+markdown-it                      21.28 µs/iter  20.95 µs  39.72 µs ▁█▄▁▁▁▁▁▁▁▁
+markdown-exit                    23.14 µs/iter  23.40 µs  39.71 µs ▁▆█▃▁▁▁▁▁▁▁
 
 summary
   md4x-napi
-   1.71x faster than md4x-wasm
-   1.9x faster than md4w
-   7x faster than markdown-it
+   1.72x faster than md4x-wasm
+   1.78x faster than md4w
+   6.52x faster than markdown-it
+   7.08x faster than markdown-exit
 
- ------------------------------------------ -------------------------------
-md4x (napi) json (medium)     10.90 µs/iter  10.92 µs  10.93 µs ▅█▁▁▁▁██▅▅█
-md4x (wasm) json (medium)     12.20 µs/iter  12.22 µs  12.32 µs █▅▅▅▅█▁▅▁▁▅
-md4w json (medium)            11.86 µs/iter  11.96 µs  12.04 µs ▅▃▁▃▁▁▁▁█▃▃
-markdown-it json (medium)     64.03 µs/iter  64.62 µs  90.26 µs ▂█▄▂▂▂▁▁▁▁▁
+---------------------------------------------- -------------------------------
+md4x (napi) ast (medium)          6.85 µs/iter   6.92 µs   6.97 µs ▂▇█▂▂▁▂▂▃▂▃
+md4x (wasm) ast (medium)          8.28 µs/iter   8.30 µs   8.43 µs ▄▄▂▂▄█▂▁▂▁▂
 
 summary
-  md4x (napi) json (medium)
-   1.09x faster than md4w json (medium)
-   1.12x faster than md4x (wasm) json (medium)
-   5.88x faster than markdown-it json (medium)
+  md4x (napi) ast (medium)
+   1.21x faster than md4x (wasm) ast (medium)
+
+---------------------------------------------- -------------------------------
+md4x (napi) parseAST (medium)    11.42 µs/iter  11.39 µs  11.87 µs █▂▅▁▁▁▁▁▁▁▂
+md4x (wasm) parseAST (medium)    12.91 µs/iter  13.01 µs  13.09 µs ▃█▁▁▁▁▁▃▃▃▃
+md4w parseAST (medium)           11.92 µs/iter  12.04 µs  12.13 µs ▃█▁▁▃▁▁▆▆▁▃
+markdown-it parseAST (medium)    65.32 µs/iter  66.78 µs 108.61 µs ▅█▄▂▁▁▁▁▁▁▁
+markdown-exit parseAST (medium)  65.09 µs/iter  66.02 µs  86.35 µs ▂█▄▃▂▁▁▁▁▁▁
+
+summary
+  md4x (napi) parseAST (medium)
+   1.04x faster than md4w parseAST (medium)
+   1.13x faster than md4x (wasm) parseAST (medium)
+   5.7x faster than markdown-exit parseAST (medium)
+   5.72x faster than markdown-it parseAST (medium)
 ```
 
 ## Zig Package

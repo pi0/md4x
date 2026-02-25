@@ -3,9 +3,11 @@ import * as napi from "../lib/napi.mjs";
 import * as wasm from "../lib/wasm.mjs";
 import * as md4w from "md4w";
 import MarkdownIt from "markdown-it";
+import { createMarkdownExit } from "markdown-exit";
 import * as fixtures from "./_fixtures.mjs";
 
 const markdownIt = new MarkdownIt();
+const markdownExit = createMarkdownExit();
 
 // Initialize WASM instances
 await wasm.init();
@@ -25,6 +27,7 @@ for (const [name, input] of Object.entries(inputs)) {
       bench(`md4x-wasm`, () => wasm.renderToHtml(input));
       bench(`md4w`, () => md4w.mdToHtml(input));
       bench(`markdown-it`, () => markdownIt.render(input));
+      bench(`markdown-exit`, () => markdownExit.render(input));
 
       // const bunToHTML = global.Bun.markdown.html;
       // if (bunToHTML) {
@@ -43,6 +46,9 @@ for (const [name, input] of Object.entries(inputs)) {
       bench(`md4w parseAST (${name})`, () => md4w.mdToJSON(input));
       bench(`markdown-it parseAST (${name})`, () =>
         JSON.stringify(markdownIt.parse(input, {})),
+      );
+      bench(`markdown-exit parseAST (${name})`, () =>
+        JSON.stringify(markdownExit.parse(input, {})),
       );
     });
   });
