@@ -36,5 +36,7 @@ import { RouterLink, RouterView } from "vue-router";
       </svg>
     </a>
   </header>
-  <RouterView />
+  <Suspense>
+    <RouterView />
+  </Suspense>
 </template>

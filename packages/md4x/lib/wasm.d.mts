@@ -1,15 +1,11 @@
-import type { ComarkTree, ComarkMeta, HtmlOptions } from "./types.mjs";
-
-export type {
+import type {
   ComarkTree,
-  ComarkNode,
-  ComarkElement,
-  ComarkText,
-  ComarkElementAttributes,
-  ComarkHeading,
   ComarkMeta,
   HtmlOptions,
+  CodeBlockHighlighter,
 } from "./types.mjs";
+
+export type * from "./types.mjs";
 
 export interface InitOptions {
   wasm?:

@@ -151,6 +151,44 @@ static napi_value md4x_napi_to_html(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value md4x_napi_to_html_meta(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+
+    if(argc < 1) {
+        napi_throw_error(env, NULL, "Expected 1 argument");
+        return NULL;
+    }
+
+    size_t input_size;
+    napi_get_value_string_utf8(env, argv[0], NULL, 0, &input_size);
+    char* input = (char*) malloc(input_size + 1);
+    if(!input) {
+        napi_throw_error(env, NULL, "Allocation failed");
+        return NULL;
+    }
+    napi_get_value_string_utf8(env, argv[0], input, input_size + 1, &input_size);
+
+    napi_buf buf = { NULL, 0, 0 };
+    int ret = md_html(input, (unsigned) input_size, napi_buf_append, &buf,
+                      MD_DIALECT_ALL, MD_HTML_FLAG_CODE_META);
+    free(input);
+
+    if(ret != 0) {
+        free(buf.data);
+        napi_throw_error(env, NULL, "Markdown parsing failed");
+        return NULL;
+    }
+
+    napi_value result;
+    void* result_data;
+    napi_create_buffer_copy(env, buf.size, buf.data ? buf.data : "", &result_data, &result);
+    free(buf.data);
+    return result;
+}
+
 static napi_value md4x_napi_to_ast(napi_env env, napi_callback_info info)
 {
     return render_impl(env, info, md_ast);
@@ -177,12 +215,13 @@ static napi_value init(napi_env env, napi_value exports)
 {
     napi_property_descriptor props[] = {
         { "renderToHtml", NULL, md4x_napi_to_html, NULL, NULL, NULL, napi_default, NULL },
+        { "renderToHtmlMeta", NULL, md4x_napi_to_html_meta, NULL, NULL, NULL, napi_default, NULL },
         { "renderToAST", NULL, md4x_napi_to_ast, NULL, NULL, NULL, napi_default, NULL },
         { "renderToAnsi", NULL, md4x_napi_to_ansi, NULL, NULL, NULL, napi_default, NULL },
         { "renderToMeta", NULL, md4x_napi_to_meta, NULL, NULL, NULL, napi_default, NULL },
         { "renderToText", NULL, md4x_napi_to_text, NULL, NULL, NULL, napi_default, NULL },
     };
-    napi_define_properties(env, exports, 5, props);
+    napi_define_properties(env, exports, 6, props);
     return exports;
 }
 

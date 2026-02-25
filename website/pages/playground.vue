@@ -61,7 +61,11 @@ const mobileTab = ref<"editor" | "output">("output");
 const editorEl = ref<HTMLElement>();
 const outputEl = ref<HTMLElement>();
 let editorView: any = null;
-let highlighter: Highlighter;
+
+let hl: Highlighter = await createHighlighter({
+  themes: ["github-light"],
+  langs: ["html", "json", "ts"],
+});
 
 // Restore state from query
 function restoreFromQuery() {
@@ -99,17 +103,26 @@ function render() {
   const m = mode.value;
   try {
     if (m === "html") {
-      const html = renderToHtml(md);
+      const html = renderToHtml(md, {
+        highlighter(code, { lang }) {
+          const r = hl.codeToHtml(code, {
+            lang: lang || "txt",
+            theme: "github-light",
+          });
+          console.log(r);
+          return r;
+        },
+      });
       outputHtml.value = html;
-      sourceHtml.value = highlighter.codeToHtml(
+      sourceHtml.value = hl.codeToHtml(
         renderToHtml(md, { full: fullHtml.value || undefined }),
         { lang: "html", theme: "github-light" },
       );
     } else if (m === "json") {
-      outputHtml.value = highlighter.codeToHtml(
-        JSON.stringify(parseAST(md), null, 2),
-        { lang: "json", theme: "github-light" },
-      );
+      outputHtml.value = hl.codeToHtml(JSON.stringify(parseAST(md), null, 2), {
+        lang: "json",
+        theme: "github-light",
+      });
     } else if (m === "ansi") {
       outputAnsi.value = renderToAnsi(md);
     } else if (m === "text") {
@@ -120,13 +133,13 @@ function render() {
         .replace(/>/g, "&gt;");
       outputHtml.value = `<pre>${escaped}</pre>`;
     } else if (m === "meta") {
-      outputHtml.value = highlighter.codeToHtml(
-        JSON.stringify(parseMeta(md), null, 2),
-        { lang: "json", theme: "github-light" },
-      );
+      outputHtml.value = hl.codeToHtml(JSON.stringify(parseMeta(md), null, 2), {
+        lang: "json",
+        theme: "github-light",
+      });
     }
   } catch (e) {
-    outputHtml.value = `<pre>Error: ${(e as Error).message}</pre>`;
+    outputHtml.value = `<pre>Error: ${(e as Error).stack}</pre>`;
   }
   updateQuery();
 }
@@ -236,24 +249,17 @@ onMounted(async () => {
 
   const [
     ,
-    hl,
     { EditorView, basicSetup },
     { markdown },
     { languages },
     { EditorState },
   ] = await Promise.all([
     initMD4x(),
-    createHighlighter({
-      themes: ["github-light"],
-      langs: ["html", "json"],
-    }),
     import("codemirror"),
     import("@codemirror/lang-markdown"),
     import("@codemirror/language-data"),
     import("@codemirror/state"),
   ]);
-
-  highlighter = hl;
 
   const editorTheme = EditorView.theme({
     "&": { height: "100%" },
