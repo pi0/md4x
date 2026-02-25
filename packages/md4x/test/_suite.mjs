@@ -210,26 +210,27 @@ export function defineSuite({
     it("returns valid JSON", async () => {
       const json = await renderToAST("# Hello");
       const parsed = JSON.parse(json);
-      expect(parsed.type).toBe("comark");
+      expect(parsed.nodes).toBeInstanceOf(Array);
     });
 
     it("returns empty string for empty input", async () => {
       const json = await renderToAST("");
       const parsed = JSON.parse(json);
-      expect(parsed.value).toHaveLength(0);
+      expect(parsed.nodes).toHaveLength(0);
     });
   });
 
   describe("parseAST", () => {
     it("returns comark tree", async () => {
       const ast = await parseAST("# Hello");
-      expect(ast.type).toBe("comark");
-      expect(ast.value).toBeInstanceOf(Array);
+      expect(ast.nodes).toBeInstanceOf(Array);
+      expect(ast.frontmatter).toEqual({});
+      expect(ast.meta).toEqual({});
     });
 
     it("parses heading as h1 tuple", async () => {
       const ast = await parseAST("# Hello");
-      const h1 = ast.value[0];
+      const h1 = ast.nodes[0];
       expect(h1[0]).toBe("h1");
       expect(h1[1]).toEqual({});
       expect(h1[2]).toBe("Hello");
@@ -237,7 +238,7 @@ export function defineSuite({
 
     it("parses paragraph with inline formatting", async () => {
       const ast = await parseAST("**bold**");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       expect(p[0]).toBe("p");
       const strong = p[2];
       expect(strong[0]).toBe("strong");
@@ -246,7 +247,7 @@ export function defineSuite({
 
     it("parses code block as pre > code", async () => {
       const ast = await parseAST("```js\ncode\n```");
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[0]).toBe("pre");
       expect(pre[1].language).toBe("js");
       const code = pre[2];
@@ -257,13 +258,13 @@ export function defineSuite({
 
     it("parses empty input", async () => {
       const ast = await parseAST("");
-      expect(ast.type).toBe("comark");
-      expect(ast.value).toHaveLength(0);
+      expect(ast.nodes).toHaveLength(0);
+      expect(ast.frontmatter).toEqual({});
     });
 
     it("parses link as anchor tuple", async () => {
       const ast = await parseAST("[text](https://example.com)");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const a = p[2];
       expect(a[0]).toBe("a");
       expect(a[1].href).toBe("https://example.com");
@@ -272,7 +273,7 @@ export function defineSuite({
 
     it("parses inline elements", async () => {
       const ast = await parseAST("hello **world**");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       expect(p[0]).toBe("p");
       expect(p[2]).toBe("hello ");
       expect(p[3][0]).toBe("strong");
@@ -281,14 +282,14 @@ export function defineSuite({
 
     it("text nodes are plain strings", async () => {
       const ast = await parseAST("hello");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       expect(typeof p[2]).toBe("string");
       expect(p[2]).toBe("hello");
     });
 
     it("parses code block filename", async () => {
       const ast = await parseAST("```js [app.js]\nconsole.log(1)\n```");
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[0]).toBe("pre");
       expect(pre[1].language).toBe("js");
       expect(pre[1].filename).toBe("app.js");
@@ -296,7 +297,7 @@ export function defineSuite({
 
     it("parses code block highlights", async () => {
       const ast = await parseAST("```js {1-3,5}\na\nb\nc\nd\ne\n```");
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[1].highlights).toEqual([1, 2, 3, 5]);
     });
 
@@ -304,7 +305,7 @@ export function defineSuite({
       const ast = await parseAST(
         "```ts {1-2} [utils.ts] meta=value\ncode\n```",
       );
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[1].language).toBe("ts");
       expect(pre[1].filename).toBe("utils.ts");
       expect(pre[1].highlights).toEqual([1, 2]);
@@ -313,13 +314,13 @@ export function defineSuite({
 
     it("parses code block with escaped filename", async () => {
       const ast = await parseAST("```ts [@[...slug\\].ts]\ncode\n```");
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[1].filename).toBe("@[...slug].ts");
     });
 
     it("code block without metadata has no extra props", async () => {
       const ast = await parseAST("```js\ncode\n```");
-      const pre = ast.value[0];
+      const pre = ast.nodes[0];
       expect(pre[1].filename).toBeUndefined();
       expect(pre[1].highlights).toBeUndefined();
       expect(pre[1].meta).toBeUndefined();
@@ -327,7 +328,7 @@ export function defineSuite({
 
     it("parses standalone inline component", async () => {
       const ast = await parseAST(":icon-star");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       expect(p[0]).toBe("p");
       const comp = p[2];
       expect(comp[0]).toBe("icon-star");
@@ -336,7 +337,7 @@ export function defineSuite({
 
     it("parses inline component with content", async () => {
       const ast = await parseAST(":badge[New]");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("badge");
       expect(comp[2]).toBe("New");
@@ -344,7 +345,7 @@ export function defineSuite({
 
     it("parses inline component with content and props", async () => {
       const ast = await parseAST(':badge[New]{color="blue"}');
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("badge");
       expect(comp[1].color).toBe("blue");
@@ -353,7 +354,7 @@ export function defineSuite({
 
     it("parses inline component with props only", async () => {
       const ast = await parseAST(':tooltip{text="Hover"}');
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("tooltip");
       expect(comp[1].text).toBe("Hover");
@@ -361,7 +362,7 @@ export function defineSuite({
 
     it("parses inline component with id and class props", async () => {
       const ast = await parseAST(":badge[Text]{#my-id .highlight}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("badge");
       expect(comp[1].id).toBe("my-id");
@@ -371,15 +372,15 @@ export function defineSuite({
 
     it("parses inline component with boolean prop", async () => {
       const ast = await parseAST(":alert{dismissible}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("alert");
-      expect(comp[1].dismissible).toBe(true);
+      expect(comp[1][":dismissible"]).toBe("true");
     });
 
     it("inline component with markdown content", async () => {
       const ast = await parseAST(":badge[**bold** text]");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const comp = p[2];
       expect(comp[0]).toBe("badge");
       // First child is strong element
@@ -391,7 +392,7 @@ export function defineSuite({
 
     it("parses basic image AST", async () => {
       const ast = await parseAST("![Alt text](image.png)");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const img = p[2];
       expect(img[0]).toBe("img");
       expect(img[1].src).toBe("image.png");
@@ -400,7 +401,7 @@ export function defineSuite({
 
     it("parses link with title AST", async () => {
       const ast = await parseAST('[Link](https://example.com "title")');
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const a = p[2];
       expect(a[0]).toBe("a");
       expect(a[1].href).toBe("https://example.com");
@@ -409,25 +410,25 @@ export function defineSuite({
 
     it("parses blockquote AST", async () => {
       const ast = await parseAST("> Quote text");
-      const bq = ast.value[0];
+      const bq = ast.nodes[0];
       expect(bq[0]).toBe("blockquote");
     });
 
     it("parses horizontal rule AST", async () => {
       const ast = await parseAST("***");
-      const hr = ast.value[0];
+      const hr = ast.nodes[0];
       expect(hr[0]).toBe("hr");
     });
 
     it("parses ordered list AST", async () => {
       const ast = await parseAST("1. First\n2. Second");
-      const ol = ast.value[0];
+      const ol = ast.nodes[0];
       expect(ol[0]).toBe("ol");
     });
 
     it("parses unordered list AST", async () => {
       const ast = await parseAST("- Item 1\n- Item 2");
-      const ul = ast.value[0];
+      const ul = ast.nodes[0];
       expect(ul[0]).toBe("ul");
     });
 
@@ -435,18 +436,19 @@ export function defineSuite({
       const ast = await parseAST(
         "---\ntitle: Hello\ncount: 42\ndraft: true\n---\n\n# Content",
       );
-      const fm = ast.value[0];
-      expect(fm[0]).toBe("frontmatter");
-      expect(fm[1]).toEqual({ title: "Hello", count: 42, draft: true });
-      expect(typeof fm[2]).toBe("string");
-      expect(ast.value[1][0]).toBe("h1");
+      expect(ast.frontmatter).toEqual({
+        title: "Hello",
+        count: 42,
+        draft: true,
+      });
+      expect(ast.nodes[0][0]).toBe("h1");
     });
 
     it("parses frontmatter YAML type coercion", async () => {
       const ast = await parseAST(
         '---\nstr: hello\nquoted: "world"\nnum: 3.14\nneg: -1\nbool_yes: yes\nbool_no: no\nnull_val: null\ntilde: ~\nempty:\n---',
       );
-      const props = ast.value[0][1];
+      const props = ast.frontmatter;
       expect(props.str).toBe("hello");
       expect(props.quoted).toBe("world");
       expect(props.num).toBe(3.14);
@@ -462,8 +464,7 @@ export function defineSuite({
       const ast = await parseAST(
         "---\nauthor:\n  name: John\n  email: john@example.com\n---",
       );
-      const props = ast.value[0][1];
-      expect(props.author).toEqual({
+      expect(ast.frontmatter.author).toEqual({
         name: "John",
         email: "john@example.com",
       });
@@ -473,39 +474,37 @@ export function defineSuite({
       const ast = await parseAST(
         "---\ntags:\n  - javascript\n  - typescript\n---",
       );
-      const props = ast.value[0][1];
-      expect(props.tags).toEqual(["javascript", "typescript"]);
+      expect(ast.frontmatter.tags).toEqual(["javascript", "typescript"]);
     });
 
     it("parses frontmatter with inline flow sequence", async () => {
       const ast = await parseAST("---\ntags: [javascript, typescript]\n---");
-      const props = ast.value[0][1];
-      expect(props.tags).toEqual(["javascript", "typescript"]);
+      expect(ast.frontmatter.tags).toEqual(["javascript", "typescript"]);
     });
 
     it("parses frontmatter with mixed types in array", async () => {
       const ast = await parseAST(
         "---\ndata:\n  - hello\n  - 42\n  - true\n---",
       );
-      const props = ast.value[0][1];
-      expect(props.data).toEqual(["hello", 42, true]);
+      expect(ast.frontmatter.data).toEqual(["hello", 42, true]);
     });
 
     it("parses frontmatter with deeply nested structure", async () => {
       const ast = await parseAST(
         "---\nmeta:\n  author:\n    name: John\n  date: 2024\n---",
       );
-      const props = ast.value[0][1];
-      expect(props.meta).toEqual({ author: { name: "John" }, date: 2024 });
+      expect(ast.frontmatter.meta).toEqual({
+        author: { name: "John" },
+        date: 2024,
+      });
     });
 
     it("parses frontmatter with multi-line literal block", async () => {
       const ast = await parseAST(
         "---\ndescription: |\n  Line 1\n  Line 2\n---",
       );
-      const props = ast.value[0][1];
-      expect(props.description).toContain("Line 1");
-      expect(props.description).toContain("Line 2");
+      expect(ast.frontmatter.description).toContain("Line 1");
+      expect(ast.frontmatter.description).toContain("Line 2");
     });
 
     it.skip("parses excerpt with <!-- more --> separator", async () => {
@@ -532,7 +531,7 @@ export function defineSuite({
 
     it("parses block component AST", async () => {
       const ast = await parseAST("::alert\nHello\n::");
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1]).toEqual({});
       // Child is a paragraph
@@ -543,7 +542,7 @@ export function defineSuite({
 
     it("parses block component with props AST", async () => {
       const ast = await parseAST('::alert{type="info"}\nMessage\n::');
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1].type).toBe("info");
     });
@@ -552,7 +551,7 @@ export function defineSuite({
       const ast = await parseAST(
         ":::outer\nOuter\n\n::inner\nInner\n::\n\n:::",
       );
-      const outer = ast.value[0];
+      const outer = ast.nodes[0];
       expect(outer[0]).toBe("outer");
       // First child: paragraph "Outer"
       expect(outer[2][0]).toBe("p");
@@ -566,14 +565,14 @@ export function defineSuite({
 
     it("parses empty block component AST", async () => {
       const ast = await parseAST("::divider\n::");
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("divider");
       expect(comp.length).toBe(2); // [tag, props] with no children
     });
 
     it("block component with markdown content AST", async () => {
       const ast = await parseAST("::card\n# Title\n\nParagraph\n::");
-      const card = ast.value[0];
+      const card = ast.nodes[0];
       expect(card[0]).toBe("card");
       expect(card[2][0]).toBe("h1");
       expect(card[2][2]).toBe("Title");
@@ -583,7 +582,7 @@ export function defineSuite({
 
     it("parses block component with id and class AST", async () => {
       const ast = await parseAST("::alert{#my-id .highlight}\nText\n::");
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1].id).toBe("my-id");
       expect(comp[1].class).toBe("highlight");
@@ -591,16 +590,16 @@ export function defineSuite({
 
     it("parses block component with boolean prop AST", async () => {
       const ast = await parseAST("::alert{dismissible}\nText\n::");
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("alert");
-      expect(comp[1].dismissible).toBe(true);
+      expect(comp[1][":dismissible"]).toBe("true");
     });
 
     it("parses deep nested block components AST", async () => {
       const ast = await parseAST(
         "::::l1\n\n:::l2\n\n::l3\nDeep\n::\n\n:::\n\n::::",
       );
-      const l1 = ast.value[0];
+      const l1 = ast.nodes[0];
       expect(l1[0]).toBe("l1");
       const l2 = l1[2];
       expect(l2[0]).toBe("l2");
@@ -612,7 +611,7 @@ export function defineSuite({
       const ast = await parseAST(
         "::card\n#header\n## Card Title\n\n#content\nMain content\n\n#footer\nFooter text\n::",
       );
-      const card = ast.value[0];
+      const card = ast.nodes[0];
       expect(card[0]).toBe("card");
       const header = card[2];
       expect(header[0]).toBe("template");
@@ -636,7 +635,7 @@ export function defineSuite({
       const ast = await parseAST(
         "::card\nDefault content\n\n#title\nCard Title\n::",
       );
-      const card = ast.value[0];
+      const card = ast.nodes[0];
       expect(card[0]).toBe("card");
       // Default content is a direct child (paragraph)
       expect(card[2][0]).toBe("p");
@@ -649,7 +648,7 @@ export function defineSuite({
 
     it("parses empty slot AST", async () => {
       const ast = await parseAST("::card\n#empty\n#content\nText here\n::");
-      const card = ast.value[0];
+      const card = ast.nodes[0];
       const empty = card[2];
       expect(empty[0]).toBe("template");
       expect(empty[1].name).toBe("empty");
@@ -663,43 +662,43 @@ export function defineSuite({
   describe("component property parsing", () => {
     it("merges multiple classes", async () => {
       const ast = await parseAST(":badge[Text]{.foo .bar .baz}");
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[0]).toBe("badge");
       expect(comp[1].class).toBe("foo bar baz");
     });
 
     it("merges multiple classes on block component", async () => {
       const ast = await parseAST("::alert{.warning .large}\nMsg\n::");
-      const comp = ast.value[0];
+      const comp = ast.nodes[0];
       expect(comp[0]).toBe("alert");
       expect(comp[1].class).toBe("warning large");
     });
 
     it("handles single-quoted string values", async () => {
       const ast = await parseAST(":badge[Text]{color='blue'}");
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[1].color).toBe("blue");
     });
 
     it("handles mixed props with id, classes, key-value, and boolean", async () => {
       const ast = await parseAST(':badge[T]{#myid .cls1 .cls2 key="val" flag}');
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[1].id).toBe("myid");
       expect(comp[1].class).toBe("cls1 cls2");
       expect(comp[1].key).toBe("val");
-      expect(comp[1].flag).toBe(true);
+      expect(comp[1][":flag"]).toBe("true");
     });
 
     it("handles empty props object", async () => {
       const ast = await parseAST(":badge[Text]{}");
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[0]).toBe("badge");
       expect(comp[1]).toEqual({});
     });
 
     it("handles bind syntax in props", async () => {
       const ast = await parseAST(":widget{:data='{\"x\":1}'}");
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[0]).toBe("widget");
       expect(comp[1][":data"]).toEqual({ x: 1 });
     });
@@ -721,7 +720,7 @@ export function defineSuite({
 
     it("handles array/JSON prop value", async () => {
       const ast = await parseAST(':widget{:items=\'["a","b"]\'}');
-      const comp = ast.value[0][2];
+      const comp = ast.nodes[0][2];
       expect(comp[0]).toBe("widget");
       expect(comp[1][":items"]).toEqual(["a", "b"]);
     });
@@ -773,7 +772,7 @@ export function defineSuite({
 
     it("parses strong with attrs AST", async () => {
       const ast = await parseAST("**bold**{.highlight}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const strong = p[2];
       expect(strong[0]).toBe("strong");
       expect(strong[1].class).toBe("highlight");
@@ -782,7 +781,7 @@ export function defineSuite({
 
     it("parses emphasis with attrs AST", async () => {
       const ast = await parseAST("*italic*{#myid}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const em = p[2];
       expect(em[0]).toBe("em");
       expect(em[1].id).toBe("myid");
@@ -791,7 +790,7 @@ export function defineSuite({
 
     it("parses code span with attrs AST", async () => {
       const ast = await parseAST("`code`{.lang}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const code = p[2];
       expect(code[0]).toBe("code");
       expect(code[1].class).toBe("lang");
@@ -802,7 +801,7 @@ export function defineSuite({
       const ast = await parseAST(
         '[Link](https://example.com){target="_blank"}',
       );
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const a = p[2];
       expect(a[0]).toBe("a");
       expect(a[1].href).toBe("https://example.com");
@@ -812,7 +811,7 @@ export function defineSuite({
 
     it("parses image with attrs AST", async () => {
       const ast = await parseAST("![alt](img.png){.responsive}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const img = p[2];
       expect(img[0]).toBe("img");
       expect(img[1].src).toBe("img.png");
@@ -821,7 +820,7 @@ export function defineSuite({
 
     it("parses span syntax AST", async () => {
       const ast = await parseAST("[text]{.class}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const span = p[2];
       expect(span[0]).toBe("span");
       expect(span[1].class).toBe("class");
@@ -830,7 +829,7 @@ export function defineSuite({
 
     it("parses span with multiple classes AST", async () => {
       const ast = await parseAST("[text]{.foo .bar .baz}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const span = p[2];
       expect(span[0]).toBe("span");
       expect(span[1].class).toBe("foo bar baz");
@@ -838,7 +837,7 @@ export function defineSuite({
 
     it("span with inline markdown AST", async () => {
       const ast = await parseAST("[**bold** text]{.styled}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const span = p[2];
       expect(span[0]).toBe("span");
       expect(span[1].class).toBe("styled");
@@ -849,7 +848,7 @@ export function defineSuite({
 
     it("element without attrs has no extra props", async () => {
       const ast = await parseAST("**bold**");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const strong = p[2];
       expect(strong[0]).toBe("strong");
       expect(strong[1]).toEqual({});
@@ -857,7 +856,7 @@ export function defineSuite({
 
     it("empty attrs have no effect AST", async () => {
       const ast = await parseAST("**bold**{}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const strong = p[2];
       expect(strong[0]).toBe("strong");
       expect(strong[1]).toEqual({});
@@ -889,7 +888,7 @@ export function defineSuite({
 
     it("parses strikethrough with attrs AST", async () => {
       const ast = await parseAST("~~del~~{.red}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const del = p[2];
       expect(del[0]).toBe("del");
       expect(del[1].class).toBe("red");
@@ -897,15 +896,15 @@ export function defineSuite({
 
     it("parses strong with boolean attr AST", async () => {
       const ast = await parseAST("**bold**{flag}");
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const strong = p[2];
       expect(strong[0]).toBe("strong");
-      expect(strong[1].flag).toBe(true);
+      expect(strong[1][":flag"]).toBe("true");
     });
 
     it("parses strong with data attr AST", async () => {
       const ast = await parseAST('**bold**{data-value="custom"}');
-      const p = ast.value[0];
+      const p = ast.nodes[0];
       const strong = p[2];
       expect(strong[0]).toBe("strong");
       expect(strong[1]["data-value"]).toBe("custom");
@@ -919,6 +918,39 @@ export function defineSuite({
     it.skip("renders emoji", async () => {
       const html = await renderToHtml("Hello :wave:");
       expect(html).toContain("\u{1F44B}");
+    });
+  });
+
+  describe("HTML comments", () => {
+    it("parses block comment as null-tag element", async () => {
+      const ast = await parseAST("<!-- This is a comment -->");
+      const comment = ast.nodes[0];
+      expect(comment[0]).toBeNull();
+      expect(comment[1]).toEqual({});
+      expect(comment[2]).toBe(" This is a comment ");
+    });
+
+    it("parses inline comment", async () => {
+      const ast = await parseAST("Text before <!-- comment --> text after");
+      const p = ast.nodes[0];
+      expect(p[0]).toBe("p");
+      expect(p[2]).toBe("Text before ");
+      expect(p[3][0]).toBeNull();
+      expect(p[3][2]).toBe(" comment ");
+      expect(p[4]).toBe(" text after");
+    });
+
+    it("parses multi-line block comment", async () => {
+      const ast = await parseAST("<!--\nMulti-line\ncomment\n-->");
+      const comment = ast.nodes[0];
+      expect(comment[0]).toBeNull();
+      expect(comment[2]).toBe("\nMulti-line\ncomment\n");
+    });
+
+    it("keeps non-comment HTML blocks as html_block", async () => {
+      const ast = await parseAST("<div>hello</div>");
+      const block = ast.nodes[0];
+      expect(block[0]).toBe("html_block");
     });
   });
 
@@ -954,15 +986,13 @@ export function defineSuite({
 
     it("parses without error", async () => {
       const ast = await parseAST(nitroIndex);
-      expect(ast.type).toBe("comark");
-      expect(ast.value.length).toBeGreaterThan(0);
+      expect(ast.nodes.length).toBeGreaterThan(0);
+      expect(ast.frontmatter).toBeDefined();
     });
 
     it("parses frontmatter with nested seo object", async () => {
       const ast = await parseAST(nitroIndex);
-      const fm = ast.value[0];
-      expect(fm[0]).toBe("frontmatter");
-      expect(fm[1].seo).toEqual({
+      expect(ast.frontmatter.seo).toEqual({
         title: "Ship Full-Stack Vite Apps",
         description:
           "Nitro extends your Vite application with a production-ready server, compatible with any runtime. Add server routes to your application and deploy many hosting platform with a zero-config experience.",
@@ -971,10 +1001,7 @@ export function defineSuite({
 
     it("detects top-level block components", async () => {
       const ast = await parseAST(nitroIndex);
-      // Skip frontmatter (index 0), collect top-level tags
-      const topTags = ast.value
-        .slice(1)
-        .map((n) => (Array.isArray(n) ? n[0] : null));
+      const topTags = ast.nodes.map((n) => (Array.isArray(n) ? n[0] : null));
       expect(topTags).toContain("u-page-hero");
       expect(topTags).toContain("div");
       expect(topTags).toContain("u-page-section");
@@ -982,7 +1009,7 @@ export function defineSuite({
 
     it("detects nested block components", async () => {
       const ast = await parseAST(nitroIndex);
-      const allTags = collectTags(ast.value);
+      const allTags = collectTags(ast.nodes);
       expect(allTags).toContain("code-group");
       expect(allTags).toContain("prose-pre");
       expect(allTags).toContain("u-button");
@@ -997,7 +1024,7 @@ export function defineSuite({
 
     it("detects inline components", async () => {
       const ast = await parseAST(nitroIndex);
-      const allTags = collectTags(ast.value);
+      const allTags = collectTags(ast.nodes);
       expect(allTags).toContain("hero-background");
       expect(allTags).toContain("page-sponsors");
       expect(allTags).toContain("page-contributors");
@@ -1005,7 +1032,7 @@ export function defineSuite({
 
     it("detects named slots (templates)", async () => {
       const ast = await parseAST(nitroIndex);
-      const templates = findAll(ast.value, "template");
+      const templates = findAll(ast.nodes, "template");
       const slotNames = templates.map((t) => t[1].name);
       expect(slotNames).toContain("title");
       expect(slotNames).toContain("description");
@@ -1015,20 +1042,20 @@ export function defineSuite({
 
     it("detects component props", async () => {
       const ast = await parseAST(nitroIndex);
-      const divs = findAll(ast.value, "div");
+      const divs = findAll(ast.nodes, "div");
       const withClass = divs.find((d) => d[1].class?.includes("bg-neutral-50"));
       expect(withClass).toBeDefined();
     });
 
     it("detects u-button components inside slots", async () => {
       const ast = await parseAST(nitroIndex);
-      const buttons = findAll(ast.value, "u-button");
+      const buttons = findAll(ast.nodes, "u-button");
       expect(buttons.length).toBe(2);
     });
 
     it("detects deeply nested tabs-item with props", async () => {
       const ast = await parseAST(nitroIndex);
-      const tabsItems = findAll(ast.value, "tabs-item");
+      const tabsItems = findAll(ast.nodes, "tabs-item");
       expect(tabsItems.length).toBe(5);
       expect(tabsItems[0][1].label).toBe("FS Routing");
       expect(tabsItems[0][1].icon).toBe("i-lucide-folder");
@@ -1036,7 +1063,7 @@ export function defineSuite({
 
     it("detects u-page-feature components with slots", async () => {
       const ast = await parseAST(nitroIndex);
-      const features = findAll(ast.value, "u-page-feature");
+      const features = findAll(ast.nodes, "u-page-feature");
       expect(features.length).toBe(3);
       // Each feature has title and description slots
       for (const feature of features) {

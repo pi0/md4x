@@ -1,0 +1,728 @@
+<!-- Source: https://raw.githubusercontent.com/comarkdown/comark/refs/heads/main/docs/content/2.syntax/2.comark-ast.md -->
+
+## Overview
+
+**Comark AST** is a lightweight, array-based AST format designed for efficient processing and minimal memory usage. Unlike traditional node-based ASTs, Comark uses nested arrays (tuples) to represent document structure.
+
+## AST Structure
+
+### ComarkTree
+
+The root container for all parsed content:
+
+```typescript
+interface ComarkTree {
+  nodes: ComarkNode[]; // Parsed AST nodes
+  frontmatter: Record<string, any>; // YAML frontmatter data
+  meta: {
+    toc?: any; // Table of contents (from toc plugin)
+    summary?: ComarkNode[]; // Summary content (from summary plugin)
+    [key: string]: any; // Other plugin metadata
+  };
+}
+```
+
+### ComarkNode
+
+Each node is either a text string or an element tuple:
+
+```typescript
+type ComarkNode = ComarkElement | ComarkText;
+```
+
+### ComarkText
+
+Plain string representing text content:
+
+```typescript
+type ComarkText = string;
+```
+
+### ComarkElement
+
+An element is a tuple array with tag, attributes, and children:
+
+```typescript
+type ComarkElement = [string, ComarkElementAttributes, ...ComarkNode[]];
+```
+
+### ComarkElementAttributes
+
+Attributes are a key-value record:
+
+```typescript
+type ComarkElementAttributes = {
+  [key: string]: unknown;
+};
+```
+
+## Node Format
+
+### Text Nodes
+
+Plain strings represent text content:
+
+```json
+"Hello, World!"
+```
+
+### Element Nodes
+
+Elements are arrays with the format `[tag, props, ...children]`:
+
+```json
+["p", {}, "This is a paragraph"]
+```
+
+**Components:**
+
+- **tag** (index 0): Element name or component tag
+- **props** (index 1): Object with attributes/properties
+- **children** (index 2+): Child nodes (strings or nested arrays)
+
+---
+
+## Common Elements
+
+### Headings
+
+```mdc
+# Heading 1
+## Heading 2
+```
+
+```json
+["h1", { "id": "heading-1" }, "Heading 1"],
+["h2", { "id": "heading-2" }, "Heading 2"]
+```
+
+### Paragraphs
+
+```mdc
+This is a paragraph with **bold** and *italic* text.
+```
+
+```json
+[
+  "p",
+  {},
+  "This is a paragraph with ",
+  ["strong", {}, "bold"],
+  " and ",
+  ["em", {}, "italic"],
+  " text."
+]
+```
+
+### Links
+
+```mdc
+[Link text](https://example.com)
+```
+
+```json
+["a", { "href": "https://example.com" }, "Link text"]
+```
+
+### Images
+
+```mdc
+![Alt text](image.png)
+```
+
+```json
+["img", { "src": "image.png", "alt": "Alt text" }]
+```
+
+### Lists
+
+```mdc
+- Item 1
+- Item 2
+  - Nested item
+```
+
+```json
+[
+  "ul",
+  {},
+  ["li", {}, "Item 1"],
+  ["li", {}, "Item 2", ["ul", {}, ["li", {}, "Nested item"]]]
+]
+```
+
+### Ordered Lists
+
+```mdc
+1. First
+2. Second
+```
+
+```json
+["ol", {}, ["li", {}, "First"], ["li", {}, "Second"]]
+```
+
+### Code Blocks
+
+````mdc
+```javascript [app.js] {1-2}
+const a = 1
+const b = 2
+```
+````
+
+```json
+[
+  "pre",
+  {
+    "language": "javascript",
+    "filename": "app.js",
+    "highlights": [1, 2]
+  },
+  ["code", { "class": "language-javascript" }, "const a = 1\nconst b = 2"]
+]
+```
+
+### Inline Code
+
+```mdc
+Use `const` for constants
+```
+
+```json
+["p", {}, "Use ", ["code", {}, "const"], " for constants"]
+```
+
+### Span Attributes
+
+Span syntax wraps inline text with custom attributes:
+
+```mdc
+This is [highlighted]{.highlight .yellow} text.
+```
+
+```json
+[
+  "p",
+  {},
+  "This is ",
+  [
+    "span",
+    {
+      "class": "highlight yellow"
+    },
+    "highlighted"
+  ],
+  " text."
+]
+```
+
+**With multiple attributes:**
+
+```mdc
+[Important]{#notice .badge style="color: red" data-priority="high"}
+```
+
+```json
+[
+  "span",
+  {
+    "id": "notice",
+    "class": "badge",
+    "style": "color: red",
+    "data-priority": "high"
+  },
+  "Important"
+]
+```
+
+**With nested markdown:**
+
+```mdc
+[**Bold** text]{.emphasized}
+```
+
+```json
+[
+  "span",
+  {
+    "class": "emphasized"
+  },
+  ["strong", {}, "Bold"],
+  " text"
+]
+```
+
+### Blockquotes
+
+```mdc
+> This is a quote
+```
+
+```json
+["blockquote", {}, ["p", {}, "This is a quote"]]
+```
+
+### Tables
+
+```mdc
+| Header 1 | Header 2 |
+| -------- | -------- |
+| Cell 1   | Cell 2   |
+```
+
+```json
+[
+  "table",
+  {},
+  ["thead", {}, ["tr", {}, ["th", {}, "Header 1"], ["th", {}, "Header 2"]]],
+  ["tbody", {}, ["tr", {}, ["td", {}, "Cell 1"], ["td", {}, "Cell 2"]]]
+]
+```
+
+### Horizontal Rule
+
+```mdc
+---
+```
+
+```json
+["hr", {}]
+```
+
+### Comments
+
+HTML comments are represented with `null` as the tag:
+
+```mdc
+<!-- This is a comment -->
+```
+
+```json
+[null, {}, " This is a comment "]
+```
+
+**Inline comment:**
+
+```mdc
+Text before <!-- comment --> text after
+```
+
+```json
+["p", {}, "Text before ", [null, {}, " comment "], " text after"]
+```
+
+**Multi-line comment:**
+
+```mdc
+<!--
+Multi-line
+comment text
+-->
+```
+
+```json
+[null, {}, "\nMulti-line\ncomment text\n"]
+```
+
+**Comment between elements:**
+
+```mdc
+## First Section
+
+<!-- Separator -->
+
+## Second Section
+```
+
+```json
+[
+  ["h2", { "id": "first-section" }, "First Section"],
+  [null, {}, " Separator "],
+  ["h2", { "id": "second-section" }, "Second Section"]
+]
+```
+
+---
+
+## Comark Components
+
+### Block Components
+
+```mdc
+::alert{type="info"}
+This is an alert message
+::
+```
+
+```json
+["alert", { "type": "info" }, ["p", {}, "This is an alert message"]]
+```
+
+### Inline Components
+
+```mdc
+Check out this :badge[New]{color="blue"} feature
+```
+
+```json
+["p", {}, "Check out this ", ["badge", { "color": "blue" }, "New"], " feature"]
+```
+
+### Components with Slots
+
+```mdc
+::card
+#header
+## Card Title
+
+#content
+Main content here
+::
+```
+
+```json
+[
+  "card",
+  {},
+  [
+    "template",
+    { "name": "header" },
+    ["h2", { "id": "card-title" }, "Card Title"]
+  ],
+  ["template", { "name": "content" }, ["p", {}, "Main content here"]]
+]
+```
+
+### Nested Components
+
+```mdc
+:::outer
+::inner
+Content
+::
+:::
+```
+
+```json
+["outer", {}, ["inner", {}, ["p", {}, "Content"]]]
+```
+
+---
+
+## Property Types
+
+### String Properties
+
+```mdc
+::component{title="Hello"}
+```
+
+```json
+["component", { "title": "Hello" }]
+```
+
+### Boolean Properties
+
+```mdc
+::component{disabled}
+```
+
+```json
+["component", { ":disabled": "true" }]
+```
+
+**Note:** Boolean props are prefixed with `:` in the AST.
+
+### Number Properties
+
+```mdc
+::component{:count="5"}
+```
+
+```json
+["component", { ":count": "5" }]
+```
+
+### Object/Array Properties
+
+```mdc
+::component{:data='{"key": "value"}'}
+```
+
+```json
+["component", { ":data": "{\"key\": \"value\"}" }]
+```
+
+### ID and Class Properties
+
+```mdc
+::component{#my-id .class-one .class-two}
+```
+
+```json
+[
+  "component",
+  {
+    "id": "my-id",
+    "class": "class-one class-two"
+  }
+]
+```
+
+---
+
+## Complete AST Example
+
+**Input Markdown:**
+
+```mdc
+---
+title: Example Document
+author: John Doe
+---
+
+# Welcome
+
+This is a **sample** document with [links](https://example.com).
+
+::alert{type="info"}
+Important notice
+::
+
+## Code Example
+
+\`\`\`javascript [demo.js]
+console.log("Hello")
+\`\`\`
+```
+
+**Output AST:**
+
+```json
+{
+  "nodes": [
+    ["h1", { "id": "welcome" }, "Welcome"],
+    [
+      "p",
+      {},
+      "This is a ",
+      ["strong", {}, "sample"],
+      " document with ",
+      ["a", { "href": "https://example.com" }, "links"],
+      "."
+    ],
+    ["alert", { "type": "info" }, ["p", {}, "Important notice"]],
+    ["h2", { "id": "code-example" }, "Code Example"],
+    [
+      "pre",
+      { "language": "javascript", "filename": "demo.js" },
+      ["code", { "class": "language-javascript" }, "console.log(\"Hello\")"]
+    ]
+  ],
+  "frontmatter": {
+    "title": "Example Document",
+    "author": "John Doe"
+  },
+  "meta": {}
+}
+```
+
+---
+
+## Working with AST
+
+### Traversing Nodes
+
+```typescript
+import type { ComarkNode, ComarkTree } from "comark";
+
+function traverse(node: ComarkNode, callback: (node: ComarkNode) => void) {
+  callback(node);
+
+  if (Array.isArray(node)) {
+    const children = node.slice(2);
+    for (const child of children) {
+      traverse(child, callback);
+    }
+  }
+}
+
+// Usage
+const result = await parse(content);
+traverse(result.nodes[0], (node) => {
+  if (Array.isArray(node)) {
+    console.log("Element:", node[0]);
+  } else {
+    console.log("Text:", node);
+  }
+});
+```
+
+### Finding Elements
+
+```typescript
+function findByTag(tree: ComarkTree, tag: string): ComarkNode[] {
+  const results: ComarkNode[] = [];
+
+  function search(node: ComarkNode) {
+    if (Array.isArray(node) && node[0] === tag) {
+      results.push(node);
+    }
+    if (Array.isArray(node)) {
+      node.slice(2).forEach(search);
+    }
+  }
+
+  tree.nodes.forEach(search);
+  return results;
+}
+
+// Find all headings
+const headings = findByTag(result, "h1");
+```
+
+### Modifying AST
+
+```typescript
+function addClassToLinks(node: ComarkNode): ComarkNode {
+  if (Array.isArray(node)) {
+    const [tag, props, ...children] = node;
+
+    if (tag === "a") {
+      return [tag, { ...props, class: "external-link" }, ...children];
+    }
+
+    return [tag, props, ...children.map(addClassToLinks)];
+  }
+
+  return node;
+}
+
+// Transform all links
+const transformed: ComarkTree = {
+  nodes: result.nodes.map(addClassToLinks),
+  frontmatter: result.frontmatter,
+  meta: result.meta,
+};
+```
+
+### Extracting Text Content
+
+```typescript
+function extractText(node: ComarkNode): string {
+  if (typeof node === "string") {
+    return node;
+  }
+
+  if (Array.isArray(node)) {
+    return node.slice(2).map(extractText).join("");
+  }
+
+  return "";
+}
+
+// Get all text from a heading
+const heading = ["h1", { id: "hello" }, "Hello ", ["strong", {}, "World"]];
+console.log(extractText(heading)); // "Hello World"
+```
+
+---
+
+## Rendering AST
+
+### To HTML
+
+```typescript
+import { renderHTML } from "comark/string";
+
+const tree = await parse("# Hello **World**");
+const html = renderHTML(tree);
+// <h1 id="hello-world">Hello <strong>World</strong></h1>
+```
+
+### To Markdown
+
+```typescript
+import { renderMarkdown } from "comark/string";
+
+const tree = await parse("# Hello **World**");
+const markdown = renderMarkdown(tree);
+// # Hello **World**
+```
+
+### Custom Rendering
+
+```typescript
+function renderToPlainText(node: ComarkNode): string {
+  if (typeof node === "string") {
+    return node;
+  }
+
+  if (Array.isArray(node)) {
+    const [tag, props, ...children] = node;
+    const content = children.map(renderToPlainText).join("");
+
+    // Add formatting based on tag
+    switch (tag) {
+      case "h1":
+      case "h2":
+      case "h3":
+        return `${content}\n\n`;
+      case "p":
+        return `${content}\n\n`;
+      case "li":
+        return `• ${content}\n`;
+      default:
+        return content;
+    }
+  }
+
+  return "";
+}
+```
+
+---
+
+## TypeScript Types
+
+All types are exported from `comark` and `comark/ast`:
+
+```typescript
+import type {
+  ComarkTree,
+  ComarkNode,
+  ComarkElement,
+  ComarkText,
+  ComarkElementAttributes,
+} from "comark";
+
+// Type guard for element nodes
+function isElement(node: ComarkNode): node is ComarkElement {
+  return Array.isArray(node) && typeof node[0] === "string";
+}
+
+// Type guard for text nodes
+function isText(node: ComarkNode): node is ComarkText {
+  return typeof node === "string";
+}
+
+// Usage
+function processNode(node: ComarkNode) {
+  if (isText(node)) {
+    console.log("Text:", node);
+  } else if (isElement(node)) {
+    const [tag, props, ...children] = node;
+    console.log("Element:", tag, props);
+  }
+}
+```
+
+---
+
+## Performance Considerations
+
+1. **Array-based format**: More memory efficient than object-based AST
+2. **Shallow iteration**: Children start at index 2, making iteration predictable
+3. **Immutable by convention**: Create new arrays when modifying
+4. **Lazy processing**: Process only what you need

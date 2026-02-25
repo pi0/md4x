@@ -231,6 +231,46 @@ json_append_text(JSON_NODE* node, const char* src, MD_SIZE src_size)
 }
 
 
+/*************************************
+ ***  HTML comment helpers          ***
+ *************************************/
+
+/* Check if a string is an HTML comment (<!-- ... -->), possibly with
+ * surrounding whitespace.  On match, set *body and *body_size to the
+ * comment body (between <!-- and -->).  Returns 1 on match, 0 otherwise. */
+static int
+json_is_html_comment(const char* text, MD_SIZE size,
+                     const char** body, MD_SIZE* body_size)
+{
+    const char* p = text;
+    const char* end = text + size;
+
+    /* Skip leading whitespace. */
+    while(p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
+        p++;
+
+    /* Must start with <!-- */
+    if(end - p < 7)  /* at minimum <!-- --> */
+        return 0;
+    if(p[0] != '<' || p[1] != '!' || p[2] != '-' || p[3] != '-')
+        return 0;
+
+    /* Find --> from the end, skipping trailing whitespace. */
+    const char* q = end;
+    while(q > p && (q[-1] == ' ' || q[-1] == '\t' || q[-1] == '\n' || q[-1] == '\r'))
+        q--;
+
+    if(q - p < 7)
+        return 0;
+    if(q[-1] != '>' || q[-2] != '-' || q[-3] != '-')
+        return 0;
+
+    *body = p + 4;       /* after <!-- */
+    *body_size = (MD_SIZE)(q - 3 - (p + 4));  /* before --> */
+    return 1;
+}
+
+
 /***********************************
  ***  md_parse() callbacks       ***
  ***********************************/
@@ -377,8 +417,28 @@ static int
 json_leave_block(MD_BLOCKTYPE type, void* detail, void* userdata)
 {
     JSON_CTX* ctx = (JSON_CTX*) userdata;
-    (void) type;
     (void) detail;
+
+    /* Convert html_block comments to [null, {}, "body"] nodes. */
+    if(type == MD_BLOCK_HTML && ctx->current->text_value != NULL) {
+        const char* body;
+        MD_SIZE body_size;
+        if(json_is_html_comment(ctx->current->text_value, ctx->current->text_size,
+                                &body, &body_size)) {
+            /* Replace tag with NULL (comment node). */
+            ctx->current->tag = NULL;
+            /* Replace text_value with just the comment body. */
+            char* new_text = (char*) malloc(body_size + 1);
+            if(new_text != NULL) {
+                memcpy(new_text, body, body_size);
+                new_text[body_size] = '\0';
+                free(ctx->current->text_value);
+                ctx->current->text_value = new_text;
+                ctx->current->text_size = body_size;
+            }
+        }
+    }
+
     json_pop(ctx);
     return 0;
 }
@@ -602,8 +662,36 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
             value_size = 3;
             break;
 
+        case MD_TEXT_HTML: {
+            /* Inline HTML: check for comment <!-- ... --> */
+            const char* cbody;
+            MD_SIZE cbody_size;
+            if(json_is_html_comment(text, size, &cbody, &cbody_size)) {
+                /* Emit [null, {}, "comment body"] element. */
+                JSON_NODE* cnode = json_node_new(NULL, JSON_NODE_ELEMENT);
+                if(cnode == NULL) { ctx->error = 1; return -1; }
+                if(cbody_size > 0) {
+                    cnode->text_value = (char*) malloc(cbody_size + 1);
+                    if(cnode->text_value != NULL) {
+                        memcpy(cnode->text_value, cbody, cbody_size);
+                        cnode->text_value[cbody_size] = '\0';
+                        cnode->text_size = cbody_size;
+                    }
+                }
+                json_append_child(ctx, cnode);
+                return 0;
+            }
+            /* Non-comment inline HTML: fall through to default text handling. */
+            value = (char*) malloc(size + 1);
+            if(value == NULL) { ctx->error = 1; return -1; }
+            memcpy(value, text, size);
+            value[size] = '\0';
+            value_size = size;
+            break;
+        }
+
         default:
-            /* Normal text, entity, html_inline, code, latexmath. */
+            /* Normal text, entity, code, latexmath. */
             value = (char*) malloc(size + 1);
             if(value == NULL) { ctx->error = 1; return -1; }
             memcpy(value, text, size);
@@ -690,9 +778,9 @@ json_write_component_props(JSON_WRITER* w, const char* raw, MD_SIZE size)
                 break;
 
             case MD_PROP_BOOLEAN:
-                json_write(w, "\"", 1);
+                json_write_str(w, "\":");
                 json_write_escaped(w, p->key, p->key_size);
-                json_write_str(w, "\":true");
+                json_write_str(w, "\":\"true\"");
                 n_written++;
                 break;
 
@@ -871,22 +959,54 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
     int first;
 
     switch(node->kind) {
-        case JSON_NODE_DOCUMENT:
-            json_write_str(w, "{\"type\":\"comark\",\"value\":[");
+        case JSON_NODE_DOCUMENT: {
+            const JSON_NODE* fm_node = NULL;
+
+            /* Find frontmatter node (if any). */
+            for(child = node->first_child; child != NULL; child = child->next_sibling) {
+                if(child->kind == JSON_NODE_ELEMENT && child->tag != NULL
+                   && !child->tag_is_dynamic && strcmp(child->tag, "frontmatter") == 0) {
+                    fm_node = child;
+                    break;
+                }
+            }
+
+            /* Emit nodes (excluding frontmatter). */
+            json_write_str(w, "{\"nodes\":[");
             first = 1;
             for(child = node->first_child; child != NULL; child = child->next_sibling) {
+                if(child == fm_node) continue;
                 if(!first) json_write(w, ",", 1);
                 json_serialize_node(w, child);
                 first = 0;
             }
-            json_write_str(w, "]}");
+
+            /* Emit frontmatter field. */
+            json_write_str(w, "],\"frontmatter\":{");
+            if(fm_node != NULL && fm_node->text_value != NULL && fm_node->text_size > 0) {
+                json_write_yaml_props(w, fm_node->text_value, fm_node->text_size);
+            }
+
+            json_write_str(w, "},\"meta\":{}}");
             break;
+        }
 
         case JSON_NODE_TEXT:
             json_write_string(w, node->text_value, node->text_size);
             break;
 
         case JSON_NODE_ELEMENT:
+            /* Comment nodes: [null, {}, "body"] */
+            if(node->tag == NULL) {
+                json_write_str(w, "[null,{}");
+                if(node->text_value != NULL) {
+                    json_write(w, ",", 1);
+                    json_write_string(w, node->text_value, node->text_size);
+                }
+                json_write(w, "]", 1);
+                break;
+            }
+
             json_write_str(w, "[\"");
             json_write_str(w, node->tag);
             json_write_str(w, "\",");

@@ -1,5 +1,17 @@
 # MD4X Change Log
 
+## v0.0.11 (WIP)
+
+### Breaking Changes
+
+- **AST root structure**: Changed from `{ type: "comark", value: [...] }` to `{ nodes: [...], frontmatter: {...}, meta: {} }`. Frontmatter is now a top-level field instead of a node in the array.
+- **Boolean props**: Changed from `"key": true` (JSON boolean) to `":key": "true"` (colon-prefixed string) to match Comark AST spec.
+- **TypeScript types**: `ComarkTree` now uses `nodes`/`frontmatter`/`meta` fields; `ComarkElement` tag type is `string | null`.
+
+### Features
+
+- **HTML comment extraction**: HTML comments (`<!-- ... -->`) are now represented as `[null, {}, "comment body"]` instead of raw `html_block` passthrough. Both block-level and inline comments are supported.
+
 ## v0.0.10
 
 ### Features

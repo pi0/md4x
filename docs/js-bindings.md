@@ -126,9 +126,9 @@ All extensions (`MD_DIALECT_ALL`) are enabled by default. No parser/renderer fla
 
 The package exports TypeScript types for the Comark AST:
 
-- `ComarkTree` — Root container: `{ type: "comark", value: ComarkNode[] }`
+- `ComarkTree` — Root container: `{ nodes: ComarkNode[], frontmatter: Record<string, unknown>, meta: Record<string, unknown> }`
 - `ComarkNode` — Either a `ComarkElement` (tuple array) or `ComarkText` (plain string)
-- `ComarkElement` — Tuple: `[tag: string, props: ComarkElementAttributes, ...children: ComarkNode[]]`
+- `ComarkElement` — Tuple: `[tag: string | null, props: ComarkElementAttributes, ...children: ComarkNode[]]`
 - `ComarkText` — Plain string representing text content
 - `ComarkElementAttributes` — Key-value record: `{ [key: string]: unknown }`
 - `ComarkMeta` — Metadata object: `{ title?: string, headings: ComarkHeading[], [key: string]: unknown }`
@@ -136,7 +136,7 @@ The package exports TypeScript types for the Comark AST:
 
 ## Comark AST Format
 
-The JSON renderer produces a **Comark AST** — a lightweight, array-based format. Each node is either a plain string (text) or an element tuple `[tag, props, ...children]`.
+The JSON renderer produces a **Comark AST** — a lightweight, array-based format: `{"nodes":[...],"frontmatter":{...},"meta":{}}`. Each node is either a plain string (text) or an element tuple `[tag, props, ...children]`. Frontmatter YAML is parsed into the top-level `frontmatter` object (not included in `nodes`). HTML comments are represented as `[null, {}, "comment body"]`.
 
 **Property type conventions in AST output:**
 
@@ -151,11 +151,11 @@ The JSON renderer produces a **Comark AST** — a lightweight, array-based forma
 
 **Key AST mappings:**
 
-- Headings: `["h1", {"id": "slug"}, "text"]` — auto-generated slug ID
 - Code blocks: `["pre", {"language": "js", "filename": "app.js", "highlights": [1,2]}, ["code", {"class": "language-js"}, "..."]]`
 - Components: `["component-name", {props}, ...children]`
 - Slots: `["template", {"name": "slot-name"}, ...children]`
 - Images: `["img", {"src": "url", "alt": "text"}]` (void, no children)
+- HTML comments: `[null, {}, " comment text "]`
 
 ## JS Package Testing
 

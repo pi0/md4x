@@ -174,7 +174,7 @@ All extensions are enabled by default (`MD_DIALECT_ALL`). No dialect preset flag
 
 **ANSI output (`--format=ansi`):** Terminal-friendly output with ANSI escape codes for colors, bold, italic, underline, and other text styling.
 
-**JSON output (`--format=json`):** Produces a Comark AST: `{"type":"comark","value":[...]}`. Each node is either a plain string (text) or a tuple array `[tag, props, ...children]`.
+**JSON output (`--format=json`):** Produces a Comark AST: `{"nodes":[...],"frontmatter":{...},"meta":{}}`. Each node is either a plain string (text) or a tuple array `[tag, props, ...children]`. Frontmatter YAML is parsed into the top-level `frontmatter` object. HTML comments are represented as `[null, {}, "comment body"]`.
 
 ## Code Generation Scripts
 

@@ -1,6 +1,7 @@
 export type ComarkTree = {
-  type: "comark";
-  value: ComarkNode[];
+  nodes: ComarkNode[];
+  frontmatter: Record<string, unknown>;
+  meta: Record<string, unknown>;
 };
 
 export type ComarkNode = ComarkElement | ComarkText;
@@ -8,7 +9,7 @@ export type ComarkNode = ComarkElement | ComarkText;
 export type ComarkText = string;
 
 export type ComarkElement = [
-  tag: string,
+  tag: string | null,
   props: ComarkElementAttributes,
   ...children: ComarkNode[],
 ];
