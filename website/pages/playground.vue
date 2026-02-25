@@ -8,10 +8,14 @@ import {
   renderToAnsi,
   renderToText,
   parseMeta,
+  type ComarkTree,
 } from "md4x/wasm";
 import { createHighlighter, type Highlighter } from "shiki";
 import TabSelect from "../components/TabSelect.vue";
 import AnsiTerminal from "../components/AnsiTerminal.vue";
+import ComarkVueRenderer from "../components/ComarkVueRenderer.vue";
+import ComarkReactRenderer from "../components/ComarkReactRenderer.vue";
+import { vueComponents, reactComponents } from "../samples/components.ts";
 
 const examples = Object.fromEntries(
   Object.entries(
@@ -47,6 +51,8 @@ const modeOptions = [
   { value: "ansi", label: "ANSI" },
   { value: "text", label: "Text" },
   { value: "meta", label: "Meta" },
+  { value: "vue", label: "Vue" },
+  { value: "react", label: "React" },
 ];
 const mode = ref("html");
 const showSource = ref(false);
@@ -55,6 +61,7 @@ const example = ref("all");
 const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
 const outputAnsi = ref("");
+const outputTree = ref<ComarkTree | null>(null);
 const sourceHtml = ref("");
 const mobileTab = ref<"editor" | "output">("output");
 
@@ -98,6 +105,7 @@ function render() {
   const md = currentMd.value;
   const m = mode.value;
   try {
+    outputTree.value = null;
     if (m === "html") {
       const html = renderToHtml(md);
       outputHtml.value = html;
@@ -110,6 +118,9 @@ function render() {
         JSON.stringify(parseAST(md), null, 2),
         { lang: "json", theme: "github-light" },
       );
+    } else if (m === "vue" || m === "react") {
+      outputTree.value = parseAST(md);
+      outputHtml.value = "";
     } else if (m === "ansi") {
       outputAnsi.value = renderToAnsi(md);
     } else if (m === "text") {
@@ -370,6 +381,20 @@ onMounted(async () => {
         class="size-full"
       />
       <div
+        v-else-if="mode === 'vue'"
+        ref="outputEl"
+        class="output mode-vue prose size-full max-w-none overflow-auto break-words p-5 px-6 text-sm leading-relaxed"
+      >
+        <ComarkVueRenderer :tree="outputTree" :components="vueComponents" />
+      </div>
+      <div
+        v-else-if="mode === 'react'"
+        ref="outputEl"
+        class="output mode-react prose size-full max-w-none overflow-auto break-words p-5 px-6 text-sm leading-relaxed"
+      >
+        <ComarkReactRenderer :tree="outputTree" :components="reactComponents" />
+      </div>
+      <div
         v-else
         ref="outputEl"
         class="output size-full overflow-auto break-words text-sm leading-relaxed"
@@ -429,5 +454,30 @@ onMounted(async () => {
   background: #d1d5db;
   color: #111827;
   border-color: #6b7280;
+}
+</style>
+
+<style>
+.counter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.counter-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+.counter-btn:active {
+  background: #d1d5db;
 }
 </style>

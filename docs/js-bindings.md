@@ -134,6 +134,8 @@ The package exports TypeScript types for the Comark AST:
 - `ComarkMeta` — Metadata object: `{ title?: string, headings: ComarkHeading[], [key: string]: unknown }`
 - `ComarkHeading` — Heading entry: `{ level: number, text: string }`
 
+The website playground includes both Vue and React examples that render this AST format (`website/components/ComarkVueRenderer.vue`, `website/components/ComarkReactRenderer.vue`).
+
 ## Comark AST Format
 
 The JSON renderer produces a **Comark AST** — a lightweight, array-based format: `{"nodes":[...],"frontmatter":{...},"meta":{}}`. Each node is either a plain string (text) or an element tuple `[tag, props, ...children]`. Frontmatter YAML is parsed into the top-level `frontmatter` object (not included in `nodes`). HTML comments are represented as `[null, {}, "comment body"]`.

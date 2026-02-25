@@ -89,9 +89,14 @@ website/                 # Docs + playground (Vite + Vue)
   App.vue                # Root component with navigation
   router.ts              # Vue Router config
   env.d.ts               # TypeScript env types
+  components/
+    TabSelect.vue        # Responsive select/button tab switcher
+    AnsiTerminal.vue     # xterm.js-backed ANSI output view
+    ComarkVueRenderer.vue # Comark AST -> Vue VNode renderer for playground
+    ComarkReactRenderer.vue # Comark AST -> React renderer host for playground
   pages/
     readme.vue           # Renders README.md via md4x/wasm
-    playground.vue       # Interactive markdown editor + renderer
+    playground.vue       # Interactive markdown editor + renderer tabs (html, ast, vue, react, ansi, text, meta)
   samples/               # Example markdown files for playground
 package.json             # Root workspace package (bun, workspaces: packages/*, website)
 build.zig                # Zig build script
