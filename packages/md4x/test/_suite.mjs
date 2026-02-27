@@ -460,6 +460,12 @@ export function defineSuite({
       expect(props.empty).toBe(null);
     });
 
+    it("parses frontmatter with indented fences", async () => {
+      const ast = await parseAST("   ---\ntitle: Hello\n   ---\n\n# Content");
+      expect(ast.frontmatter).toEqual({ title: "Hello" });
+      expect(ast.nodes[0][0]).toBe("h1");
+    });
+
     it("parses frontmatter with nested objects", async () => {
       const ast = await parseAST(
         "---\nauthor:\n  name: John\n  email: john@example.com\n---",

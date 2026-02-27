@@ -106,14 +106,33 @@ title: value
 <h2>title: value</h2>
 ````````````````````````````````
 
-Frontmatter cannot be indented.
+Up to three spaces of indentation are allowed on the opening fence.
 
 ```````````````````````````````` example
-  ---
+   ---
 title: Hello
 ---
 .
-<hr>
+````````````````````````````````
+
+Up to three spaces of indentation are allowed on the closing fence.
+
+```````````````````````````````` example
+---
+title: Hello
+   ---
+.
+````````````````````````````````
+
+Four or more spaces of indentation disables frontmatter.
+
+```````````````````````````````` example
+    ---
+title: Hello
+---
+.
+<pre><code>---
+</code></pre>
 <h2>title: Hello</h2>
 ````````````````````````````````
 

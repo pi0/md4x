@@ -7386,7 +7386,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         /* Check for frontmatter opening at the very start of the document. */
         if((ctx->parser.flags & MD_FLAG_FRONTMATTER)  &&
             ctx->frontmatter_state == 0  &&
-            line->indent == 0  &&  n_parents == 0  &&
+            line->indent < ctx->code_indent_offset  &&  n_parents == 0  &&
             off < ctx->size  &&  CH(off) == _T('-'))
         {
             OFF tmp = off;
