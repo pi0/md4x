@@ -665,6 +665,85 @@ export function defineSuite({
     });
   });
 
+  describe("component frontmatter", () => {
+    it("parses YAML frontmatter as component props in AST", async () => {
+      const ast = await parseAST(
+        "::card\n\n---\nicon: star\ntitle: Hello\n---\n\nContent\n::",
+      );
+      const card = ast.nodes[0];
+      expect(card[0]).toBe("card");
+      expect(card[1].icon).toBe("star");
+      expect(card[1].title).toBe("Hello");
+      // Content child, no frontmatter child
+      expect(card[2][0]).toBe("p");
+      expect(card[2][2]).toBe("Content");
+    });
+
+    it("merges frontmatter with inline props in AST", async () => {
+      const ast = await parseAST(
+        '::card{type="info"}\n\n---\nicon: star\n---\n\nContent\n::',
+      );
+      const card = ast.nodes[0];
+      expect(card[1].type).toBe("info");
+      expect(card[1].icon).toBe("star");
+    });
+
+    it("renders frontmatter as HTML attributes", async () => {
+      const html = await renderToHtml(
+        "::card\n\n---\nicon: star\ntitle: Hello\n---\n\nContent\n::",
+      );
+      expect(html).toContain('<card icon="star" title="Hello">');
+      expect(html).toContain("<p>Content</p>");
+    });
+
+    it("does not treat --- as frontmatter after content", async () => {
+      const ast = await parseAST("::card\nSome text\n\n---\n\nMore text\n::");
+      const card = ast.nodes[0];
+      // First non-blank line is text, so --- is an HR
+      expect(card[1]).toEqual({});
+      const tags = card.slice(2).map((c) => c[0]);
+      expect(tags).toContain("hr");
+    });
+
+    it("frontmatter YAML type coercion in component", async () => {
+      const ast = await parseAST(
+        "::card\n\n---\ncount: 42\nenabled: true\n---\n\n::",
+      );
+      const card = ast.nodes[0];
+      expect(card[1].count).toBe(42);
+      expect(card[1].enabled).toBe(true);
+    });
+
+    it("nested component frontmatter in AST", async () => {
+      const ast = await parseAST(
+        ":::outer\n::inner\n\n---\nkey: value\n---\n\nContent\n::\n:::",
+      );
+      const outer = ast.nodes[0];
+      expect(outer[0]).toBe("outer");
+      const inner = outer[2];
+      expect(inner[0]).toBe("inner");
+      expect(inner[1].key).toBe("value");
+      expect(inner[2][0]).toBe("p");
+    });
+
+    it("suppresses frontmatter from ANSI output", async () => {
+      const ansi = await renderToAnsi(
+        "::card\n\n---\nicon: star\n---\n\nContent\n::",
+      );
+      expect(ansi).not.toContain("icon");
+      expect(ansi).not.toContain("star");
+      expect(ansi).toContain("Content");
+    });
+
+    it("suppresses frontmatter from text output", async () => {
+      const text = await renderToText(
+        "::card\n\n---\nicon: star\n---\n\nContent\n::",
+      );
+      expect(text).not.toContain("icon");
+      expect(text).toContain("Content");
+    });
+  });
+
   describe("component property parsing", () => {
     it("merges multiple classes", async () => {
       const ast = await parseAST(":badge[Text]{.foo .bar .baz}");
@@ -1082,8 +1161,8 @@ export function defineSuite({
 
     it("renders HTML without error", async () => {
       const html = await renderToHtml(nitroIndex);
-      expect(html).toContain("<u-page-hero>");
-      expect(html).toContain("<u-page-section>");
+      expect(html).toContain('<u-page-hero orientation="horizontal">');
+      expect(html).toContain('<u-page-section orientation="horizontal">');
       expect(html).toContain("</u-page-hero>");
     });
 

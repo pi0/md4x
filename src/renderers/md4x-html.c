@@ -60,6 +60,20 @@ struct MD_HTML_tag {
 
     /* Frontmatter suppression state. */
     int in_frontmatter;
+    int component_nesting;  /* Track block component nesting depth. */
+
+    /* Component frontmatter: deferred open tag.
+     * When entering a block component, we buffer the open tag prefix so that
+     * if a frontmatter block immediately follows, its YAML keys can be emitted
+     * as HTML attributes before closing the tag. */
+    int comp_fm_pending;        /* 1 = waiting to see if frontmatter follows. */
+    int comp_fm_capturing;      /* 1 = inside component frontmatter, capturing text. */
+    char* comp_fm_tag;          /* Buffered open tag: "<tag-name ...props" (before ">"). */
+    MD_SIZE comp_fm_tag_size;
+    MD_SIZE comp_fm_tag_cap;
+    char* comp_fm_text;         /* Captured YAML text from component frontmatter. */
+    MD_SIZE comp_fm_text_size;
+    MD_SIZE comp_fm_text_cap;
 
     /* Full-HTML mode state. */
     const MD_HTML_OPTS* opts;
@@ -475,19 +489,185 @@ render_close_component_span(MD_HTML* r, const MD_SPAN_COMPONENT_DETAIL* det)
     RENDER_VERBATIM(r, ">");
 }
 
+/* Append to the component frontmatter tag buffer. */
+static int
+comp_fm_tag_append(MD_HTML* r, const char* text, MD_SIZE size)
+{
+    if(r->comp_fm_tag_size + size > r->comp_fm_tag_cap) {
+        MD_SIZE new_cap = r->comp_fm_tag_cap + r->comp_fm_tag_cap / 2 + size + 64;
+        char* p = (char*) realloc(r->comp_fm_tag, new_cap);
+        if(p == NULL) return -1;
+        r->comp_fm_tag = p;
+        r->comp_fm_tag_cap = new_cap;
+    }
+    memcpy(r->comp_fm_tag + r->comp_fm_tag_size, text, size);
+    r->comp_fm_tag_size += size;
+    return 0;
+}
+
+/* Append to the component frontmatter text buffer. */
+static int
+comp_fm_text_append(MD_HTML* r, const char* text, MD_SIZE size)
+{
+    if(r->comp_fm_text_size + size > r->comp_fm_text_cap) {
+        MD_SIZE new_cap = r->comp_fm_text_cap + r->comp_fm_text_cap / 2 + size + 64;
+        char* p = (char*) realloc(r->comp_fm_text, new_cap);
+        if(p == NULL) return -1;
+        r->comp_fm_text = p;
+        r->comp_fm_text_cap = new_cap;
+    }
+    memcpy(r->comp_fm_text + r->comp_fm_text_size, text, size);
+    r->comp_fm_text_size += size;
+    return 0;
+}
+
+/* process_output callback wrapper for capturing into comp_fm_tag buffer. */
+static void
+comp_fm_tag_capture(const MD_CHAR* text, MD_SIZE size, void* userdata)
+{
+    comp_fm_tag_append((MD_HTML*) userdata, text, size);
+}
+
+/* Flush the buffered component open tag. If YAML text was captured,
+ * parse it and emit as HTML attributes before closing ">". */
+static void
+comp_fm_flush_tag(MD_HTML* r)
+{
+    if(r->comp_fm_tag == NULL || r->comp_fm_tag_size == 0)
+        return;
+
+    /* Emit the buffered tag prefix (e.g. "<card ...props"). */
+    r->process_output(r->comp_fm_tag, r->comp_fm_tag_size, r->userdata);
+
+    /* If we captured YAML, parse and emit as attributes. */
+    if(r->comp_fm_text != NULL && r->comp_fm_text_size > 0) {
+        yaml_parser_t yp;
+        yaml_event_t event;
+
+        if(yaml_parser_initialize(&yp)) {
+            yaml_parser_set_input_string(&yp, (const unsigned char*) r->comp_fm_text,
+                                         r->comp_fm_text_size);
+
+            /* STREAM_START */
+            if(yaml_parser_parse(&yp, &event) && event.type == YAML_STREAM_START_EVENT) {
+                yaml_event_delete(&event);
+                /* DOCUMENT_START */
+                if(yaml_parser_parse(&yp, &event) && event.type == YAML_DOCUMENT_START_EVENT) {
+                    yaml_event_delete(&event);
+                    /* MAPPING_START */
+                    if(yaml_parser_parse(&yp, &event) && event.type == YAML_MAPPING_START_EVENT) {
+                        yaml_event_delete(&event);
+                        /* Iterate key-value pairs. */
+                        while(yaml_parser_parse(&yp, &event)) {
+                            char key_buf[256];
+                            size_t key_len;
+                            if(event.type == YAML_MAPPING_END_EVENT) {
+                                yaml_event_delete(&event);
+                                break;
+                            }
+                            if(event.type != YAML_SCALAR_EVENT) {
+                                yaml_event_delete(&event);
+                                break;
+                            }
+                            key_len = event.data.scalar.length;
+                            if(key_len >= sizeof(key_buf)) key_len = sizeof(key_buf) - 1;
+                            memcpy(key_buf, event.data.scalar.value, key_len);
+                            key_buf[key_len] = '\0';
+                            yaml_event_delete(&event);
+
+                            /* Read value. */
+                            if(!yaml_parser_parse(&yp, &event)) break;
+                            if(event.type == YAML_SCALAR_EVENT) {
+                                RENDER_VERBATIM(r, " ");
+                                render_html_escaped(r, key_buf, (MD_SIZE) key_len);
+                                RENDER_VERBATIM(r, "=\"");
+                                render_html_escaped(r, (const char*) event.data.scalar.value,
+                                                    (MD_SIZE) event.data.scalar.length);
+                                RENDER_VERBATIM(r, "\"");
+                            } else if(event.type == YAML_MAPPING_START_EVENT
+                                      || event.type == YAML_SEQUENCE_START_EVENT) {
+                                /* Skip nested structures. */
+                                int depth = 1;
+                                yaml_event_delete(&event);
+                                while(depth > 0 && yaml_parser_parse(&yp, &event)) {
+                                    if(event.type == YAML_MAPPING_START_EVENT
+                                       || event.type == YAML_SEQUENCE_START_EVENT)
+                                        depth++;
+                                    else if(event.type == YAML_MAPPING_END_EVENT
+                                            || event.type == YAML_SEQUENCE_END_EVENT)
+                                        depth--;
+                                    yaml_event_delete(&event);
+                                }
+                                continue;
+                            }
+                            yaml_event_delete(&event);
+                        }
+                    } else {
+                        yaml_event_delete(&event);
+                    }
+                } else {
+                    yaml_event_delete(&event);
+                }
+            } else {
+                yaml_event_delete(&event);
+            }
+            yaml_parser_delete(&yp);
+        }
+    }
+
+    RENDER_VERBATIM(r, ">\n");
+
+    /* Reset buffers. */
+    r->comp_fm_tag_size = 0;
+    r->comp_fm_text_size = 0;
+    r->comp_fm_pending = 0;
+    r->comp_fm_capturing = 0;
+}
+
 static void
 render_open_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
 {
-    RENDER_VERBATIM(r, "<");
-    render_attribute(r, &det->tag_name, render_html_escaped);
-    if(det->raw_props != NULL && det->raw_props_size > 0)
+    /* Buffer the open tag (without closing ">") so we can append
+     * frontmatter YAML attributes if a frontmatter block follows. */
+    r->comp_fm_tag_size = 0;
+    r->comp_fm_text_size = 0;
+    comp_fm_tag_append(r, "<", 1);
+
+    /* Append tag name. */
+    {
+        const MD_ATTRIBUTE* attr = &det->tag_name;
+        int i;
+        for(i = 0; attr->substr_offsets != NULL && attr->substr_offsets[i] < attr->size; i++) {
+            MD_TEXTTYPE type = attr->substr_types[i];
+            MD_SIZE off = attr->substr_offsets[i];
+            MD_SIZE next = attr->substr_offsets[i+1] < attr->size ? attr->substr_offsets[i+1] : attr->size;
+            MD_SIZE len = next - off;
+            (void) type;
+            comp_fm_tag_append(r, attr->text + off, len);
+        }
+    }
+
+    /* Append {props} if present. */
+    if(det->raw_props != NULL && det->raw_props_size > 0) {
+        /* Render props to a temp buffer by capturing output. */
+        void (*saved_output)(const MD_CHAR*, MD_SIZE, void*) = r->process_output;
+        void* saved_ud = r->userdata;
+        r->process_output = comp_fm_tag_capture;
+        r->userdata = r;
         render_html_component_props(r, det->raw_props, det->raw_props_size);
-    RENDER_VERBATIM(r, ">\n");
+        r->process_output = saved_output;
+        r->userdata = saved_ud;
+    }
+
+    r->comp_fm_pending = 1;
 }
 
 static void
 render_close_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
 {
+    /* Flush pending open tag if it was never flushed (empty component). */
+    if(r->comp_fm_pending)
+        comp_fm_flush_tag(r);
     RENDER_VERBATIM(r, "</");
     render_attribute(r, &det->tag_name, render_html_escaped);
     RENDER_VERBATIM(r, ">\n");
@@ -682,10 +862,19 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
     static const MD_CHAR* head[6] = { "<h1>", "<h2>", "<h3>", "<h4>", "<h5>", "<h6>" };
     MD_HTML* r = (MD_HTML*) userdata;
 
-    /* Frontmatter: always suppress, capture text for full-HTML. */
+    /* Frontmatter: always suppress, capture text for full-HTML or component props. */
     if(type == MD_BLOCK_FRONTMATTER) {
         r->in_frontmatter = 1;
+        if(r->comp_fm_pending) {
+            r->comp_fm_capturing = 1;
+        }
         return 0;
+    }
+
+    /* If a component tag is pending and the next block is not frontmatter,
+     * flush the buffered tag immediately. */
+    if(r->comp_fm_pending && type != MD_BLOCK_FRONTMATTER) {
+        comp_fm_flush_tag(r);
     }
 
     /* In full-HTML mode, emit <head> before first body content. */
@@ -710,7 +899,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       render_open_td_block(r, "th", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_TD:       render_open_td_block(r, "td", (MD_BLOCK_TD_DETAIL*)detail); break;
         case MD_BLOCK_FRONTMATTER:  break;  /* handled above */
-        case MD_BLOCK_COMPONENT:    render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_COMPONENT:    r->component_nesting++; render_open_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
         case MD_BLOCK_ALERT:        render_open_alert_block(r, (const MD_BLOCK_ALERT_DETAIL*) detail); break;
         case MD_BLOCK_TEMPLATE: {
             const MD_BLOCK_TEMPLATE_DETAIL* det = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
@@ -733,6 +922,10 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
     /* Frontmatter: always suppress. */
     if(type == MD_BLOCK_FRONTMATTER) {
         r->in_frontmatter = 0;
+        if(r->comp_fm_capturing) {
+            /* Component frontmatter done — flush the buffered tag with YAML attrs. */
+            comp_fm_flush_tag(r);
+        }
         return 0;
     }
 
@@ -759,7 +952,7 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
         case MD_BLOCK_TH:       RENDER_VERBATIM(r, "</th>\n"); break;
         case MD_BLOCK_TD:       RENDER_VERBATIM(r, "</td>\n"); break;
         case MD_BLOCK_FRONTMATTER:  break;  /* handled above */
-        case MD_BLOCK_COMPONENT:    render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
+        case MD_BLOCK_COMPONENT:    r->component_nesting--; render_close_block_component(r, (const MD_BLOCK_COMPONENT_DETAIL*) detail); break;
         case MD_BLOCK_ALERT:        RENDER_VERBATIM(r, "</blockquote>\n"); break;
         case MD_BLOCK_TEMPLATE:     RENDER_VERBATIM(r, "</template>\n"); break;
     }
@@ -868,9 +1061,11 @@ text_callback(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdat
 {
     MD_HTML* r = (MD_HTML*) userdata;
 
-    /* Frontmatter text: capture for full-HTML, always suppress output. */
+    /* Frontmatter text: capture for full-HTML or component frontmatter, always suppress output. */
     if(r->in_frontmatter) {
-        if(r->flags & MD_HTML_FLAG_FULL_HTML)
+        if(r->comp_fm_capturing)
+            comp_fm_text_append(r, text, size);
+        else if((r->flags & MD_HTML_FLAG_FULL_HTML) && r->component_nesting == 0)
             fm_append(r, text, size);
         return 0;
     }
@@ -947,6 +1142,8 @@ md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
     ret = md_parse(input, input_size, &parser, (void*) &render);
 
     free(render.fm_text);
+    free(render.comp_fm_tag);
+    free(render.comp_fm_text);
 
     return ret;
 }

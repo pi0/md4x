@@ -123,6 +123,31 @@ Implementation: Block components use the container mechanism (`MD_CONTAINER` wit
 
 HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
 
+## Component Frontmatter (`MD_FLAG_COMPONENTS`)
+
+Block components support YAML frontmatter as an alternative (or addition) to `{props}` syntax. A `---` delimited YAML block as the **first content** inside a component is parsed as component props:
+
+```
+::card
+
+---
+icon: mdi:microsoft-azure
+to: /drivers/azure
+title: Azure
+color: gray
+---
+
+Store data in Azure available storages.
+::
+```
+
+- The opening `---` must be the first non-blank line inside the component
+- YAML content between `---` delimiters is parsed as key-value props
+- If `{props}` are also present on the opening line, both are merged (YAML first, then `{props}`)
+- A `---` that is not the first content is treated as a normal thematic break (`<hr>`)
+
+HTML renderer: frontmatter is suppressed (not rendered). JSON renderer: YAML is parsed and merged into the component's props object: `["card", {"icon": "mdi:microsoft-azure", "to": "/drivers/azure", ...}, ...]`.
+
 ## Component Slots (`MD_FLAG_COMPONENTS`)
 
 Inside a block component, `#slot-name` at line start creates a named slot. Content after `#slot-name` until the next `#slot` or `::` closing is the slot body. Content before the first `#slot` stays as direct children (default slot).

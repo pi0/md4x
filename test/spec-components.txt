@@ -583,3 +583,77 @@ More outer
 <p>More outer</p>
 </outer>
 ````````````````````````````````
+
+## Component frontmatter as YAML props
+
+```````````````````````````````` example
+::card
+
+---
+icon: star
+title: Hello
+---
+
+Content here
+::
+.
+<card icon="star" title="Hello">
+<p>Content here</p>
+</card>
+````````````````````````````````
+
+## Component frontmatter with existing props merges both
+
+```````````````````````````````` example
+::card{type="info"}
+
+---
+icon: star
+---
+
+Content
+::
+.
+<card type="info" icon="star">
+<p>Content</p>
+</card>
+````````````````````````````````
+
+## No component frontmatter after first content line
+
+```````````````````````````````` example
+::card
+Some text
+
+---
+
+More text
+::
+.
+<card>
+<p>Some text</p>
+<hr>
+<p>More text</p>
+</card>
+````````````````````````````````
+
+## Component frontmatter in nested components
+
+```````````````````````````````` example
+:::outer
+::inner
+
+---
+key: value
+---
+
+Content
+::
+:::
+.
+<outer>
+<inner key="value">
+<p>Content</p>
+</inner>
+</outer>
+````````````````````````````````

@@ -817,10 +817,19 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
      * so must be checked first to avoid misinterpreting the union when a
      * component name collides with a static tag (e.g. ::alert{...}). */
     if(node->tag_is_dynamic) {
+        /* Component frontmatter: if first child is a frontmatter node, merge its YAML as props. */
+        if(node->first_child != NULL && node->first_child->kind == JSON_NODE_ELEMENT
+           && node->first_child->tag != NULL && !node->first_child->tag_is_dynamic
+           && strcmp(node->first_child->tag, "frontmatter") == 0
+           && node->first_child->text_value != NULL && node->first_child->text_size > 0) {
+            has_prop = json_write_yaml_props(w, node->first_child->text_value,
+                                             node->first_child->text_size) > 0;
+        }
         /* Component: parse raw props string. */
         if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {
+            if(has_prop) json_write(w, ",", 1);
             has_prop = json_write_component_props(w, node->detail.component.raw_props,
-                                                  node->detail.component.raw_props_size);
+                                                  node->detail.component.raw_props_size) || has_prop;
         }
     }
     else if(strcmp(node->tag, "ol") == 0) {
@@ -1051,7 +1060,16 @@ json_serialize_node(JSON_WRITER* w, const JSON_NODE* node)
             }
             /* Regular container: emit children. */
             else {
+                /* For dynamic components, skip frontmatter first child (merged into props). */
+                const JSON_NODE* skip_fm = NULL;
+                if(node->tag_is_dynamic && node->first_child != NULL
+                   && node->first_child->kind == JSON_NODE_ELEMENT
+                   && node->first_child->tag != NULL && !node->first_child->tag_is_dynamic
+                   && strcmp(node->first_child->tag, "frontmatter") == 0) {
+                    skip_fm = node->first_child;
+                }
                 for(child = node->first_child; child != NULL; child = child->next_sibling) {
+                    if(child == skip_fm) continue;
                     json_write(w, ",", 1);
                     json_serialize_node(w, child);
                 }

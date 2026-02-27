@@ -5388,6 +5388,7 @@ struct MD_CONTAINER_tag {
     OFF block_byte_off;
     OFF task_mark_off;
     unsigned colon_count;   /* For block components: number of colons in opener. */
+    unsigned comp_fm_state : 2; /* Component frontmatter: 0=looking, 1=inside, 2=done. */
 };
 
 
@@ -7125,13 +7126,25 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                         tmp++;
                     if(tmp >= ctx->size  ||  ISNEWLINE(tmp)) {
                         line->type = MD_LINE_BLANK;
-                        ctx->frontmatter_state = 2;
+                        if(pivot_line->data == 2) {
+                            /* Component frontmatter: mark container as done. */
+                            int i;
+                            for(i = ctx->n_containers - 1; i >= 0; i--) {
+                                if(ctx->containers[i].ch == _T(':')) {
+                                    ctx->containers[i].comp_fm_state = 2;
+                                    break;
+                                }
+                            }
+                        } else {
+                            ctx->frontmatter_state = 2;
+                        }
                         break;
                     }
                 }
             }
 
             line->type = MD_LINE_FRONTMATTER;
+            line->data = pivot_line->data;
             n_parents = ctx->n_containers;
             break;
         }
@@ -7412,6 +7425,44 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
         if(ctx->frontmatter_state == 0)
             ctx->frontmatter_state = 2;
 
+        /* Check for component frontmatter opener (--- inside a block component).
+         * Only recognized as the very first non-blank content inside a component. */
+        if((ctx->parser.flags & MD_FLAG_COMPONENTS)  &&
+            ctx->block_component_nesting > 0)
+        {
+            /* Find the innermost component container. */
+            int comp_i;
+            for(comp_i = ctx->n_containers - 1; comp_i >= 0; comp_i--) {
+                if(ctx->containers[comp_i].ch == _T(':'))
+                    break;
+            }
+            if(comp_i >= 0  &&  ctx->containers[comp_i].comp_fm_state == 0) {
+                int found_opener = FALSE;
+                if(line->indent < ctx->code_indent_offset  &&
+                   off < ctx->size  &&  CH(off) == _T('-'))
+                {
+                    OFF tmp = off;
+                    while(tmp < ctx->size  &&  CH(tmp) == _T('-'))
+                        tmp++;
+                    if(tmp - off >= 3) {
+                        while(tmp < ctx->size  &&  CH(tmp) == _T(' '))
+                            tmp++;
+                        if(tmp >= ctx->size  ||  ISNEWLINE(tmp)) {
+                            ctx->containers[comp_i].comp_fm_state = 1;
+                            line->type = MD_LINE_FRONTMATTER;
+                            line->data = 2;  /* 2 = component frontmatter */
+                            line->enforce_new_block = TRUE;
+                            found_opener = TRUE;
+                        }
+                    }
+                }
+                if(found_opener)
+                    break;
+                /* First non-blank line is not ---; disable component frontmatter. */
+                ctx->containers[comp_i].comp_fm_state = 2;
+            }
+        }
+
         /* Check for thematic break line. */
         if(line->indent < ctx->code_indent_offset
             &&  off < ctx->size  &&  off >= hr_killer
@@ -7492,6 +7543,7 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
                 container.contents_indent = line->indent;
                 container.start = (unsigned) comp_idx;
                 container.colon_count = colon_count;
+                container.comp_fm_state = 0;
 
                 if(n_brothers + n_children == 0)
                     pivot_line = &md_dummy_blank_line;

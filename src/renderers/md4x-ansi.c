@@ -106,6 +106,8 @@ struct MD_ANSI_tag {
     int li_opened;          /* just opened a list item (bullet already printed) */
     int in_alert;           /* inside an alert block */
     const char* alert_color; /* ANSI color escape for current alert bar */
+    int component_nesting;  /* block component nesting depth */
+    int in_comp_frontmatter; /* inside component frontmatter (suppress output) */
 };
 
 
@@ -440,7 +442,11 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             break;
 
         case MD_BLOCK_FRONTMATTER:
-            render_ansi(r, ANSI_DIM);
+            if(r->component_nesting > 0) {
+                r->in_comp_frontmatter = 1;
+            } else {
+                render_ansi(r, ANSI_DIM);
+            }
             break;
 
         case MD_BLOCK_COMPONENT: {
@@ -471,6 +477,7 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
                 render_separator(r);
                 r->need_newline = 0;
             }
+            r->component_nesting++;
             if(color != NULL) {
                 /* Render as alert-style box */
                 r->alert_color = color;
@@ -605,11 +612,16 @@ leave_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             break;
 
         case MD_BLOCK_FRONTMATTER:
-            render_ansi(r, ANSI_DIM_OFF);
-            r->need_newline = 1;
+            if(r->in_comp_frontmatter) {
+                r->in_comp_frontmatter = 0;
+            } else {
+                render_ansi(r, ANSI_DIM_OFF);
+                r->need_newline = 1;
+            }
             break;
 
         case MD_BLOCK_COMPONENT:
+            r->component_nesting--;
             if(r->in_alert) {
                 r->in_alert = 0;
                 r->alert_color = NULL;
@@ -726,6 +738,10 @@ static int
 text_callback(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
 {
     MD_ANSI* r = (MD_ANSI*) userdata;
+
+    /* Suppress component frontmatter text. */
+    if(r->in_comp_frontmatter)
+        return 0;
 
     switch(type) {
         case MD_TEXT_NULLCHAR:

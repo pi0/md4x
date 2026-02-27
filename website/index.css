@@ -175,14 +175,242 @@ body {
   background: #ffebe9;
 }
 
+.prose card-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 1rem 0;
+}
+
 .prose card {
   display: block;
   margin: 1rem 0;
   border: 1px solid #d0d7de;
   border-radius: 10px;
-  padding: 1rem;
+  padding: 1rem 1.1rem;
   background: #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.prose card:hover {
+  border-color: #b0b8c4;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.prose card-group card {
+  margin: 0;
+}
+
+/* Card header: icon + title */
+.prose card[title]::before,
+.prose card[icon]:not([title])::before {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.prose card[title]::before {
+  content: attr(title);
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.prose card[icon]:not([title])::before {
+  content: "";
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Iconify icon via mask-image on ::before when icon contains ":" (prefix:name) */
+.prose card[icon*=":"][title]::before {
+  --icon-url: "";
+  content: attr(title);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Emoji icons (no colon) show icon text + title */
+.prose card[icon]:not([icon*=":"])[title]::before {
+  content: attr(icon) "  " attr(title);
+}
+
+/* Emoji icon only (no title, no colon) */
+.prose card[icon]:not([icon*=":"]):not([title])::before {
+  content: attr(icon);
+  font-size: 1.3rem;
+}
+
+/*
+ * Iconify icon rendering for HTML-rendered cards.
+ * Uses a hidden <i> generated via ::after with mask-image.
+ * Since CSS cannot interpolate attr() into url(), we use a
+ * small set of known icon selectors for the demo. For production,
+ * use the Vue/React component path which renders <img> tags.
+ */
+.prose card[icon*=":"]::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  left: 1.1rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.prose card[icon*=":"] {
+  position: relative;
+  padding-left: 2.8rem;
+}
+
+.prose card[icon*=":"]::before {
+  padding-left: 0;
+}
+
+/* Iconify icon mappings for demo */
+
+.prose card[icon="mdi:folder"]::after {
+  mask-image: url("https://api.iconify.design/mdi/folder.svg");
+  -webkit-mask-image: url("https://api.iconify.design/mdi/folder.svg");
+  color: #3b82f6;
+}
+.prose card[icon="mdi:folder-multiple"]::after {
+  mask-image: url("https://api.iconify.design/mdi/folder-multiple.svg");
+  -webkit-mask-image: url("https://api.iconify.design/mdi/folder-multiple.svg");
+  color: #6b7280;
+}
+.prose card[icon="mdi:memory"]::after {
+  mask-image: url("https://api.iconify.design/mdi/memory.svg");
+  -webkit-mask-image: url("https://api.iconify.design/mdi/memory.svg");
+  color: #22c55e;
+}
+.prose card[icon="mdi:cloud"]::after {
+  mask-image: url("https://api.iconify.design/mdi/cloud.svg");
+  -webkit-mask-image: url("https://api.iconify.design/mdi/cloud.svg");
+  color: #8b5cf6;
+}
+
+/* Color accent on left border */
+.prose card[color="blue"] {
+  border-left: 3px solid #3b82f6;
+}
+.prose card[color="green"] {
+  border-left: 3px solid #22c55e;
+}
+.prose card[color="purple"] {
+  border-left: 3px solid #8b5cf6;
+}
+.prose card[color="red"] {
+  border-left: 3px solid #ef4444;
+}
+.prose card[color="yellow"] {
+  border-left: 3px solid #eab308;
+}
+.prose card[color="gray"] {
+  border-left: 3px solid #9ca3af;
+}
+
+/* Tighten card paragraph spacing */
+.prose card > p {
+  margin: 0.25em 0;
+  font-size: 0.9em;
+  color: #4b5563;
+}
+
+/* Component-rendered card (Vue/React) */
+.card-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 1rem 0;
+}
+
+.card-component {
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.card-component:hover {
+  border-color: #b0b8c4;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+a.card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.card-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+img.card-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: unset;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.card-body {
+  font-size: 0.9em;
+  color: #4b5563;
+}
+
+.card-body > p {
+  margin: 0.25em 0;
+}
+
+/* Card color accents */
+.card-blue {
+  border-left: 3px solid #3b82f6;
+}
+.card-green {
+  border-left: 3px solid #22c55e;
+}
+.card-purple {
+  border-left: 3px solid #8b5cf6;
+}
+.card-red {
+  border-left: 3px solid #ef4444;
+}
+.card-yellow {
+  border-left: 3px solid #eab308;
+}
+.card-gray {
+  border-left: 3px solid #9ca3af;
 }
 
 .prose layout {
