@@ -1,4 +1,4 @@
-import type { ComarkTree, ComarkMeta, HtmlOptions } from "./types.mjs";
+import type { ComarkTree, ComarkMeta, HtmlOptions } from "../types.mjs";
 
 export type {
   ComarkTree,
@@ -9,7 +9,7 @@ export type {
   ComarkHeading,
   ComarkMeta,
   HtmlOptions,
-} from "./types.mjs";
+} from "../types.mjs";
 
 export interface InitOptions {
   wasm?:

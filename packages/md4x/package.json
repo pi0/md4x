@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./wasm": {
+      "types": "./lib/wasm/index.d.mts",
       "unwasm": "./lib/wasm/unwasm.mjs",
       "default": "./lib/wasm/defult.mjs"
     },
