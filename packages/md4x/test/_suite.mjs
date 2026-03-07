@@ -1523,4 +1523,53 @@ export function defineSuite({
       expect(html).toContain("<strong>world</strong>");
     });
   });
+
+  describe("memory safety regressions", () => {
+    // Regression: dynamic component named "pre" or "code" must NOT flatten
+    // children into literal text. The AST renderer must check tag_is_dynamic
+    // before strcmp dispatch in json_text.
+    it("::code component children are parsed as markdown, not flattened", async () => {
+      const tree = await parseAST("::code\n\n**bold** text\n\n::");
+      const comp = tree.nodes[0];
+      expect(comp[0]).toBe("code");
+      // Children should include a paragraph with strong, not raw text
+      const p = comp.find((n) => Array.isArray(n) && n[0] === "p");
+      expect(p).toBeTruthy();
+      const strong = p.find((n) => Array.isArray(n) && n[0] === "strong");
+      expect(strong).toBeTruthy();
+    });
+
+    it("::pre component children are parsed as markdown, not flattened", async () => {
+      const tree = await parseAST("::pre\n\nHello **world**\n\n::");
+      const comp = tree.nodes[0];
+      expect(comp[0]).toBe("pre");
+      const p = comp.find((n) => Array.isArray(n) && n[0] === "p");
+      expect(p).toBeTruthy();
+    });
+
+    it("::frontmatter component children are parsed as markdown", async () => {
+      const tree = await parseAST("::frontmatter\n\nSome text\n\n::");
+      const comp = tree.nodes[0];
+      expect(comp[0]).toBe("frontmatter");
+      const p = comp.find((n) => Array.isArray(n) && n[0] === "p");
+      expect(p).toBeTruthy();
+    });
+
+    // Regression: heal_comparison_operators used a stale `text` pointer after
+    // buf_append_ch could realloc. Test with many list items with comparison
+    // operators to stress-trigger buffer growth.
+    it("heal handles many comparison operators without corruption", async () => {
+      const lines = [];
+      for (let i = 0; i < 200; i++) {
+        lines.push(`- > ${i}`);
+      }
+      const input = lines.join("\n");
+      const result = await heal(input);
+      // Every > should be escaped as \>
+      const escaped = result.split("\\>").length - 1;
+      expect(escaped).toBe(200);
+      // Should not contain any corruption / null bytes
+      expect(result).not.toContain("\0");
+    });
+  });
 }

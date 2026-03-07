@@ -21,18 +21,19 @@ typedef struct
     char *data;
     unsigned size;
     unsigned cap;
+    int error;
 } MD4X_HEAL_BUF;
 
 static void
 md4x_heal_buf_append(const char *text, unsigned size, void *userdata)
 {
     MD4X_HEAL_BUF *buf = (MD4X_HEAL_BUF *)userdata;
+    if (buf->error) return;
     if (buf->size + size > buf->cap)
     {
         unsigned new_cap = buf->cap + buf->cap / 2 + size + 256;
         char *p = (char *)realloc(buf->data, new_cap);
-        if (!p)
-            return;
+        if (!p) { buf->error = 1; return; }
         buf->data = p;
         buf->cap = new_cap;
     }
@@ -48,7 +49,10 @@ md4x_heal_input(const MD_CHAR *input, MD_SIZE input_size, MD4X_HEAL_BUF *buf)
     buf->data = NULL;
     buf->size = 0;
     buf->cap = 0;
-    return md_heal(input, input_size, md4x_heal_buf_append, buf);
+    buf->error = 0;
+    int ret = md_heal(input, input_size, md4x_heal_buf_append, buf);
+    if(buf->error) return -1;
+    return ret;
 }
 
 #endif /* MD4X_HEAL_WRAP_H */

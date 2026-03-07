@@ -1011,7 +1011,6 @@ heal_html_tag(HEAL_BUF* buf)
 static void
 heal_comparison_operators(HEAL_BUF* buf)
 {
-    const char* text = buf->data;
     unsigned size = buf->size;
     unsigned i = 0;
 
@@ -1020,23 +1019,23 @@ heal_comparison_operators(HEAL_BUF* buf)
         unsigned ls = i;
 
         /* Skip whitespace */
-        while(i < size && (text[i] == ' ' || text[i] == '\t')) i++;
+        while(i < size && (buf->data[i] == ' ' || buf->data[i] == '\t')) i++;
 
         /* Check for list marker */
         int is_list = 0;
         if(i < size) {
-            if(text[i] == '-' || text[i] == '*' || text[i] == '+') {
+            if(buf->data[i] == '-' || buf->data[i] == '*' || buf->data[i] == '+') {
                 unsigned after = i + 1;
-                if(after < size && text[after] == ' ') {
+                if(after < size && buf->data[after] == ' ') {
                     is_list = 1;
                     i = after + 1;
                 }
-            } else if(text[i] >= '0' && text[i] <= '9') {
+            } else if(buf->data[i] >= '0' && buf->data[i] <= '9') {
                 unsigned j = i;
-                while(j < size && text[j] >= '0' && text[j] <= '9') j++;
-                if(j < size && (text[j] == '.' || text[j] == ')')) {
+                while(j < size && buf->data[j] >= '0' && buf->data[j] <= '9') j++;
+                if(j < size && (buf->data[j] == '.' || buf->data[j] == ')')) {
                     j++;
-                    if(j < size && text[j] == ' ') {
+                    if(j < size && buf->data[j] == ' ') {
                         is_list = 1;
                         i = j + 1;
                     }
@@ -1044,23 +1043,25 @@ heal_comparison_operators(HEAL_BUF* buf)
             }
         }
 
-        if(is_list && i < size && text[i] == '>') {
+        if(is_list && i < size && buf->data[i] == '>') {
             /* Check what follows > */
             unsigned gt_pos = i;
             i++;
             int has_eq = 0;
-            if(i < size && text[i] == '=') { has_eq = 1; i++; }
+            if(i < size && buf->data[i] == '=') { has_eq = 1; i++; }
             /* Skip optional spaces */
-            while(i < size && text[i] == ' ') i++;
+            while(i < size && buf->data[i] == ' ') i++;
             /* Optional $ */
-            if(i < size && text[i] == '$') i++;
+            if(i < size && buf->data[i] == '$') i++;
             /* Check for digit */
-            if(i < size && text[i] >= '0' && text[i] <= '9') {
+            if(i < size && buf->data[i] >= '0' && buf->data[i] <= '9') {
                 /* This is a comparison operator — need to escape > */
-                if(!in_fenced_code_block(text, size, gt_pos)) {
+                if(!in_fenced_code_block(buf->data, size, gt_pos)) {
                     /* Insert \ before > */
                     unsigned old_size = buf->size;
                     buf_append_ch(buf, 0); /* grow by 1 */
+                    if(buf->size <= old_size)
+                        return; /* realloc failed */
                     memmove(buf->data + gt_pos + 1, buf->data + gt_pos, old_size - gt_pos);
                     buf->data[gt_pos] = '\\';
                     size = buf->size;
@@ -1070,7 +1071,7 @@ heal_comparison_operators(HEAL_BUF* buf)
         }
 
         /* Skip to end of line */
-        while(i < size && text[i] != '\n') i++;
+        while(i < size && buf->data[i] != '\n') i++;
         if(i < size) i++; /* skip \n */
 
         (void) ls;

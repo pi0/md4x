@@ -610,8 +610,10 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
         return 0;
     }
 
-    /* Leaf container nodes: accumulate text as literal on the parent node. */
-    if(ctx->current->tag != NULL &&
+    /* Leaf container nodes: accumulate text as literal on the parent node.
+     * Dynamic components (tag_is_dynamic) must never match here, even if
+     * their name collides with a built-in tag (e.g. ::pre, ::code). */
+    if(!ctx->current->tag_is_dynamic && ctx->current->tag != NULL &&
        (strcmp(ctx->current->tag, "pre") == 0
         || strcmp(ctx->current->tag, "html_block") == 0
         || strcmp(ctx->current->tag, "code") == 0

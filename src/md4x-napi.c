@@ -40,15 +40,17 @@ typedef struct {
     char* data;
     unsigned size;
     unsigned cap;
+    int error;
 } napi_buf;
 
 static void napi_buf_append(const MD_CHAR* text, MD_SIZE size, void* userdata)
 {
     napi_buf* buf = (napi_buf*) userdata;
+    if(buf->error) return;
     if(buf->size + size > buf->cap) {
         unsigned new_cap = buf->cap + buf->cap / 2 + size + 256;
         char* p = (char*) realloc(buf->data, new_cap);
-        if(!p) return;
+        if(!p) { buf->error = 1; return; }
         buf->data = p;
         buf->cap = new_cap;
     }
@@ -93,12 +95,12 @@ render_impl(napi_env env, napi_callback_info info, md4x_render_fn fn)
     }
 
     /* Render with all extensions enabled */
-    napi_buf buf = { NULL, 0, 0 };
+    napi_buf buf = { NULL, 0, 0, 0 };
     int ret = fn(input, (unsigned) input_size, napi_buf_append, &buf,
                  MD_DIALECT_ALL, renderer_flags);
     free(input);
 
-    if(ret != 0) {
+    if(ret != 0 || buf.error) {
         free(buf.data);
         napi_throw_error(env, NULL, "Markdown parsing failed");
         return NULL;
@@ -202,11 +204,11 @@ static napi_value md4x_napi_heal(napi_env env, napi_callback_info info)
     }
     napi_get_value_string_utf8(env, argv[0], input, input_size + 1, &input_size);
 
-    napi_buf buf = { NULL, 0, 0 };
+    napi_buf buf = { NULL, 0, 0, 0 };
     int ret = md_heal(input, (unsigned) input_size, napi_buf_append, &buf);
     free(input);
 
-    if(ret != 0) {
+    if(ret != 0 || buf.error) {
         free(buf.data);
         napi_throw_error(env, NULL, "Markdown heal failed");
         return NULL;

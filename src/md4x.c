@@ -456,7 +456,9 @@ md_text_with_null_replacement(MD_CTX* ctx, MD_TEXTTYPE type, const CHAR* str, SZ
         ret = ctx->parser.text(MD_TEXT_NULLCHAR, _T(""), 1, ctx->userdata);
         if(ret != 0)
             return ret;
-        off++;
+        str++;
+        size--;
+        off = 0;
     }
 }
 
@@ -1489,16 +1491,14 @@ md_build_attr_append_substr(MD_CTX* ctx, MD_ATTRIBUTE_BUILD* build,
             MD_LOG("realloc() failed.");
             return -1;
         }
+        build->substr_types = new_substr_types;
         /* Note +1 to reserve space for final offset (== raw_size). */
         new_substr_offsets = (OFF*) realloc(build->substr_offsets,
                                     (build->substr_alloc+1) * sizeof(OFF));
         if(new_substr_offsets == NULL) {
             MD_LOG("realloc() failed.");
-            free(new_substr_types);
             return -1;
         }
-
-        build->substr_types = new_substr_types;
         build->substr_offsets = new_substr_offsets;
     }
 

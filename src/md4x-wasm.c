@@ -46,15 +46,17 @@ typedef struct {
     char* data;
     unsigned size;
     unsigned cap;
+    int error;
 } md4x_buf;
 
 static void buf_append(const MD_CHAR* text, MD_SIZE size, void* userdata)
 {
     md4x_buf* buf = (md4x_buf*) userdata;
+    if(buf->error) return;
     if(buf->size + size > buf->cap) {
         unsigned new_cap = buf->cap + buf->cap / 2 + size + 256;
         char* p = (char*) realloc(buf->data, new_cap);
-        if(!p) return;
+        if(!p) { buf->error = 1; return; }
         buf->data = p;
         buf->cap = new_cap;
     }
@@ -101,15 +103,16 @@ typedef int (*md4x_render_fn)(const MD_CHAR*, MD_SIZE,
 static int render(md4x_render_fn fn, const char* input, unsigned input_size,
                   unsigned renderer_flags)
 {
-    md4x_buf buf = { NULL, 0, 0 };
+    md4x_buf buf = { NULL, 0, 0, 0 };
     int ret = fn(input, input_size, buf_append, &buf,
                  MD_DIALECT_ALL, renderer_flags);
-    if(ret != 0) {
+    if(ret != 0 || buf.error) {
         free(buf.data);
         g_result_data = NULL;
         g_result_size = 0;
         return -1;
     }
+    /* Caller (JS) frees previous g_result_data via md4x_free(md4x_result_ptr()). */
     g_result_data = buf.data;
     g_result_size = buf.size;
     return 0;
@@ -153,14 +156,15 @@ int md4x_to_text(const char* input, unsigned input_size,
 __attribute__((export_name("md4x_heal")))
 int md4x_heal(const char* input, unsigned input_size)
 {
-    md4x_buf buf = { NULL, 0, 0 };
+    md4x_buf buf = { NULL, 0, 0, 0 };
     int ret = md_heal(input, input_size, buf_append, &buf);
-    if(ret != 0) {
+    if(ret != 0 || buf.error) {
         free(buf.data);
         g_result_data = NULL;
         g_result_size = 0;
         return -1;
     }
+    /* Caller (JS) frees previous g_result_data via md4x_free(md4x_result_ptr()). */
     g_result_data = buf.data;
     g_result_size = buf.size;
     return 0;
