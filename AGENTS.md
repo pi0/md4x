@@ -261,6 +261,7 @@ Based on past bugs found via fuzzing. **Check these patterns when modifying C co
 7. **Uncapped user-controlled ranges** — Cap ranges from user input (e.g. highlight ranges `{1-99999}`) at reasonable limits to prevent excessive allocation.
 
 **Audit checklist when reviewing C changes:**
+
 - Search for fixed-size arrays → verify bounds checks at every insertion
 - Search for pointer caching across realloc → verify no stale pointer use after buffer growth
 - Audit `strcmp(node->tag, ...)` dispatch → verify `tag_is_dynamic` checked first
