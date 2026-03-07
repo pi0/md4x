@@ -435,7 +435,7 @@ json_leave_block(MD_BLOCKTYPE type, void* detail, void* userdata)
     (void) detail;
 
     /* Convert html_block comments to [null, {}, "body"] nodes. */
-    if(type == MD_BLOCK_HTML && ctx->current->text_value != NULL) {
+    if(type == MD_BLOCK_HTML && ctx->current != NULL && ctx->current->text_value != NULL) {
         const char* body;
         MD_SIZE body_size;
         if(json_is_html_comment(ctx->current->text_value, ctx->current->text_size,

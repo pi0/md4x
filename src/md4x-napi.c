@@ -146,12 +146,12 @@ static napi_value md4x_napi_to_html(napi_env env, napi_callback_info info)
     }
 
     /* Render */
-    napi_buf buf = { NULL, 0, 0 };
+    napi_buf buf = { NULL, 0, 0, 0 };
     int ret = md_html(input, (unsigned) input_size, napi_buf_append, &buf,
                       MD_DIALECT_ALL, renderer_flags);
     free(input);
 
-    if(ret != 0) {
+    if(ret != 0 || buf.error) {
         free(buf.data);
         napi_throw_error(env, NULL, "Markdown parsing failed");
         return NULL;
