@@ -1,14 +1,12 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "md4x-html.h"
+#include "md4x-ansi.h"
 
 
 static void
 process_output(const MD_CHAR* text, MD_SIZE size, void* userdata)
 {
-   /* This is a dummy function because we don't need to generate any output
-    * actually. */
    return;
 }
 
@@ -17,7 +15,6 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     unsigned parser_flags, renderer_flags;
 
-    /* We interpret the 1st 8 bytes as parser flags and renderer flags. */
     if(size < 2 * sizeof(unsigned)) {
         return 0;
     }
@@ -26,6 +23,6 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     data += 2 * sizeof(unsigned);
     size -= 2 * sizeof(unsigned);
 
-    md_html((const MD_CHAR*)data, size, process_output, NULL, parser_flags, renderer_flags);
+    md_ansi((const MD_CHAR*)data, size, process_output, NULL, parser_flags, renderer_flags);
     return 0;
 }

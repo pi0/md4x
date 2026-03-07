@@ -72,7 +72,9 @@ test/
   pathological-tests.py # Stress tests for DoS resistance
   prog.py              # Program execution wrapper
   normalize.py         # HTML normalization for comparison
-  fuzzers/             # LibFuzzer integration + seed corpus
+  fuzzers/             # LibFuzzer harnesses (html, ast, ansi, text, meta, heal)
+    build.sh           # Build script for all fuzzers (clang + sanitizers)
+    seed-corpus/       # Seed inputs (commonmark, gfm, frontmatter, components, etc.)
 scripts/
   run-tests.ts            # Main test runner (runs all suites)
   build-entity-map.ts     # Generates entity.c from WHATWG spec
@@ -152,6 +154,40 @@ python3 test/pathological-tests.py -p zig-out/bin/md4x
 Test format: Markdown examples with `.` separator and expected HTML output. The test runner pipes input through `md4x` and compares normalized output.
 
 Test suites: `spec.txt`, `spec-tables.txt`, `spec-strikethrough.txt`, `spec-tasklists.txt`, `spec-wiki-links.txt`, `spec-latex-math.txt`, `spec-permissive-autolinks.txt`, `spec-hard-soft-breaks.txt`, `spec-underline.txt`, `spec-frontmatter.txt`, `spec-components.txt`, `spec-attributes.txt`, `spec-alerts.txt`, `regressions.txt`, `coverage.txt`
+
+## Fuzzing
+
+LibFuzzer harnesses for all renderers and the heal utility. Requires clang with LibFuzzer and libyaml.
+
+```sh
+# Build all fuzzers:
+./test/fuzzers/build.sh
+
+# Build a single fuzzer:
+./test/fuzzers/build.sh html    # or: ast, ansi, text, meta, heal
+
+# Run a fuzzer with seed corpus:
+./fuzz-out/fuzz-mdhtml test/fuzzers/seed-corpus/
+
+# Run with corpus directory + time limit:
+mkdir -p corpus-html
+./fuzz-out/fuzz-mdhtml corpus-html test/fuzzers/seed-corpus/ -max_total_time=300
+```
+
+Output goes to `fuzz-out/` (gitignored). Environment variables: `CC` (compiler, default: `clang`), `SANITIZERS` (default: `fuzzer,address,undefined`), `FUZZ_OUT_DIR` (output dir).
+
+**Harnesses:**
+
+| Harness         | Target      | Notes                                                 |
+| --------------- | ----------- | ----------------------------------------------------- |
+| `fuzz-mdhtml.c` | `md_html()` | HTML renderer + libyaml                               |
+| `fuzz-mdast.c`  | `md_ast()`  | AST renderer (in-memory tree, libyaml) — highest risk |
+| `fuzz-mdansi.c` | `md_ansi()` | ANSI terminal renderer                                |
+| `fuzz-mdtext.c` | `md_text()` | Plain text renderer                                   |
+| `fuzz-mdmeta.c` | `md_meta()` | Metadata extractor + libyaml                          |
+| `fuzz-mdheal.c` | `md_heal()` | Heal utility (no flags, no parser dependency)         |
+
+All parser-based harnesses use the first 8 bytes of input as `parser_flags` + `renderer_flags` to explore flag combinations. Seed corpus in `test/fuzzers/seed-corpus/` covers: CommonMark, GFM, LaTeX math, wiki links, frontmatter, components, attributes, alerts, underline, code block metadata, and heal edge cases.
 
 ## `md4x` CLI
 
