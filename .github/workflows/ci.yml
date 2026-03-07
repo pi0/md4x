@@ -35,6 +35,18 @@ jobs:
       - name: Test (vitest)
         run: bun vitest
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Test (Rust)
+        run: cargo test --workspace --locked
+        working-directory: rust
+
       - name: Build Playground
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: bun run build

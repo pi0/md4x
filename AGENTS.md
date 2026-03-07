@@ -7,7 +7,7 @@
 
 - **Version:** 0.5.2 (next: 0.5.3 WIP)
 - **License:** MIT
-- **Language:** C (C89/C99 compatible)
+- **Language:** C (C89/C99 compatible), Rust (bindings workspace in `rust/`)
 - **Spec:** CommonMark 0.31.2
 - **Build:** Zig (`zig build`)
 - **JS Runtime:** Bun (do **not** use npm, pnpm, yarn, or npx — use `bun`/`bunx` exclusively)
@@ -63,6 +63,17 @@ packages/md4x/           # npm package
   bench/
     _fixtures.mjs        # Benchmark fixture strings (small, medium, large)
     index.mjs            # Benchmark runner (mitata, compares napi/wasm/md4w/markdown-it)
+rust/                    # Rust workspace
+  Cargo.toml             # Workspace manifest (`md4x`, `md4x-sys`)
+  Cargo.lock             # Rust dependency lockfile
+  md4x/                  # Safe Rust API crate
+    Cargo.toml           # Crate manifest (safe bindings)
+    src/lib.rs           # Safe high-level Rust API + tests
+  md4x-sys/              # Raw FFI crate
+    Cargo.toml           # Crate manifest (links = "md4x")
+    build.rs             # Compiles bundled C sources + bundled libyaml via `cc`
+    src/lib.rs           # Raw FFI types, flags, structs, and externs
+    vendor/libyaml/      # Bundled libyaml 0.2.5 sources
 test/
   spec.txt             # CommonMark 0.31.2 spec tests
   spec-*.txt           # Extension-specific tests (tables, strikethrough, frontmatter, etc.)
@@ -104,7 +115,8 @@ package.json             # Root workspace package (bun, workspaces: packages/*, 
 build.zig                # Zig build script
 build.zig.zon            # Zig package manifest
 .github/workflows/
-  ci-build.yml         # Build + test (Linux/Windows, debug/release, coverage)
+  ci.yml               # Main CI (build, JS tests, Rust tests, pages build/deploy)
+  release.yml          # Tagged release (build/tests + npm/crates publishing)
 ```
 
 ## Building
@@ -115,6 +127,7 @@ Uses Zig build system. External dependency: [libyaml](https://github.com/yaml/li
 zig build                          # build all (defaults to ReleaseFast)
 zig build -Doptimize=Debug         # debug build
 zig build && zig-out/bin/md4x --help  # run md4x CLI
+cd rust && cargo build --workspace # build Rust bindings workspace
 ```
 
 Outputs to `zig-out/` (`bin/md4x`, `lib/libmd4x*.a`, `include/md4x*.h`).
@@ -133,6 +146,8 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **md4x** — CLI utility (supports `--format=html|text|json|ansi|heal`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
 - **md4x.{platform}-{arch}[-musl].node** — Cross-compiled NAPI addons (`zig build napi-all`, 9 targets)
+- **rust/md4x-sys** — Raw FFI Rust crate (compiles bundled C/libyaml sources)
+- **rust/md4x** — Safe Rust API crate built on top of `md4x-sys`
 
 Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
 
@@ -141,6 +156,9 @@ Compiler flags: `-Wall -Wextra -Wshadow -Wdeclaration-after-statement -O2`
 ```sh
 # Run all test suites:
 bun scripts/run-tests.ts
+
+# Run Rust tests:
+cd rust && cargo test --workspace
 
 # Individual test suite:
 python3 test/run-testsuite.py -s test/spec.txt -p zig-out/bin/md4x

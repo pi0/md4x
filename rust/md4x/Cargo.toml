@@ -1,0 +1,10 @@
+[package]
+name = "md4x"
+version = "0.0.18"
+edition = "2021"
+description = "Safe Rust bindings to md4x, a fast CommonMark markdown parser"
+license = "MIT"
+
+[dependencies]
+md4x-sys = { version = "0.0.18", path = "../md4x-sys" }
+bitflags = "2"

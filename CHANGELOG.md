@@ -4,6 +4,8 @@
 
 ### Features
 
+- **Rust crate**: Safe Rust bindings in `rust/` workspace (`md4x-sys` raw FFI + `md4x` safe API). Compiles C sources via the `cc` crate with bundled libyaml 0.2.5 — no system dependencies required.
+- **CI/CD**: Added Rust workspace testing in CI and crates.io publish steps in release workflow (`md4x-sys` then `md4x`, guarded by `CARGO_REGISTRY_TOKEN`).
 - **`md_heal()` — Markdown heal/completion utility**: Fixes incomplete/streaming Markdown text so it renders correctly mid-stream. Inspired by [remend](https://github.com/vercel/streamdown/tree/main/packages/remend). Heals unclosed bold/italic/strikethrough/code/math markers, completes incomplete links, removes incomplete images, closes open code blocks, strips incomplete HTML tags, prevents setext heading misinterpretation, and escapes comparison operators in list items.
 - **CLI**: New `--format=heal` output format for the `md4x` CLI
 - **JS bindings**: New `heal(input)` function exported from both `md4x/napi` and `md4x/wasm`
