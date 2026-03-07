@@ -34,6 +34,9 @@ jobs:
       - name: Build (gcc for CodeQL tracing)
         run: |
           gcc -c -Wall -Wextra -O2 -DMD4X_USE_UTF8 \
+            -DMD_VERSION_MAJOR=0 -DMD_VERSION_MINOR=0 -DMD_VERSION_RELEASE=18 \
+            -DYAML_VERSION_STRING=\"0.2.5\" \
+            -DYAML_VERSION_MAJOR=0 -DYAML_VERSION_MINOR=2 -DYAML_VERSION_PATCH=5 \
             -Isrc -Isrc/renderers -I/tmp/libyaml/include \
             src/md4x.c src/entity.c \
             src/renderers/md4x-html.c src/renderers/md4x-ast.c \
