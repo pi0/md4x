@@ -60,3 +60,7 @@ export function parseMeta(input) {
   }
   return meta;
 }
+
+export function heal(input) {
+  return getBinding().heal(input);
+}

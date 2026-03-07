@@ -17,6 +17,7 @@ npx md4x README.md -t html                  # HTML output
 npx md4x README.md -t text                  # Plain text output (strip markdown)
 npx md4x README.md -t ast                   # JSON AST output (comark)
 npx md4x README.md -t meta                  # Metadata JSON output
+npx md4x README.md -t heal                  # Heal incomplete markdown
 
 # Remote sources
 npx md4x https://nitro.build/guide          # Fetch and render any URL
@@ -51,6 +52,7 @@ import {
   renderToText,
   renderToMeta,
   parseMeta,
+  heal,
 } from "md4x";
 
 // await init(); // required for WASM, optional for NAPI
@@ -62,6 +64,8 @@ const ansi = renderToAnsi("# Hello, **world**!");
 const text = renderToText("# Hello, **world**!"); // plain text (stripped)
 const metaJson = renderToMeta("# Hello, **world**!"); // raw JSON string
 const meta = parseMeta("# Hello, **world**!"); // parsed meta
+
+const healed = heal("**incomplete streaming mark"); // "**incomplete streaming mark**"
 ```
 
 Both NAPI and WASM export a unified API with `init()`. For WASM, `init()` must be called before rendering. For NAPI, it is optional (the native binding loads lazily on first render call).
@@ -134,6 +138,53 @@ summary
 
 Note: markdown-it parser returns an array of tokens while md4x returns nested comark AST.
 
+### Markdown Healing
+
+`heal()` fixes incomplete markdown from streaming LLM output — closing unclosed bold, italic, strikethrough, inline code, code blocks, links, and more. Useful for rendering partial markdown in real-time as tokens arrive.
+
+````js
+import { heal } from "md4x";
+
+heal("**bold"); // "**bold**"
+heal("*ita"); // "*ita*"
+heal("~~strike"); // "~~strike~~"
+heal("`code"); // "`code`"
+heal("```js\ncode"); // "```js\ncode\n```"
+heal("[text](http:"); // ""  (strips broken links)
+````
+
+```
+bun packages/md4x/bench/heal.mjs
+
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+md4x-napi heal (small)          702.85 ns/iter
+md4x-wasm heal (small)            1.57 µs/iter
+remend heal (small)                3.71 µs/iter
+
+summary
+  md4x-napi heal (small)
+   2.23x faster than md4x-wasm heal (small)
+   5.28x faster than remend heal (small)
+
+md4x-napi heal (medium)          2.13 µs/iter
+md4x-wasm heal (medium)          3.23 µs/iter
+remend heal (medium)             24.59 µs/iter
+
+summary
+  md4x-napi heal (medium)
+   1.52x faster than md4x-wasm heal (medium)
+   11.55x faster than remend heal (medium)
+
+md4x-napi heal (large)          95.09 µs/iter
+md4x-wasm heal (large)         137.68 µs/iter
+remend heal (large)             10.95 ms/iter
+
+summary
+  md4x-napi heal (large)
+   1.45x faster than md4x-wasm heal (large)
+   115.18x faster than remend heal (large)
+```
+
 ## Zig Package
 
 MD4X can be consumed as a Zig package dependency via `build.zig.zon`.
@@ -205,6 +256,16 @@ Extracts frontmatter and headings as a flat JSON object:
 
 md_meta(input, input_size, output, stdout, MD_DIALECT_GITHUB, 0);
 // {"title":"Hello","headings":[{"level":1,"text":"Hello"}]}
+```
+
+#### Heal Utility
+
+Fixes incomplete/streaming markdown by closing unclosed delimiters:
+
+```c
+#include "md4x-heal.h"
+
+md_heal(input, input_size, output, stdout);
 ```
 
 #### Low-Level Parser

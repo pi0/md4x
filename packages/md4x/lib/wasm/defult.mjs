@@ -6,6 +6,7 @@ export {
   parseMeta,
   renderToMeta,
   renderToText,
+  heal,
 } from "./common.mjs";
 
 import { _setInstance, _imports, _hasInstance } from "./common.mjs";

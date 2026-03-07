@@ -17,6 +17,7 @@ export function defineSuite({
   renderToMeta,
   parseMeta,
   renderToText,
+  heal,
 }) {
   describe("renderToHtml", () => {
     it("renders a heading", async () => {
@@ -1351,6 +1352,117 @@ export function defineSuite({
     it("renders real-world content without error", async () => {
       const text = await renderToText(nitroIndex);
       expect(text.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("heal", () => {
+    it("completes incomplete bold", async () => {
+      expect(await heal("**hello")).toBe("**hello**");
+    });
+
+    it("completes incomplete italic (*)", async () => {
+      expect(await heal("*hello")).toBe("*hello*");
+    });
+
+    it("completes incomplete italic (_)", async () => {
+      expect(await heal("_hello")).toBe("_hello_");
+    });
+
+    it("completes incomplete italic (__)", async () => {
+      expect(await heal("__hello")).toBe("__hello__");
+    });
+
+    it("completes incomplete bold-italic (***)", async () => {
+      expect(await heal("***hello")).toBe("***hello***");
+    });
+
+    it("completes incomplete strikethrough", async () => {
+      expect(await heal("~~hello")).toBe("~~hello~~");
+    });
+
+    it("completes incomplete inline code", async () => {
+      expect(await heal("`hello")).toBe("`hello`");
+    });
+
+    it("closes unclosed code block", async () => {
+      expect(await heal("```\ncode\n")).toBe("```\ncode\n```");
+    });
+
+    it("completes incomplete katex", async () => {
+      expect(await heal("$$x+y")).toBe("$$x+y$$");
+    });
+
+    it("completes incomplete link url", async () => {
+      expect(await heal("[text](url")).toBe("[text]()");
+    });
+
+    it("removes incomplete link text bracket", async () => {
+      expect(await heal("[text")).toBe("text");
+    });
+
+    it("removes incomplete image", async () => {
+      expect(await heal("text ![alt](url")).toBe("text");
+    });
+
+    it("handles half-complete bold", async () => {
+      expect(await heal("**bold*")).toBe("**bold**");
+    });
+
+    it("handles half-complete strikethrough", async () => {
+      expect(await heal("~~strike~")).toBe("~~strike~~");
+    });
+
+    it("handles half-complete italic (__)", async () => {
+      expect(await heal("__italic_")).toBe("__italic__");
+    });
+
+    it("preserves already complete formatting", async () => {
+      expect(await heal("**bold** and *italic*")).toBe("**bold** and *italic*");
+    });
+
+    it("preserves plain text", async () => {
+      expect(await heal("hello world")).toBe("hello world");
+    });
+
+    it("strips trailing single space", async () => {
+      expect(await heal("hello ")).toBe("hello");
+    });
+
+    it("preserves trailing double space (line break)", async () => {
+      expect(await heal("hello  ")).toBe("hello  ");
+    });
+
+    it("strips incomplete HTML tag", async () => {
+      expect(await heal("text <div")).toBe("text");
+    });
+
+    it("prevents setext heading with dash", async () => {
+      const result = await heal("heading\n-");
+      expect(result).toContain("\u200B");
+    });
+
+    it("does not modify triple dash (thematic break)", async () => {
+      expect(await heal("heading\n---")).toBe("heading\n---");
+    });
+
+    it("handles empty input", async () => {
+      expect(await heal("")).toBe("");
+    });
+
+    it("escapes comparison operators in lists", async () => {
+      expect(await heal("- > 5")).toBe("- \\> 5");
+    });
+
+    it("does not modify blockquotes", async () => {
+      expect(await heal("> quote")).toBe("> quote");
+    });
+
+    it("handles block katex with newlines", async () => {
+      expect(await heal("$$\nx + y")).toBe("$$\nx + y\n$$");
+    });
+
+    it("does not heal inside code blocks", async () => {
+      expect(await heal("```\n**bold\n```")).toBe("```\n**bold\n```");
     });
   });
 }

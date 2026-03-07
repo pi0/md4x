@@ -36,8 +36,10 @@ src/
     md4x-meta.h        # Meta renderer public API
     md4x-text.c        # Plain text renderer library (~350 LoC)
     md4x-text.h        # Plain text renderer public API
+    md4x-heal.c        # Markdown heal/completion utility (~600 LoC)
+    md4x-heal.h        # Heal utility public API
   cli/
-    md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi)
+    md4x-cli.c           # CLI utility (multi-format: html, text, json, ansi, heal)
     cmdline.c            # Command-line parser (from c-reusables)
     cmdline.h            # Command-line parser API
     md4x.1               # Man page
@@ -127,7 +129,8 @@ Produces four static libraries, one executable, and optional WASM/NAPI targets:
 - **libmd4x-ansi** — ANSI terminal renderer (links against libmd4x)
 - **libmd4x-meta** — Meta renderer (links against libmd4x)
 - **libmd4x-text** — Plain text renderer (links against libmd4x)
-- **md4x** — CLI utility (supports `--format=html|text|json|ansi`)
+- **libmd4x-heal** — Markdown heal/completion utility (standalone, no parser dependency)
+- **md4x** — CLI utility (supports `--format=html|text|json|ansi|heal`)
 - **md4x.wasm** — WASM library (`zig build wasm`, output: `packages/md4x/build/md4x.wasm`)
 - **md4x.{platform}-{arch}[-musl].node** — Cross-compiled NAPI addons (`zig build napi-all`, 9 targets)
 
@@ -159,13 +162,13 @@ md4x [OPTION]... [FILE]
 
 **General options:**
 
-| Option                  | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| `-o`, `--output=FILE`   | Output file (default: stdout)                           |
-| `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json`, `ansi` |
-| `-s`, `--stat`          | Measure parsing time                                    |
-| `-h`, `--help`          | Display help                                            |
-| `-v`, `--version`       | Display version                                         |
+| Option                  | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `-o`, `--output=FILE`   | Output file (default: stdout)                                   |
+| `-t`, `--format=FORMAT` | Output format: `html` (default), `text`, `json`, `ansi`, `heal` |
+| `-s`, `--stat`          | Measure parsing time                                            |
+| `-h`, `--help`          | Display help                                                    |
+| `-v`, `--version`       | Display version                                                 |
 
 All extensions are enabled by default (`MD_DIALECT_ALL`). No dialect preset flags.
 

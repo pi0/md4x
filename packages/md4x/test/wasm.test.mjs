@@ -8,6 +8,7 @@ import {
   renderToMeta,
   parseMeta,
   renderToText,
+  heal,
 } from "md4x/wasm";
 import { defineSuite } from "./_suite.mjs";
 
@@ -23,4 +24,5 @@ defineSuite({
   renderToMeta,
   parseMeta,
   renderToText,
+  heal,
 });

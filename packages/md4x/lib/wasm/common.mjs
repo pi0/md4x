@@ -85,3 +85,8 @@ export function parseMeta(input) {
   }
   return meta;
 }
+
+export function heal(input) {
+  const exports = _getExports();
+  return render(exports, exports.md4x_heal, input);
+}

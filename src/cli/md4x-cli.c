@@ -32,6 +32,7 @@
 #include "md4x-ast.h"
 #include "md4x-ansi.h"
 #include "md4x-text.h"
+#include "md4x-heal.h"
 #include "cmdline.h"
 
 
@@ -41,10 +42,11 @@ typedef enum {
     FORMAT_HTML,
     FORMAT_TEXT,
     FORMAT_JSON,
-    FORMAT_ANSI
+    FORMAT_ANSI,
+    FORMAT_HEAL
 } OutputFormat;
 
-static const char* format_name[] = { "html", "text", "json", "ansi" };
+static const char* format_name[] = { "html", "text", "json", "ansi", "heal" };
 
 /* Global options. */
 static OutputFormat output_format = FORMAT_HTML;
@@ -226,6 +228,11 @@ process_file(const char* in_path, FILE* in, FILE* out)
                         (void*) &buf_out, p_flags, t_flags);
             break;
         }
+        case FORMAT_HEAL: {
+            ret = md_heal(buf_in.data, (MD_SIZE)buf_in.size, process_output,
+                        (void*) &buf_out);
+            break;
+        }
     }
 
     t1 = clock();
@@ -284,7 +291,7 @@ usage(void)
         "\n"
         "General options:\n"
         "  -o  --output=FILE    Output file (default is standard output)\n"
-        "  -t, --format=FORMAT  Output format: html (default), text, json, ansi\n"
+        "  -t, --format=FORMAT  Output format: html (default), text, json, ansi, heal\n"
         "  -s, --stat           Measure time of input parsing\n"
         "  -h, --help           Display this help and exit\n"
         "  -v, --version        Display version and exit\n"
@@ -337,9 +344,11 @@ cmdline_callback(int opt, char const* value, void* data)
                 output_format = FORMAT_JSON;
             else if(strcmp(value, "ansi") == 0)
                 output_format = FORMAT_ANSI;
+            else if(strcmp(value, "heal") == 0)
+                output_format = FORMAT_HEAL;
             else {
                 fprintf(stderr, "Unknown format: %s\n", value);
-                fprintf(stderr, "Supported formats: html, text, json, ansi\n");
+                fprintf(stderr, "Supported formats: html, text, json, ansi, heal\n");
                 exit(1);
             }
             break;

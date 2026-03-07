@@ -228,3 +228,42 @@ int md_text(const MD_CHAR* input, MD_SIZE input_size,
 - Entities resolved to UTF-8 characters
 - Raw HTML: stripped (no output)
 - Uses streaming renderer pattern (like HTML renderer), no AST construction
+
+## Heal Utility API (`md4x-heal.h`)
+
+Fixes incomplete/streaming Markdown text so it renders correctly mid-stream. This is a **pre-parser text transform** — it does not use `md_parse()` and has no parser dependency.
+
+Inspired by [remend](https://github.com/vercel/streamdown/tree/main/packages/remend).
+
+```c
+int md_heal(const char* input, unsigned input_size,
+            void (*process_output)(const char*, unsigned, void*),
+            void* userdata);
+```
+
+Returns 0 on success, -1 on error.
+
+### Healing Operations (applied in priority order)
+
+1. **Comparison operators** — Escapes `>` as `\>` in list items where it's a comparison operator (e.g., `- > 5` → `- \> 5`)
+2. **HTML tags** — Strips incomplete HTML tags at end of text (e.g., `text <div` → `text`)
+3. **Setext headings** — Appends zero-width space to 1-2 char `-`/`=` lines to prevent misinterpretation as heading underlines
+4. **Links/images** — Completes incomplete link URLs with `()`, removes incomplete link brackets, removes incomplete image markup entirely
+5. **Bold-italic (`\***`)** — Closes unclosed `\*\*\*` markers
+6. **Bold (`**`)** — Closes unclosed `**`markers, handles half-complete`**text\*`→`**text**`
+7. **Italic (`__`)** — Closes unclosed `__` markers, handles half-complete `__text_` → `__text__`
+8. **Italic (`*`)** — Closes unclosed single `*` markers
+9. **Italic (`_`)** — Closes unclosed single `_` markers
+10. **Inline code** — Closes unclosed backticks
+11. **Strikethrough (`~~`)** — Closes unclosed `~~` markers, handles half-complete `~~text~` → `~~text~~`
+12. **KaTeX (`$$`)** — Closes unclosed `$$` math blocks (preserves newlines for block math)
+13. **Code blocks** — Closes unclosed fenced code blocks (` ``` `)
+
+### Context Awareness
+
+- Formatting inside fenced code blocks is never healed
+- Complete inline code spans are respected (no emphasis healing inside them)
+- Math blocks (`$`/`$$`) are tracked to avoid false emphasis healing
+- Link/image URLs are tracked to avoid false underscore healing
+- HTML tag context is tracked
+- Trailing single spaces are stripped (double spaces preserved for line breaks)

@@ -31,6 +31,7 @@
 #include "md4x-ansi.h"
 #include "md4x-meta.h"
 #include "md4x-text.h"
+#include "md4x-heal.h"
 
 
 /* Stub main for wasi libc (we are a library, not a program) */
@@ -152,4 +153,20 @@ __attribute__((export_name("md4x_to_text")))
 int md4x_to_text(const char* input, unsigned input_size)
 {
     return render(md_text, input, input_size);
+}
+
+__attribute__((export_name("md4x_heal")))
+int md4x_heal(const char* input, unsigned input_size)
+{
+    md4x_buf buf = { NULL, 0, 0 };
+    int ret = md_heal(input, input_size, buf_append, &buf);
+    if(ret != 0) {
+        free(buf.data);
+        g_result_data = NULL;
+        g_result_size = 0;
+        return -1;
+    }
+    g_result_data = buf.data;
+    g_result_size = buf.size;
+    return 0;
 }

@@ -1,5 +1,15 @@
 # MD4X Change Log
 
+## v0.0.18 (WIP)
+
+### Features
+
+- **`md_heal()` — Markdown heal/completion utility**: Fixes incomplete/streaming Markdown text so it renders correctly mid-stream. Inspired by [remend](https://github.com/vercel/streamdown/tree/main/packages/remend). Heals unclosed bold/italic/strikethrough/code/math markers, completes incomplete links, removes incomplete images, closes open code blocks, strips incomplete HTML tags, prevents setext heading misinterpretation, and escapes comparison operators in list items.
+- **CLI**: New `--format=heal` output format for the `md4x` CLI
+- **JS bindings**: New `heal(input)` function exported from both `md4x/napi` and `md4x/wasm`
+- **WASM**: New `md4x_heal` export
+- **NAPI**: New `heal` binding
+
 ## v0.0.11
 
 ### Breaking Changes
