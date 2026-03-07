@@ -2,7 +2,6 @@ import { beforeAll, describe, it, expect } from "vitest";
 import {
   init,
   renderToHtml,
-  renderToHtmlWithMeta,
   renderToAST,
   renderToAnsi,
   parseAST,
@@ -20,7 +19,6 @@ beforeAll(async () => {
 
 defineSuite({
   renderToHtml,
-  renderToHtmlWithMeta,
   renderToAST,
   renderToAnsi,
   parseAST,

@@ -11,7 +11,6 @@ const nitroIndex = readFileSync(
 
 export function defineSuite({
   renderToHtml,
-  renderToHtmlWithMeta,
   renderToAST,
   renderToAnsi,
   parseAST,
@@ -1174,84 +1173,77 @@ export function defineSuite({
     });
   });
 
-  describe("renderToHtmlWithMeta", () => {
-    it("returns html and empty codeBlocks for no code", async () => {
-      const result = await renderToHtmlWithMeta("# Hello");
-      expect(result.html).toBe("<h1>Hello</h1>\n");
-      expect(result.codeBlocks).toEqual([]);
+  describe("renderToHtml with highlighter", () => {
+    function collectBlocks(md) {
+      const blocks = [];
+      const html = renderToHtml(md, {
+        highlighter: (code, block) => {
+          blocks.push({ code, ...block });
+          return undefined; // keep default rendering
+        },
+      });
+      return { html, blocks };
+    }
+
+    it("no code blocks calls highlighter zero times", async () => {
+      const { html, blocks } = await collectBlocks("# Hello");
+      expect(html).toBe("<h1>Hello</h1>\n");
+      expect(blocks).toEqual([]);
     });
 
-    it("returns code block metadata with correct offsets", async () => {
-      const result = await renderToHtmlWithMeta("```js\nconsole.log(1)\n```");
-      expect(result.html).toContain('<pre><code class="language-js">');
-      expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].lang).toBe("js");
-      expect(result.codeBlocks[0].start).toBeGreaterThan(0);
-      expect(result.codeBlocks[0].end).toBeGreaterThan(
-        result.codeBlocks[0].start,
-      );
-      const content = result.html.slice(
-        result.codeBlocks[0].start,
-        result.codeBlocks[0].end,
-      );
-      expect(content).toBe("console.log(1)\n");
+    it("receives code block metadata with correct content", async () => {
+      const { blocks } = await collectBlocks("```js\nconsole.log(1)\n```");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].lang).toBe("js");
+      expect(blocks[0].code).toBe("console.log(1)\n");
     });
 
-    it("returns filename and highlights", async () => {
-      const result = await renderToHtmlWithMeta(
+    it("receives filename and highlights", async () => {
+      const { blocks } = await collectBlocks(
         "```ts [app.ts] {1,3}\na\nb\nc\n```",
       );
-      expect(result.codeBlocks[0].lang).toBe("ts");
-      expect(result.codeBlocks[0].filename).toBe("app.ts");
-      expect(result.codeBlocks[0].highlights).toEqual([1, 3]);
+      expect(blocks[0].lang).toBe("ts");
+      expect(blocks[0].filename).toBe("app.ts");
+      expect(blocks[0].highlights).toEqual([1, 3]);
     });
 
     it("tracks multiple code blocks in order", async () => {
       const md = "# Title\n\n```js\nfoo\n```\n\nText\n\n```py\nbar\n```";
-      const result = await renderToHtmlWithMeta(md);
-      expect(result.codeBlocks).toHaveLength(2);
-      expect(result.codeBlocks[0].lang).toBe("js");
-      expect(result.codeBlocks[1].lang).toBe("py");
-      expect(
-        result.html.slice(result.codeBlocks[0].start, result.codeBlocks[0].end),
-      ).toBe("foo\n");
-      expect(
-        result.html.slice(result.codeBlocks[1].start, result.codeBlocks[1].end),
-      ).toBe("bar\n");
+      const { blocks } = await collectBlocks(md);
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].lang).toBe("js");
+      expect(blocks[0].code).toBe("foo\n");
+      expect(blocks[1].lang).toBe("py");
+      expect(blocks[1].code).toBe("bar\n");
     });
 
-    it("handles code with HTML entities", async () => {
-      const result = await renderToHtmlWithMeta("```html\n<div>&</div>\n```");
-      expect(result.codeBlocks).toHaveLength(1);
-      const content = result.html.slice(
-        result.codeBlocks[0].start,
-        result.codeBlocks[0].end,
-      );
-      expect(content).toContain("&lt;div&gt;");
-      expect(content).toContain("&amp;");
+    it("unescapes HTML entities in code", async () => {
+      const { blocks } = await collectBlocks("```html\n<div>&</div>\n```");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].code).toContain("<div>");
+      expect(blocks[0].code).toContain("&");
     });
 
     it("handles empty code block", async () => {
-      const result = await renderToHtmlWithMeta("```js\n```");
-      expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].lang).toBe("js");
-      expect(result.codeBlocks[0].start).toBe(result.codeBlocks[0].end);
+      const { blocks } = await collectBlocks("```js\n```");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].lang).toBe("js");
+      expect(blocks[0].code).toBe("");
     });
 
     it("handles code block without language", async () => {
-      const result = await renderToHtmlWithMeta("```\nhello\n```");
-      expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].lang).toBe("");
-      expect(
-        result.html.slice(result.codeBlocks[0].start, result.codeBlocks[0].end),
-      ).toBe("hello\n");
+      const { blocks } = await collectBlocks("```\nhello\n```");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].lang).toBe("");
+      expect(blocks[0].code).toBe("hello\n");
     });
 
-    it("html output matches renderToHtml", async () => {
-      const md = "# Hello\n\n```js\nconst x = 1;\n```\n\nDone.";
-      const html = await renderToHtml(md);
-      const result = await renderToHtmlWithMeta(md);
-      expect(result.html).toBe(html);
+    it("replaces code when highlighter returns string", async () => {
+      const html = await renderToHtml("```js\nfoo\n```", {
+        highlighter: () => '<pre class="custom">highlighted</pre>',
+      });
+      expect(html).toContain('<pre class="custom">highlighted</pre>');
+      expect(html).not.toContain('<code class="language-js">');
     });
   });
 

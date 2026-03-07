@@ -271,7 +271,7 @@ static napi_value init(napi_env env, napi_value exports)
         { "renderToText", NULL, md4x_napi_to_text, NULL, NULL, NULL, napi_default, NULL },
         { "heal", NULL, md4x_napi_heal, NULL, NULL, NULL, napi_default, NULL },
     };
-    napi_define_properties(env, exports, 6, props);
+    napi_define_properties(env, exports, 7, props);
     return exports;
 }
 
