@@ -1,6 +1,6 @@
 /*
  * MD4X: Markdown parser for C
- * (http://github.com/pi0/md4x)
+ * (http://github.com/unjs/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *

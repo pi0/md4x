@@ -1,6 +1,6 @@
 /*
  * MD4X: Markdown parser for C
- * (http://github.com/pi0/md4x)
+ * (http://github.com/unjs/md4x)
  *
  * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
  *
@@ -31,29 +31,28 @@
 #define MD4X_HEAL_H
 
 #ifdef __cplusplus
-    extern "C" {
+extern "C"
+{
 #endif
 
-
-/* Heal (fix/complete) incomplete streaming Markdown text.
- *
- * This is a pre-parser text transform that closes unclosed formatting markers,
- * completes incomplete links/images, closes open code blocks, and fixes other
- * partial Markdown so it renders correctly mid-stream.
- *
- * Params input and input_size specify the Markdown input.
- * Callback process_output() gets called with chunks of healed output.
- * Param userdata is just propagated back to process_output() callback.
- *
- * Returns 0 on success, -1 on error.
- */
-int md_heal(const char* input, unsigned input_size,
-            void (*process_output)(const char*, unsigned, void*),
-            void* userdata);
-
+    /* Heal (fix/complete) incomplete streaming Markdown text.
+     *
+     * This is a pre-parser text transform that closes unclosed formatting markers,
+     * completes incomplete links/images, closes open code blocks, and fixes other
+     * partial Markdown so it renders correctly mid-stream.
+     *
+     * Params input and input_size specify the Markdown input.
+     * Callback process_output() gets called with chunks of healed output.
+     * Param userdata is just propagated back to process_output() callback.
+     *
+     * Returns 0 on success, -1 on error.
+     */
+    int md_heal(const char *input, unsigned input_size,
+                void (*process_output)(const char *, unsigned, void *),
+                void *userdata);
 
 #ifdef __cplusplus
-    }  /* extern "C" { */
+} /* extern "C" { */
 #endif
 
-#endif  /* MD4X_HEAL_H */
+#endif /* MD4X_HEAL_H */

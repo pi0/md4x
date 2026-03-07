@@ -1,7 +1,7 @@
 {
   "name": "md4x",
   "version": "0.0.18",
-  "repository": "pi0/md4x",
+  "repository": "unjs/md4x",
   "license": "MIT",
   "type": "module",
   "exports": {

@@ -1,6 +1,6 @@
 /*
  * MD4X: Markdown parser for C
- * (http://github.com/pi0/md4x)
+ * (http://github.com/unjs/md4x)
  *
  * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
  *
@@ -29,37 +29,35 @@
 #include "md4x.h"
 
 #ifdef __cplusplus
-    extern "C" {
+extern "C"
+{
 #endif
-
 
 /* If set, debug output from md_parse() is sent to stderr. */
-#define MD_AST_FLAG_DEBUG              0x0001
-#define MD_AST_FLAG_SKIP_UTF8_BOM     0x0002
-#define MD_AST_FLAG_HEAL              0x0100
+#define MD_AST_FLAG_DEBUG 0x0001
+#define MD_AST_FLAG_SKIP_UTF8_BOM 0x0002
+#define MD_AST_FLAG_HEAL 0x0100
 
-
-/* Render Markdown into a Comark AST (array-based JSON format).
- *
- * Produces {"type":"comark","value":[...]} where each node is either a plain
- * JSON string (text) or a tuple array ["tag", {props}, ...children].
- *
- * Params input and input_size specify the Markdown input.
- * Callback process_output() gets called with chunks of JSON output.
- * Param userdata is just propagated back to process_output() callback.
- * Param parser_flags are flags from md4x.h propagated to md_parse().
- * Param renderer_flags is bitmask of MD_AST_FLAG_xxxx.
- *
- * Returns -1 on error (if md_parse() fails or memory allocation fails.)
- * Returns 0 on success.
- */
-int md_ast(const MD_CHAR* input, MD_SIZE input_size,
-            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
-            void* userdata, unsigned parser_flags, unsigned renderer_flags);
-
+    /* Render Markdown into a Comark AST (array-based JSON format).
+     *
+     * Produces {"type":"comark","value":[...]} where each node is either a plain
+     * JSON string (text) or a tuple array ["tag", {props}, ...children].
+     *
+     * Params input and input_size specify the Markdown input.
+     * Callback process_output() gets called with chunks of JSON output.
+     * Param userdata is just propagated back to process_output() callback.
+     * Param parser_flags are flags from md4x.h propagated to md_parse().
+     * Param renderer_flags is bitmask of MD_AST_FLAG_xxxx.
+     *
+     * Returns -1 on error (if md_parse() fails or memory allocation fails.)
+     * Returns 0 on success.
+     */
+    int md_ast(const MD_CHAR *input, MD_SIZE input_size,
+               void (*process_output)(const MD_CHAR *, MD_SIZE, void *),
+               void *userdata, unsigned parser_flags, unsigned renderer_flags);
 
 #ifdef __cplusplus
-    }  /* extern "C" { */
+} /* extern "C" { */
 #endif
 
-#endif  /* MD4X_AST_H */
+#endif /* MD4X_AST_H */

@@ -1,6 +1,6 @@
 /*
  * MD4X: Markdown parser for C
- * (http://github.com/pi0/md4x)
+ * (http://github.com/unjs/md4x)
  *
  * Copyright (c) 2026 Pooya Parsa <pooya@pi0.io>
  *
@@ -29,37 +29,35 @@
 #include "md4x.h"
 
 #ifdef __cplusplus
-    extern "C" {
+extern "C"
+{
 #endif
-
 
 /* If set, debug output from md_parse() is sent to stderr. */
-#define MD_TEXT_FLAG_DEBUG              0x0001
-#define MD_TEXT_FLAG_SKIP_UTF8_BOM     0x0002
-#define MD_TEXT_FLAG_HEAL              0x0100
+#define MD_TEXT_FLAG_DEBUG 0x0001
+#define MD_TEXT_FLAG_SKIP_UTF8_BOM 0x0002
+#define MD_TEXT_FLAG_HEAL 0x0100
 
-
-/* Render Markdown into plain text output.
- *
- * Strips all markdown formatting, producing plain text with basic structure
- * (newlines, indentation, list markers).
- *
- * Params input and input_size specify the Markdown input.
- * Callback process_output() gets called with chunks of text output.
- * Param userdata is just propagated back to process_output() callback.
- * Param parser_flags are flags from md4x.h propagated to md_parse().
- * Param renderer_flags is bitmask of MD_TEXT_FLAG_xxxx.
- *
- * Returns -1 on error (if md_parse() fails.)
- * Returns 0 on success.
- */
-int md_text(const MD_CHAR* input, MD_SIZE input_size,
-            void (*process_output)(const MD_CHAR*, MD_SIZE, void*),
-            void* userdata, unsigned parser_flags, unsigned renderer_flags);
-
+    /* Render Markdown into plain text output.
+     *
+     * Strips all markdown formatting, producing plain text with basic structure
+     * (newlines, indentation, list markers).
+     *
+     * Params input and input_size specify the Markdown input.
+     * Callback process_output() gets called with chunks of text output.
+     * Param userdata is just propagated back to process_output() callback.
+     * Param parser_flags are flags from md4x.h propagated to md_parse().
+     * Param renderer_flags is bitmask of MD_TEXT_FLAG_xxxx.
+     *
+     * Returns -1 on error (if md_parse() fails.)
+     * Returns 0 on success.
+     */
+    int md_text(const MD_CHAR *input, MD_SIZE input_size,
+                void (*process_output)(const MD_CHAR *, MD_SIZE, void *),
+                void *userdata, unsigned parser_flags, unsigned renderer_flags);
 
 #ifdef __cplusplus
-    }  /* extern "C" { */
+} /* extern "C" { */
 #endif
 
-#endif  /* MD4X_TEXT_H */
+#endif /* MD4X_TEXT_H */

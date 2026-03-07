@@ -24,7 +24,7 @@ import { RouterLink, RouterView } from "vue-router";
       >
     </nav>
     <a
-      href="https://github.com/pi0/md4x"
+      href="https://github.com/unjs/md4x"
       target="_blank"
       class="flex text-gray-400 transition-colors hover:text-white"
       title="GitHub"

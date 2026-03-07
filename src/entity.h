@@ -1,6 +1,6 @@
 /*
  * MD4X: Markdown parser for C
- * (http://github.com/pi0/md4x)
+ * (http://github.com/unjs/md4x)
  *
  * Copyright (c) 2016-2024 Martin Mitáš
  *
@@ -28,16 +28,15 @@
 
 #include <stdlib.h>
 
-
 /* Most entities are formed by single Unicode codepoint, few by two codepoints.
  * Single-codepoint entities have codepoints[1] set to zero. */
 typedef struct ENTITY_tag ENTITY;
-struct ENTITY_tag {
-    const char* name;
+struct ENTITY_tag
+{
+    const char *name;
     unsigned codepoints[2];
 };
 
-const ENTITY* entity_lookup(const char* name, size_t name_size);
+const ENTITY *entity_lookup(const char *name, size_t name_size);
 
-
-#endif  /* MD4X_ENTITY_H */
+#endif /* MD4X_ENTITY_H */
