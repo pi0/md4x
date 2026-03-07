@@ -57,6 +57,7 @@ const modeOptions = [
 const mode = ref("html");
 const showSource = ref(false);
 const fullHtml = ref(false);
+const healEnabled = ref(false);
 const example = ref("all");
 const currentMd = ref(allExamplesMd);
 const outputHtml = ref("");
@@ -104,27 +105,28 @@ function updateQuery() {
 function render() {
   const md = currentMd.value;
   const m = mode.value;
+  const heal = healEnabled.value || undefined;
   try {
     outputTree.value = null;
     if (m === "html") {
-      const html = renderToHtml(md);
+      const html = renderToHtml(md, { heal });
       outputHtml.value = html;
       sourceHtml.value = highlighter.codeToHtml(
-        renderToHtml(md, { full: fullHtml.value || undefined }),
+        renderToHtml(md, { full: fullHtml.value || undefined, heal }),
         { lang: "html", theme: "github-light" },
       );
     } else if (m === "json") {
       outputHtml.value = highlighter.codeToHtml(
-        JSON.stringify(parseAST(md), null, 2),
+        JSON.stringify(parseAST(md, { heal }), null, 2),
         { lang: "json", theme: "github-light" },
       );
     } else if (m === "vue" || m === "react") {
-      outputTree.value = parseAST(md);
+      outputTree.value = parseAST(md, { heal });
       outputHtml.value = "";
     } else if (m === "ansi") {
-      outputAnsi.value = renderToAnsi(md);
+      outputAnsi.value = renderToAnsi(md, { heal });
     } else if (m === "text") {
-      const text = renderToText(md);
+      const text = renderToText(md, { heal });
       const escaped = text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -132,7 +134,7 @@ function render() {
       outputHtml.value = `<pre>${escaped}</pre>`;
     } else if (m === "meta") {
       outputHtml.value = highlighter.codeToHtml(
-        JSON.stringify(parseMeta(md), null, 2),
+        JSON.stringify(parseMeta(md, { heal }), null, 2),
         { lang: "json", theme: "github-light" },
       );
     }
@@ -226,6 +228,7 @@ watch(mode, () => {
   render();
 });
 watch(fullHtml, render);
+watch(healEnabled, render);
 watch(example, () => {
   currentMd.value =
     example.value === "all" ? allExamplesMd : examples[example.value];
@@ -304,6 +307,10 @@ onMounted(async () => {
   >
     <TabSelect v-model="example" :options="exampleOptions" />
     <TabSelect v-model="mode" :options="modeOptions" />
+    <label class="flex items-center gap-1 text-xs text-gray-600 select-none">
+      <input v-model="healEnabled" type="checkbox" class="accent-gray-700" />
+      Heal
+    </label>
     <div class="mobile-tabs w-full border-b border-gray-300 -mx-4 -mb-1.5 mt-1">
       <button
         class="flex-1 cursor-pointer border-b-2 bg-transparent py-1.5 font-inherit text-[13px] transition-colors"
