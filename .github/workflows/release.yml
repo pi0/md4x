@@ -41,6 +41,36 @@ jobs:
       - name: Test (vitest)
         run: bun vitest
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Test (Rust)
+        run: cargo test --workspace --locked
+        working-directory: rust
+
+      - name: Publish md4x-sys to crates.io
+        if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+        run: cargo publish -p md4x-sys --locked --token "${CARGO_REGISTRY_TOKEN}"
+        working-directory: rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for crates.io index
+        if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+        run: sleep 20
+
+      - name: Publish md4x to crates.io
+        if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
+        run: cargo publish -p md4x --locked --token "${CARGO_REGISTRY_TOKEN}"
+        working-directory: rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         working-directory: packages/md4x

@@ -22,6 +22,7 @@ Fast and Small markdown parser and renderer based on [mity/md4c](https://github.
 - **Universal JS** — Native Node.js addon (NAPI) + portable WASM for browsers, Deno, Bun, edge workers
 - **C library** — SAX-like streaming parser, zero-copy, no AST allocation overhead
 - **Zig package** — Consumable as a Zig dependency
+- **Rust crate** — Safe bindings with bundled C sources, no system dependencies
 
 ## CLI
 
@@ -232,6 +233,54 @@ summary
 ## Zig Package
 
 MD4X can be consumed as a Zig package dependency via `build.zig.zon`.
+
+## Rust Crate
+
+Safe Rust bindings are available in `rust/`. The crate compiles the C sources directly via the `cc` crate and bundles libyaml 0.2.5 — no system dependencies required.
+
+Add to your workspace as a path dependency:
+
+```toml
+[dependencies]
+md4x = { path = "path/to/md4x/rust/md4x" }
+```
+
+```rust
+use md4x::{render_html, render_html_full, render_ast, render_text, render_ansi, render_meta, heal};
+use md4x::{ParserFlags, HtmlFlags, HtmlOpts};
+
+// Render to HTML (body content)
+let html = render_html("# Hello **world**", ParserFlags::DIALECT_ALL, HtmlFlags::empty())?;
+
+// Full HTML document
+let doc = render_html_full(
+    "# Hello",
+    ParserFlags::DIALECT_ALL,
+    HtmlFlags::FULL_HTML,
+    &HtmlOpts { title: Some("My Page"), css_url: Some("style.css") },
+)?;
+
+// Comark JSON AST
+let ast = render_ast("# Hello", ParserFlags::DIALECT_ALL, Default::default())?;
+
+// Plain text (strips formatting)
+let text = render_text("# Hello **world**", ParserFlags::DIALECT_ALL, Default::default())?;
+
+// ANSI terminal output
+let ansi = render_ansi("# Hello", ParserFlags::DIALECT_ALL, Default::default())?;
+
+// Frontmatter + headings as JSON
+let meta = render_meta("# Hello", ParserFlags::DIALECT_ALL, Default::default())?;
+
+// Heal incomplete streaming markdown
+let fixed = heal("**unclosed")?; // "**unclosed**"
+```
+
+Run the tests:
+
+```sh
+cd rust && cargo test --workspace
+```
 
 ## Building
 

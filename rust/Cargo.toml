@@ -1,0 +1,3 @@
+[workspace]
+members = ["md4x-sys", "md4x"]
+resolver = "2"

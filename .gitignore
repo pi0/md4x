@@ -70,6 +70,9 @@ node_modules
 .zig-cache/
 zig-out/
 
+# Rust
+rust/target/
+
 # autotools
 /aclocal.m4
 /autom4te.cache/
@@ -88,4 +91,3 @@ stamp-*
 *.stamp
 *.stamp-*
 .Tpo
-

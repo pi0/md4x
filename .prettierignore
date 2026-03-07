@@ -1,1 +1,3 @@
 packages/md4x/test/fixtures/
+rust/target/
+rust/md4x-sys/vendor/
