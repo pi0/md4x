@@ -48,38 +48,45 @@ function render(exports, fn, input, ...extra) {
   return result;
 }
 
+const HEAL_FLAG = 0x0100;
+
 export function renderToHtml(input, opts) {
-  const flags = opts?.full ? 0x0008 : 0;
+  let flags = opts?.full ? 0x0008 : 0;
+  if (opts?.heal) flags |= HEAL_FLAG;
   const exports = _getExports();
   return render(exports, exports.md4x_to_html, input, flags);
 }
 
-export function renderToAST(input) {
+export function renderToAST(input, opts) {
+  const flags = opts?.heal ? HEAL_FLAG : 0;
   const exports = _getExports();
-  return render(exports, exports.md4x_to_ast, input);
+  return render(exports, exports.md4x_to_ast, input, flags);
 }
 
-export function parseAST(input) {
-  return JSON.parse(renderToAST(input));
+export function parseAST(input, opts) {
+  return JSON.parse(renderToAST(input, opts));
 }
 
-export function renderToAnsi(input) {
+export function renderToAnsi(input, opts) {
+  const flags = opts?.heal ? HEAL_FLAG : 0;
   const exports = _getExports();
-  return render(exports, exports.md4x_to_ansi, input);
+  return render(exports, exports.md4x_to_ansi, input, flags);
 }
 
-export function renderToMeta(input) {
+export function renderToMeta(input, opts) {
+  const flags = opts?.heal ? HEAL_FLAG : 0;
   const exports = _getExports();
-  return render(exports, exports.md4x_to_meta, input);
+  return render(exports, exports.md4x_to_meta, input, flags);
 }
 
-export function renderToText(input) {
+export function renderToText(input, opts) {
+  const flags = opts?.heal ? HEAL_FLAG : 0;
   const exports = _getExports();
-  return render(exports, exports.md4x_to_text, input);
+  return render(exports, exports.md4x_to_text, input, flags);
 }
 
-export function parseMeta(input) {
-  const meta = JSON.parse(renderToMeta(input));
+export function parseMeta(input, opts) {
+  const meta = JSON.parse(renderToMeta(input, opts));
   if (!meta.title && meta.headings?.[0]) {
     meta.title = meta.headings[0].text;
   }

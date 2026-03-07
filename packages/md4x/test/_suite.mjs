@@ -1465,4 +1465,62 @@ export function defineSuite({
       expect(await heal("```\n**bold\n```")).toBe("```\n**bold\n```");
     });
   });
+
+  describe("heal option on renderers", () => {
+    const incomplete = "# Hello **world";
+
+    it("renderToHtml with heal", async () => {
+      const html = await renderToHtml(incomplete, { heal: true });
+      expect(html).toBe("<h1>Hello <strong>world</strong></h1>\n");
+    });
+
+    it("renderToHtml without heal", async () => {
+      const html = await renderToHtml(incomplete);
+      expect(html).toContain("**world");
+    });
+
+    it("renderToAST with heal", async () => {
+      const ast = await renderToAST(incomplete, { heal: true });
+      expect(ast).toContain('"strong"');
+    });
+
+    it("parseAST with heal", async () => {
+      const tree = await parseAST(incomplete, { heal: true });
+      const h1 = tree.nodes[0];
+      expect(h1[0]).toBe("h1");
+      const strong = h1.find((n) => Array.isArray(n) && n[0] === "strong");
+      expect(strong).toBeTruthy();
+    });
+
+    it("renderToAnsi with heal", async () => {
+      const ansi = await renderToAnsi(incomplete, { heal: true });
+      expect(ansi).toContain("world");
+      expect(ansi).not.toContain("**world");
+    });
+
+    it("renderToText with heal", async () => {
+      const text = await renderToText(incomplete, { heal: true });
+      expect(text.trim()).toBe("Hello world");
+    });
+
+    it("renderToMeta with heal", async () => {
+      const meta = await renderToMeta(incomplete, { heal: true });
+      const parsed = JSON.parse(meta);
+      expect(parsed.headings[0].text).toBe("Hello world");
+    });
+
+    it("parseMeta with heal", async () => {
+      const meta = await parseMeta(incomplete, { heal: true });
+      expect(meta.headings[0].text).toBe("Hello world");
+    });
+
+    it("heal option combines with other options", async () => {
+      const html = await renderToHtml(incomplete, {
+        heal: true,
+        full: true,
+      });
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("<strong>world</strong>");
+    });
+  });
 }

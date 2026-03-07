@@ -29,7 +29,12 @@ export type ComarkMeta = {
   [key: string]: unknown;
 };
 
-export interface HtmlOptions {
+export interface RenderOptions {
+  /** Heal incomplete/streaming Markdown before rendering. */
+  heal?: boolean;
+}
+
+export interface HtmlOptions extends RenderOptions {
   /** Generate a full HTML document with `<!DOCTYPE html>`, `<head>`, and `<body>`. */
   full?: boolean;
 }

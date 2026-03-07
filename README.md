@@ -18,6 +18,8 @@ npx md4x README.md -t text                  # Plain text output (strip markdown)
 npx md4x README.md -t ast                   # JSON AST output (comark)
 npx md4x README.md -t meta                  # Metadata JSON output
 npx md4x README.md -t heal                  # Heal incomplete markdown
+npx md4x README.md --heal                   # Heal before rendering (any format)
+npx md4x README.md --heal -t json           # Heal + JSON AST output
 
 # Remote sources
 npx md4x https://nitro.build/guide          # Fetch and render any URL
@@ -140,7 +142,7 @@ Note: markdown-it parser returns an array of tokens while md4x returns nested co
 
 ### Markdown Healing
 
-`heal()` fixes incomplete markdown from streaming LLM output — closing unclosed bold, italic, strikethrough, inline code, code blocks, links, and more. Useful for rendering partial markdown in real-time as tokens arrive.
+`heal()` fixes incomplete markdown from streaming LLM output — closing unclosed bold, italic, strikethrough, inline code, code blocks, links, and more. Useful for rendering partial markdown in real-time as tokens arrive (inspired by [streamdown/remend](https://github.com/vercel/streamdown/tree/main/packages/remend)).
 
 ````js
 import { heal } from "md4x";
@@ -152,6 +154,25 @@ heal("`code"); // "`code`"
 heal("```js\ncode"); // "```js\ncode\n```"
 heal("[text](http:"); // ""  (strips broken links)
 ````
+
+All render functions also accept a `{ heal: true }` option to heal input before rendering in a single pass:
+
+```js
+import { renderToHtml, parseAST, renderToAnsi, renderToText } from "md4x";
+
+// Heal + render in one call — ideal for streaming LLM output
+renderToHtml("# Hello **world", { heal: true });
+// "<h1>Hello <strong>world</strong></h1>\n"
+
+parseAST("# Hello **world", { heal: true });
+// { nodes: [["h1", {}, "Hello ", ["strong", {}, "world"]]], ... }
+
+renderToAnsi("# Hello **world", { heal: true });
+renderToText("# Hello **world", { heal: true });
+
+// Combines with other options
+renderToHtml("# Hello **world", { heal: true, full: true });
+```
 
 ```
 bun packages/md4x/bench/heal.mjs

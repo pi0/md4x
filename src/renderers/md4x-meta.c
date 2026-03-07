@@ -29,6 +29,7 @@
 
 #include "md4x-meta.h"
 #include "md4x-json.h"
+#include "md4x-heal-wrap.h"
 #include "entity.h"
 
 
@@ -370,19 +371,30 @@ md_meta(const MD_CHAR* input, MD_SIZE input_size,
 {
     META_CTX ctx;
     JSON_WRITER writer;
+    MD_PARSER parser;
     int ret;
 
-    MD_PARSER parser = {
-        0,
-        parser_flags,
-        meta_enter_block,
-        meta_leave_block,
-        meta_enter_span,
-        meta_leave_span,
-        meta_text,
-        (renderer_flags & MD_META_FLAG_DEBUG) ? meta_debug_log : NULL,
-        NULL
-    };
+    /* Heal-before-render: run md_heal first, then render the healed output. */
+    if(renderer_flags & MD_META_FLAG_HEAL) {
+        MD4X_HEAL_BUF hbuf;
+        if(md4x_heal_input(input, input_size, &hbuf) != 0) {
+            free(hbuf.data);
+            return -1;
+        }
+        ret = md_meta(hbuf.data, hbuf.size, process_output, userdata,
+                      parser_flags, renderer_flags & ~MD_META_FLAG_HEAL);
+        free(hbuf.data);
+        return ret;
+    }
+
+    memset(&parser, 0, sizeof(parser));
+    parser.flags = parser_flags;
+    parser.enter_block = meta_enter_block;
+    parser.leave_block = meta_leave_block;
+    parser.enter_span = meta_enter_span;
+    parser.leave_span = meta_leave_span;
+    parser.text = meta_text;
+    parser.debug_log = (renderer_flags & MD_META_FLAG_DEBUG) ? meta_debug_log : NULL;
 
     memset(&ctx, 0, sizeof(ctx));
 

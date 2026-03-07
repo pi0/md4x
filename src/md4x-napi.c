@@ -64,8 +64,9 @@ typedef int (*md4x_render_fn)(const MD_CHAR*, MD_SIZE,
 static napi_value
 render_impl(napi_env env, napi_callback_info info, md4x_render_fn fn)
 {
-    size_t argc = 1;
-    napi_value argv[1];
+    size_t argc = 2;
+    napi_value argv[2];
+    unsigned renderer_flags = 0;
     napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
 
     if(argc < 1) {
@@ -83,10 +84,18 @@ render_impl(napi_env env, napi_callback_info info, md4x_render_fn fn)
     }
     napi_get_value_string_utf8(env, argv[0], input, input_size + 1, &input_size);
 
+    /* Get optional renderer flags (second arg) */
+    if(argc >= 2) {
+        uint32_t flags;
+        if(napi_get_value_uint32(env, argv[1], &flags) == napi_ok) {
+            renderer_flags = flags;
+        }
+    }
+
     /* Render with all extensions enabled */
     napi_buf buf = { NULL, 0, 0 };
     int ret = fn(input, (unsigned) input_size, napi_buf_append, &buf,
-                 MD_DIALECT_ALL, 0);
+                 MD_DIALECT_ALL, renderer_flags);
     free(input);
 
     if(ret != 0) {

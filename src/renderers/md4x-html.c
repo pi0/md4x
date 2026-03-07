@@ -30,6 +30,7 @@
 
 #include "md4x-html.h"
 #include "md4x-props.h"
+#include "md4x-heal-wrap.h"
 #include "entity.h"
 
 
@@ -1098,8 +1099,22 @@ md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
            const MD_HTML_OPTS* opts)
 {
     MD_HTML render;
+    MD_PARSER parser;
     int i;
     int ret;
+
+    /* Heal-before-render: run md_heal first, then render the healed output. */
+    if(renderer_flags & MD_HTML_FLAG_HEAL) {
+        MD4X_HEAL_BUF hbuf;
+        if(md4x_heal_input(input, input_size, &hbuf) != 0) {
+            free(hbuf.data);
+            return -1;
+        }
+        ret = md_html_ex(hbuf.data, hbuf.size, process_output, userdata,
+                         parser_flags, renderer_flags & ~MD_HTML_FLAG_HEAL, opts);
+        free(hbuf.data);
+        return ret;
+    }
 
     memset(&render, 0, sizeof(render));
     render.process_output = process_output;
@@ -1107,17 +1122,14 @@ md_html_ex(const MD_CHAR* input, MD_SIZE input_size,
     render.flags = renderer_flags;
     render.opts = opts;
 
-    MD_PARSER parser = {
-        0,
-        parser_flags,
-        enter_block_callback,
-        leave_block_callback,
-        enter_span_callback,
-        leave_span_callback,
-        text_callback,
-        debug_log_callback,
-        NULL
-    };
+    memset(&parser, 0, sizeof(parser));
+    parser.flags = parser_flags;
+    parser.enter_block = enter_block_callback;
+    parser.leave_block = leave_block_callback;
+    parser.enter_span = enter_span_callback;
+    parser.leave_span = leave_span_callback;
+    parser.text = text_callback;
+    parser.debug_log = debug_log_callback;
 
     /* Build map of characters which need escaping. */
     for(i = 0; i < 256; i++) {

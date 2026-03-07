@@ -29,6 +29,7 @@
 #include "md4x-ast.h"
 #include "md4x-props.h"
 #include "md4x-json.h"
+#include "md4x-heal-wrap.h"
 
 #define JSON_MAX_DEPTH  256
 
@@ -1092,19 +1093,31 @@ md_ast(const MD_CHAR* input, MD_SIZE input_size,
 {
     JSON_CTX ctx;
     JSON_WRITER writer;
+    MD_PARSER parser;
     int ret;
 
-    MD_PARSER parser = {
-        0,
-        parser_flags,
-        json_enter_block,
-        json_leave_block,
-        json_enter_span,
-        json_leave_span,
-        json_text,
-        (renderer_flags & MD_AST_FLAG_DEBUG) ? json_debug_log : NULL,
-        NULL
-    };
+    /* Heal-before-render: run md_heal first, then render the healed output. */
+    if(renderer_flags & MD_AST_FLAG_HEAL) {
+        MD4X_HEAL_BUF hbuf;
+        if(md4x_heal_input(input, input_size, &hbuf) != 0) {
+            free(hbuf.data);
+            return -1;
+        }
+        ret = md_ast(hbuf.data, hbuf.size, process_output, userdata,
+                     parser_flags, renderer_flags & ~MD_AST_FLAG_HEAL);
+        free(hbuf.data);
+        return ret;
+    }
+
+    memset(&parser, 0, sizeof(parser));
+    parser.abi_version = 0;
+    parser.flags = parser_flags;
+    parser.enter_block = json_enter_block;
+    parser.leave_block = json_leave_block;
+    parser.enter_span = json_enter_span;
+    parser.leave_span = json_leave_span;
+    parser.text = json_text;
+    parser.debug_log = (renderer_flags & MD_AST_FLAG_DEBUG) ? json_debug_log : NULL;
 
     memset(&ctx, 0, sizeof(ctx));
 

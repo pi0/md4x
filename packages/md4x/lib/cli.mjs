@@ -8,6 +8,7 @@ import {
   renderToText,
   parseAST,
   parseMeta,
+  heal,
 } from "./napi.mjs";
 
 const { values, positionals } = parseArgs({
@@ -22,6 +23,7 @@ const { values, positionals } = parseArgs({
     "full-html": { type: "boolean", short: "f", default: false },
     "html-title": { type: "string" },
     "html-css": { type: "string" },
+    heal: { type: "boolean", default: false },
     stat: { type: "boolean", short: "s", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
@@ -43,7 +45,8 @@ ${_g("Usage:")} ${_b("md4x")} ${_d("[OPTION]... [FILE]")}
 
 ${_g("General options:")}
   ${_c("-o")}, ${_c("--output")}=${_d("FILE")}     Output file ${_d("(default: stdout)")}
-  ${_c("-t")}, ${_c("--format")}=${_d("FORMAT")}   Output format: ${_c("html")}, ${_c("text")}, ${_c("ast")}, ${_c("ansi")}, ${_c("meta")} ${_d("(default: ansi for TTY, text otherwise)")}
+  ${_c("-t")}, ${_c("--format")}=${_d("FORMAT")}   Output format: ${_c("html")}, ${_c("text")}, ${_c("ast")}, ${_c("ansi")}, ${_c("meta")}, ${_c("heal")} ${_d("(default: ansi for TTY, text otherwise)")}
+      ${_c("--heal")}             Heal incomplete markdown before rendering
   ${_c("-s")}, ${_c("--stat")}            Measure parsing time
   ${_c("-h")}, ${_c("--help")}            Display this help and exit
   ${_c("-v")}, ${_c("--version")}         Display version and exit
@@ -89,7 +92,7 @@ if (values.version) {
   process.exit(0);
 }
 
-const supportedFormats = ["html", "ast", "ansi", "text", "meta"];
+const supportedFormats = ["html", "ast", "ansi", "text", "meta", "heal"];
 const format = values.format;
 if (!supportedFormats.includes(format)) {
   process.stderr.write(`Unknown format: ${format}\n`);
@@ -154,22 +157,27 @@ if (!inputPath || inputPath === "-") {
 
 const t0 = values.stat ? performance.now() : 0;
 
+const healOpt = values.heal ? { heal: true } : undefined;
+
 let output;
 switch (format) {
   case "html":
-    output = renderToHtml(input);
+    output = renderToHtml(input, healOpt);
     break;
   case "ansi":
-    output = renderToAnsi(input);
+    output = renderToAnsi(input, healOpt);
     break;
   case "text":
-    output = renderToText(input);
+    output = renderToText(input, healOpt);
     break;
   case "ast":
-    output = JSON.stringify(parseAST(input), null, 2);
+    output = JSON.stringify(parseAST(input, healOpt), null, 2);
     break;
   case "meta":
-    output = JSON.stringify(parseMeta(input), null, 2);
+    output = JSON.stringify(parseMeta(input, healOpt), null, 2);
+    break;
+  case "heal":
+    output = heal(input);
     break;
 }
 

@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "md4x-text.h"
+#include "md4x-heal-wrap.h"
 #include "entity.h"
 
 
@@ -543,17 +544,30 @@ md_text(const MD_CHAR* input, MD_SIZE input_size,
         void* userdata, unsigned parser_flags, unsigned renderer_flags)
 {
     MD_TEXT render;
-    MD_PARSER parser = {
-        0,
-        parser_flags,
-        enter_block_callback,
-        leave_block_callback,
-        enter_span_callback,
-        leave_span_callback,
-        text_callback,
-        debug_log_callback,
-        NULL
-    };
+    MD_PARSER parser;
+
+    /* Heal-before-render: run md_heal first, then render the healed output. */
+    if(renderer_flags & MD_TEXT_FLAG_HEAL) {
+        MD4X_HEAL_BUF hbuf;
+        int ret;
+        if(md4x_heal_input(input, input_size, &hbuf) != 0) {
+            free(hbuf.data);
+            return -1;
+        }
+        ret = md_text(hbuf.data, hbuf.size, process_output, userdata,
+                      parser_flags, renderer_flags & ~MD_TEXT_FLAG_HEAL);
+        free(hbuf.data);
+        return ret;
+    }
+
+    memset(&parser, 0, sizeof(parser));
+    parser.flags = parser_flags;
+    parser.enter_block = enter_block_callback;
+    parser.leave_block = leave_block_callback;
+    parser.enter_span = enter_span_callback;
+    parser.leave_span = leave_span_callback;
+    parser.text = text_callback;
+    parser.debug_log = debug_log_callback;
 
     memset(&render, 0, sizeof(render));
     render.process_output = process_output;

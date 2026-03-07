@@ -57,6 +57,7 @@ static unsigned parser_flags = MD_DIALECT_ALL;
     static unsigned renderer_flags = MD_HTML_FLAG_DEBUG;
 #endif
 static int want_fullhtml = 0;
+static int want_heal = 0;
 static int want_stat = 0;
 static int want_replay_fuzz = 0;
 
@@ -181,6 +182,10 @@ process_file(const char* in_path, FILE* in, FILE* out)
         memset(buf_in.data + buf_in.size, 0, 2 * sizeof(unsigned));
     }
 
+    /* Apply heal flag to renderer flags if requested (HTML uses r_flags). */
+    if(want_heal)
+        r_flags |= MD_HTML_FLAG_HEAL;
+
     /* Parse and render the document. */
     t0 = clock();
 
@@ -206,6 +211,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
 #ifndef MD4X_USE_ASCII
             j_flags |= MD_AST_FLAG_SKIP_UTF8_BOM;
 #endif
+            if(want_heal) j_flags |= MD_AST_FLAG_HEAL;
             ret = md_ast(buf_in.data, (MD_SIZE)buf_in.size, process_output,
                         (void*) &buf_out, p_flags, j_flags);
             break;
@@ -215,6 +221,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
 #ifndef MD4X_USE_ASCII
             a_flags |= MD_ANSI_FLAG_SKIP_UTF8_BOM;
 #endif
+            if(want_heal) a_flags |= MD_ANSI_FLAG_HEAL;
             ret = md_ansi(buf_in.data, (MD_SIZE)buf_in.size, process_output,
                         (void*) &buf_out, p_flags, a_flags);
             break;
@@ -224,6 +231,7 @@ process_file(const char* in_path, FILE* in, FILE* out)
 #ifndef MD4X_USE_ASCII
             t_flags |= MD_TEXT_FLAG_SKIP_UTF8_BOM;
 #endif
+            if(want_heal) t_flags |= MD_TEXT_FLAG_HEAL;
             ret = md_text(buf_in.data, (MD_SIZE)buf_in.size, process_output,
                         (void*) &buf_out, p_flags, t_flags);
             break;
@@ -267,6 +275,7 @@ out:
 static const CMDLINE_OPTION cmdline_options[] = {
     { 'o', "output",                        'o', CMDLINE_OPTFLAG_REQUIREDARG },
     { 'f', "full-html",                     'f', 0 },
+    {  0,  "heal",                          '4', 0 },
     { 's', "stat",                          's', 0 },
     { 'h', "help",                          'h', 0 },
     { 'v', "version",                       'v', 0 },
@@ -292,6 +301,7 @@ usage(void)
         "General options:\n"
         "  -o  --output=FILE    Output file (default is standard output)\n"
         "  -t, --format=FORMAT  Output format: html (default), text, json, ansi, heal\n"
+        "      --heal           Heal incomplete markdown before rendering\n"
         "  -s, --stat           Measure time of input parsing\n"
         "  -h, --help           Display this help and exit\n"
         "  -v, --version        Display version and exit\n"
@@ -330,6 +340,7 @@ cmdline_callback(int opt, char const* value, void* data)
 
         case 'o':   output_path = value; break;
         case 'f':   want_fullhtml = 1; break;
+        case '4':   want_heal = 1; break;
         case 's':   want_stat = 1; break;
         case 'r':   want_replay_fuzz = 1; break;
         case 'h':   usage(); exit(0); break;

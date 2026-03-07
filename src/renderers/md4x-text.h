@@ -36,6 +36,7 @@
 /* If set, debug output from md_parse() is sent to stderr. */
 #define MD_TEXT_FLAG_DEBUG              0x0001
 #define MD_TEXT_FLAG_SKIP_UTF8_BOM     0x0002
+#define MD_TEXT_FLAG_HEAL              0x0100
 
 
 /* Render Markdown into plain text output.

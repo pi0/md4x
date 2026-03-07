@@ -98,10 +98,12 @@ unsigned md4x_result_size(void)
 typedef int (*md4x_render_fn)(const MD_CHAR*, MD_SIZE,
     void (*)(const MD_CHAR*, MD_SIZE, void*), void*, unsigned, unsigned);
 
-static int render(md4x_render_fn fn, const char* input, unsigned input_size)
+static int render(md4x_render_fn fn, const char* input, unsigned input_size,
+                  unsigned renderer_flags)
 {
     md4x_buf buf = { NULL, 0, 0 };
-    int ret = fn(input, input_size, buf_append, &buf, MD_DIALECT_ALL, 0);
+    int ret = fn(input, input_size, buf_append, &buf,
+                 MD_DIALECT_ALL, renderer_flags);
     if(ret != 0) {
         free(buf.data);
         g_result_data = NULL;
@@ -117,42 +119,35 @@ __attribute__((export_name("md4x_to_html")))
 int md4x_to_html(const char* input, unsigned input_size,
                  unsigned renderer_flags)
 {
-    md4x_buf buf = { NULL, 0, 0 };
-    int ret = md_html(input, input_size, buf_append, &buf,
-                      MD_DIALECT_ALL, renderer_flags);
-    if(ret != 0) {
-        free(buf.data);
-        g_result_data = NULL;
-        g_result_size = 0;
-        return -1;
-    }
-    g_result_data = buf.data;
-    g_result_size = buf.size;
-    return 0;
+    return render(md_html, input, input_size, renderer_flags);
 }
 
 __attribute__((export_name("md4x_to_ast")))
-int md4x_to_ast(const char* input, unsigned input_size)
+int md4x_to_ast(const char* input, unsigned input_size,
+                unsigned renderer_flags)
 {
-    return render(md_ast, input, input_size);
+    return render(md_ast, input, input_size, renderer_flags);
 }
 
 __attribute__((export_name("md4x_to_ansi")))
-int md4x_to_ansi(const char* input, unsigned input_size)
+int md4x_to_ansi(const char* input, unsigned input_size,
+                 unsigned renderer_flags)
 {
-    return render(md_ansi, input, input_size);
+    return render(md_ansi, input, input_size, renderer_flags);
 }
 
 __attribute__((export_name("md4x_to_meta")))
-int md4x_to_meta(const char* input, unsigned input_size)
+int md4x_to_meta(const char* input, unsigned input_size,
+                 unsigned renderer_flags)
 {
-    return render(md_meta, input, input_size);
+    return render(md_meta, input, input_size, renderer_flags);
 }
 
 __attribute__((export_name("md4x_to_text")))
-int md4x_to_text(const char* input, unsigned input_size)
+int md4x_to_text(const char* input, unsigned input_size,
+                 unsigned renderer_flags)
 {
-    return render(md_text, input, input_size);
+    return render(md_text, input, input_size, renderer_flags);
 }
 
 __attribute__((export_name("md4x_heal")))

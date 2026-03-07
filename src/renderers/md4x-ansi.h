@@ -37,6 +37,7 @@
 #define MD_ANSI_FLAG_DEBUG              0x0001
 #define MD_ANSI_FLAG_SKIP_UTF8_BOM     0x0002
 #define MD_ANSI_FLAG_NO_COLOR          0x0004
+#define MD_ANSI_FLAG_HEAL              0x0100
 
 
 /* Render Markdown into ANSI terminal output.
