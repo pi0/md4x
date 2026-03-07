@@ -52,6 +52,7 @@ typedef struct {
     char* data;
     unsigned size;
     unsigned cap;
+    int error;
 } HEAL_BUF;
 
 static inline void
@@ -60,16 +61,17 @@ buf_init(HEAL_BUF* buf, unsigned initial_cap)
     buf->data = (char*) malloc(initial_cap);
     buf->size = 0;
     buf->cap = buf->data ? initial_cap : 0;
+    buf->error = 0;
 }
 
 static inline void
 buf_append(HEAL_BUF* buf, const char* s, unsigned len)
 {
-    if(len == 0) return;
+    if(len == 0 || buf->error) return;
     if(buf->size + len > buf->cap) {
         unsigned new_cap = buf->cap + buf->cap / 2 + len + 64;
         char* p = (char*) realloc(buf->data, new_cap);
-        if(!p) return;
+        if(!p) { buf->error = 1; return; }
         buf->data = p;
         buf->cap = new_cap;
     }
@@ -748,7 +750,7 @@ heal_italic_underscore(HEAL_BUF* buf)
         if(end < size) {
             /* Insert _ before trailing newlines */
             char* tail = (char*) malloc(size - end);
-            if(!tail) return;
+            if(!tail) { buf->error = 1; return; }
             memcpy(tail, buf->data + end, size - end);
             buf->size = end;
             buf_append_ch(buf, '_');
@@ -1047,8 +1049,7 @@ heal_comparison_operators(HEAL_BUF* buf)
             /* Check what follows > */
             unsigned gt_pos = i;
             i++;
-            int has_eq = 0;
-            if(i < size && buf->data[i] == '=') { has_eq = 1; i++; }
+            if(i < size && buf->data[i] == '=') { i++; }
             /* Skip optional spaces */
             while(i < size && buf->data[i] == ' ') i++;
             /* Optional $ */
@@ -1133,6 +1134,12 @@ int md_heal(const char* input, unsigned input_size,
     heal_strikethrough(&buf);
     heal_katex(&buf);
     heal_code_block(&buf);
+
+    /* Check for allocation errors during healing */
+    if(buf.error) {
+        buf_free(&buf);
+        return -1;
+    }
 
     /* Output result */
     if(buf.size > 0)

@@ -331,11 +331,14 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         node->tag_is_dynamic = 1;
         if(d->raw_props != NULL && d->raw_props_size > 0) {
             node->detail.component.raw_props = (char*) malloc(d->raw_props_size + 1);
-            if(node->detail.component.raw_props != NULL) {
-                memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
-                node->detail.component.raw_props[d->raw_props_size] = '\0';
-                node->detail.component.raw_props_size = d->raw_props_size;
+            if(node->detail.component.raw_props == NULL) {
+                json_node_free(node);
+                ctx->error = 1;
+                return -1;
             }
+            memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
+            node->detail.component.raw_props[d->raw_props_size] = '\0';
+            node->detail.component.raw_props_size = d->raw_props_size;
         }
     } else if(type == MD_BLOCK_TEMPLATE) {
         const MD_BLOCK_TEMPLATE_DETAIL* d = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
@@ -467,11 +470,14 @@ json_enter_span(MD_SPANTYPE type, void* detail, void* userdata)
         node->tag_is_dynamic = 1;
         if(d->raw_props != NULL && d->raw_props_size > 0) {
             node->detail.component.raw_props = (char*) malloc(d->raw_props_size + 1);
-            if(node->detail.component.raw_props != NULL) {
-                memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
-                node->detail.component.raw_props[d->raw_props_size] = '\0';
-                node->detail.component.raw_props_size = d->raw_props_size;
+            if(node->detail.component.raw_props == NULL) {
+                json_node_free(node);
+                ctx->error = 1;
+                return -1;
             }
+            memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
+            node->detail.component.raw_props[d->raw_props_size] = '\0';
+            node->detail.component.raw_props_size = d->raw_props_size;
         }
     } else {
         switch(type) {
@@ -572,6 +578,7 @@ static int
 json_leave_span(MD_SPANTYPE type, void* detail, void* userdata)
 {
     JSON_CTX* ctx = (JSON_CTX*) userdata;
+    (void) type;
     (void) detail;
 
     if(ctx->image_nesting > 0) {
@@ -675,11 +682,14 @@ json_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* userdata)
                 if(cnode == NULL) { ctx->error = 1; return -1; }
                 if(cbody_size > 0) {
                     cnode->text_value = (char*) malloc(cbody_size + 1);
-                    if(cnode->text_value != NULL) {
-                        memcpy(cnode->text_value, cbody, cbody_size);
-                        cnode->text_value[cbody_size] = '\0';
-                        cnode->text_size = cbody_size;
+                    if(cnode->text_value == NULL) {
+                        json_node_free(cnode);
+                        ctx->error = 1;
+                        return -1;
                     }
+                    memcpy(cnode->text_value, cbody, cbody_size);
+                    cnode->text_value[cbody_size] = '\0';
+                    cnode->text_size = cbody_size;
                 }
                 json_append_child(ctx, cnode);
                 return 0;
