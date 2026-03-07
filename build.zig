@@ -79,6 +79,10 @@ pub fn build(b: *std.Build) void {
     for (include_paths) |p| exe.addIncludePath(p);
     b.installArtifact(exe);
 
+    // --- Fuzzer targets ---
+
+    addFuzzers(b);
+
     // --- WASM & NAPI targets ---
 
     const pkg_opts: PkgBuildOptions = .{
@@ -210,4 +214,10 @@ fn addNapi(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
     }
 
     return napi_all_step;
+}
+
+fn addFuzzers(b: *std.Build) void {
+    const fuzz_build = b.addSystemCommand(&.{ "sh", "test/fuzzers/build.sh" });
+    const fuzz_step = b.step("fuzz", "Build all fuzzer harnesses (requires clang)");
+    fuzz_step.dependOn(&fuzz_build.step);
 }
