@@ -4,6 +4,9 @@ version = "0.0.18"
 edition = "2021"
 description = "Safe Rust bindings to md4x, a fast CommonMark markdown parser"
 license = "MIT"
+repository = "https://github.com/unjs/md4x"
+homepage = "https://github.com/unjs/md4x"
+readme = "../../README.md"
 
 [dependencies]
 md4x-sys = { version = "0.0.18", path = "../md4x-sys" }

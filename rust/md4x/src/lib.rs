@@ -229,7 +229,7 @@ pub fn render_html(
     let rc = unsafe {
         sys::md_html(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -285,7 +285,7 @@ pub fn render_html_full(
     let rc = unsafe {
         sys::md_html_ex(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -316,7 +316,7 @@ pub fn render_ast(
     let rc = unsafe {
         sys::md_ast(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -343,7 +343,7 @@ pub fn render_ansi(
     let rc = unsafe {
         sys::md_ansi(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -370,7 +370,7 @@ pub fn render_text(
     let rc = unsafe {
         sys::md_text(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -399,7 +399,7 @@ pub fn render_meta(
     let rc = unsafe {
         sys::md_meta(
             input.as_ptr() as *const sys::MD_CHAR,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_output,
             &mut buf as *mut Vec<u8> as *mut c_void,
             parser_flags.bits(),
@@ -432,7 +432,7 @@ pub fn heal(input: &str) -> Result<String, Error> {
     let rc = unsafe {
         sys::md_heal(
             input.as_ptr() as *const c_char,
-            input.len() as u32,
+            u32::try_from(input.len()).map_err(|_| Error)?,
             collect_heal,
             &mut buf as *mut Vec<u8> as *mut c_void,
         )

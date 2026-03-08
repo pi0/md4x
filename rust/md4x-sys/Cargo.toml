@@ -4,6 +4,9 @@ version = "0.0.18"
 edition = "2021"
 description = "Raw FFI bindings to md4x, a CommonMark markdown parser"
 license = "MIT"
+repository = "https://github.com/unjs/md4x"
+homepage = "https://github.com/unjs/md4x"
+readme = "../../README.md"
 links = "md4x"
 
 [build-dependencies]

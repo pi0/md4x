@@ -3,9 +3,17 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    // rust/md4x-sys -> rust -> repo root
-    let root = manifest_dir.parent().unwrap().parent().unwrap();
-    let src = root.join("src");
+    // Prefer vendored sources (used when publishing to crates.io).
+    // Fall back to the monorepo layout (rust/md4x-sys -> rust -> repo root -> src/).
+    let src = {
+        let vendored = manifest_dir.join("vendor/md4x");
+        if vendored.exists() {
+            vendored
+        } else {
+            let root = manifest_dir.parent().unwrap().parent().unwrap();
+            root.join("src")
+        }
+    };
     let renderers = src.join("renderers");
     let libyaml = manifest_dir.join("vendor/libyaml");
 

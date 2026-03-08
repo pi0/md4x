@@ -72,6 +72,8 @@ zig-out/
 
 # Rust
 rust/target/
+# Vendored C sources (populated only during crates.io publish, not committed)
+rust/md4x-sys/vendor/md4x/
 
 # autotools
 /aclocal.m4
