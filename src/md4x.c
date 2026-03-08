@@ -145,6 +145,7 @@
 #define OFF     MD_OFFSET
 
 #define SZ_MAX      (sizeof(SZ) == 8 ? UINT64_MAX : UINT32_MAX)
+#undef OFF_MAX  /* macOS <limits.h> defines OFF_MAX for off_t */
 #define OFF_MAX     (sizeof(OFF) == 8 ? UINT64_MAX : UINT32_MAX)
 
 typedef struct MD_MARK_tag MD_MARK;
