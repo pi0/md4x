@@ -25,7 +25,7 @@ Fast and Small markdown parser and renderer based on [mity/md4c](https://github.
 
 ## Showcase
 
-- [pi0/md4x](https://github.com/pi0/mdshot) — Render beautiful screenshots from Markdown.
+- [pi0/mdshot](https://github.com/pi0/mdshot) — Render beautiful screenshots from Markdown.
 - [pi0/mdzilla](https://github.com/pi0/mdzilla) — Markdown browser for humans and agents.
 
 ## CLI
