@@ -51,7 +51,8 @@ export interface HtmlOptions extends RenderOptions {
   full?: boolean;
 
   /**
-   * Custom highlighter function for fenced code blocks. If provided, this will cause
+   * Custom highlighter function for fenced code blocks. If provided, code blocks
+   * are passed through this callback which can return custom HTML-highlighted output.
    */
   highlighter?: CodeBlockHighlighter;
 }
