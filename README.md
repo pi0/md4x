@@ -59,6 +59,12 @@ npx md4x README.md -t html -f --html-title="My Docs"  # Wrap in full HTML with <
 npx md4x README.md -t html -f --html-css=style.css    # Add CSS link
 ```
 
+### Install from AUR
+
+```sh
+yay -S md4x # md4x-git
+```
+
 ## JavaScript
 
 Available as a native Node.js addon (NAPI) for maximum performance, or as a portable WASM module that works in any JavaScript runtime (Node.js, Deno, Bun, browsers, edge workers, etc.).
