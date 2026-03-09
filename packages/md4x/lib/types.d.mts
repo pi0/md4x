@@ -53,7 +53,7 @@ export interface HtmlOptions extends RenderOptions {
   /**
    * Custom highlighter function for fenced code blocks. If provided, this will cause
    */
-  highlighter: CodeBlockHighlighter;
+  highlighter?: CodeBlockHighlighter;
 }
 
 export interface CodeBlock {
