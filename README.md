@@ -25,7 +25,8 @@ Fast and Small markdown parser and renderer based on [mity/md4c](https://github.
 
 ## Showcase
 
-- [pi0/md4x](https://github.com/pi0/mdshot)— Render beautiful screenshots from Markdown.
+- [pi0/mdshot](https://github.com/pi0/mdshot) — Render beautiful screenshots from Markdown.
+- [pi0/mdzilla](https://github.com/pi0/mdzilla) — Markdown browser for humans and agents.
 
 ## CLI
 
@@ -56,6 +57,12 @@ npx md4x README.md -t meta -o README.json
 # Full HTML document
 npx md4x README.md -t html -f --html-title="My Docs"  # Wrap in full HTML with <head>
 npx md4x README.md -t html -f --html-css=style.css    # Add CSS link
+```
+
+### Install from AUR
+
+```sh
+yay -S md4x # md4x-git
 ```
 
 ## JavaScript

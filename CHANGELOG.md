@@ -4,6 +4,7 @@
 
 ### Features
 
+- **Block component title (VitePress-style custom containers)**: Block components now support a title text after the component name: `:::danger STOP`, `:::details Click me`, `:::info My Title {props}`. The title is rendered as a `title` attribute in HTML, a `"title"` prop in JSON AST, and as the display label in ANSI output.
 - **`md_heal()` — Markdown heal/completion utility**: Fixes incomplete/streaming Markdown text so it renders correctly mid-stream. Inspired by [remend](https://github.com/vercel/streamdown/tree/main/packages/remend). Heals unclosed bold/italic/strikethrough/code/math markers, completes incomplete links, removes incomplete images, closes open code blocks, strips incomplete HTML tags, prevents setext heading misinterpretation, and escapes comparison operators in list items.
 - **CLI**: New `--format=heal` output format for the `md4x` CLI
 - **JS bindings**: New `heal(input)` function exported from both `md4x/napi` and `md4x/wasm`

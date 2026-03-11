@@ -68,7 +68,7 @@ struct JSON_NODE {
         struct { char* href; char* title; } a;
         struct { char* src; char* title; } img;
         struct { char* target; } wikilink;
-        struct { char* raw_props; MD_SIZE raw_props_size; } component;
+        struct { char* raw_props; MD_SIZE raw_props_size; char* title; MD_SIZE title_size; } component;
         struct { char* name; } tmpl;
         struct { char* type_name; } alert;
     } detail;
@@ -129,6 +129,7 @@ json_node_free(JSON_NODE* node)
      * collides with a static tag (e.g. ::alert{...} vs MD_BLOCK_ALERT). */
     if(node->tag_is_dynamic) {
         if(node->detail.component.raw_props) free(node->detail.component.raw_props);
+        if(node->detail.component.title) free(node->detail.component.title);
         free((char*)node->tag);
     } else if(node->tag != NULL) {
         if(strcmp(node->tag, "pre") == 0) {
@@ -344,6 +345,17 @@ json_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
             memcpy(node->detail.component.raw_props, d->raw_props, d->raw_props_size);
             node->detail.component.raw_props[d->raw_props_size] = '\0';
             node->detail.component.raw_props_size = d->raw_props_size;
+        }
+        if(d->title != NULL && d->title_size > 0) {
+            node->detail.component.title = (char*) malloc(d->title_size + 1);
+            if(node->detail.component.title == NULL) {
+                json_node_free(node);
+                ctx->error = 1;
+                return -1;
+            }
+            memcpy(node->detail.component.title, d->title, d->title_size);
+            node->detail.component.title[d->title_size] = '\0';
+            node->detail.component.title_size = d->title_size;
         }
     } else if(type == MD_BLOCK_TEMPLATE) {
         const MD_BLOCK_TEMPLATE_DETAIL* d = (const MD_BLOCK_TEMPLATE_DETAIL*) detail;
@@ -857,6 +869,13 @@ json_write_props(JSON_WRITER* w, const JSON_NODE* node)
            && node->first_child->text_value != NULL && node->first_child->text_size > 0) {
             has_prop = json_write_yaml_props(w, node->first_child->text_value,
                                              node->first_child->text_size) > 0;
+        }
+        /* Component title (e.g. :::danger STOP → "title":"STOP"). */
+        if(node->detail.component.title != NULL && node->detail.component.title_size > 0) {
+            if(has_prop) json_write(w, ",", 1);
+            json_write_str(w, "\"title\":");
+            json_write_string(w, node->detail.component.title, node->detail.component.title_size);
+            has_prop = 1;
         }
         /* Component: parse raw props string. */
         if(node->detail.component.raw_props != NULL && node->detail.component.raw_props_size > 0) {

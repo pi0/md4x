@@ -85,9 +85,10 @@ pub fn build(b: *std.Build) void {
 
     // --- WASM & NAPI targets ---
 
+    const pkg_optimize: std.builtin.OptimizeMode = .ReleaseFast;
     const pkg_opts: PkgBuildOptions = .{
-        .optimize = optimize,
-        .strip = strip,
+        .optimize = pkg_optimize,
+        .strip = pkg_optimize != .Debug,
         .libyaml_src = libyaml_src,
         .include_paths = include_paths,
     };
@@ -105,9 +106,9 @@ fn addWasm(b: *std.Build, opts: PkgBuildOptions) *std.Build.Step {
         .name = "md4x",
         .root_module = b.createModule(.{
             .target = wasm_target,
-            .optimize = .ReleaseSmall,
+            .optimize = opts.optimize,
             .link_libc = true,
-            .strip = true,
+            .strip = opts.strip,
         }),
     });
     md4x_wasm.rdynamic = true;

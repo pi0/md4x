@@ -657,3 +657,145 @@ Content
 </inner>
 </outer>
 ````````````````````````````````
+
+# Block Component Title (VitePress-style custom containers)
+
+## Block component with title
+
+```````````````````````````````` example
+:::info
+This is an info box.
+:::
+.
+<info>
+<p>This is an info box.</p>
+</info>
+````````````````````````````````
+
+## Block component with custom title
+
+```````````````````````````````` example
+:::danger STOP
+Danger zone, do not proceed
+:::
+.
+<danger title="STOP">
+<p>Danger zone, do not proceed</p>
+</danger>
+````````````````````````````````
+
+## Block component with multi-word title
+
+```````````````````````````````` example
+:::details Click me to toggle
+Some content here
+:::
+.
+<details title="Click me to toggle">
+<p>Some content here</p>
+</details>
+````````````````````````````````
+
+## Block component with title and props
+
+```````````````````````````````` example
+:::warning Be careful {open}
+Proceed with caution.
+:::
+.
+<warning title="Be careful" open>
+<p>Proceed with caution.</p>
+</warning>
+````````````````````````````````
+
+## Block component with title containing special characters
+
+```````````````````````````````` example
+:::tip Use & enjoy
+Good advice.
+:::
+.
+<tip title="Use &amp; enjoy">
+<p>Good advice.</p>
+</tip>
+````````````````````````````````
+
+## Block component with only props (no title)
+
+```````````````````````````````` example
+::card{type="info"}
+Content
+::
+.
+<card type="info">
+<p>Content</p>
+</card>
+````````````````````````````````
+
+## Nested block components with titles
+
+```````````````````````````````` example
+::::warning Outer warning
+Some text
+
+:::tip Inner tip
+Nested content
+:::
+
+::::
+.
+<warning title="Outer warning">
+<p>Some text</p>
+<tip title="Inner tip">
+<p>Nested content</p>
+</tip>
+</warning>
+````````````````````````````````
+
+## Space between colons and name
+
+```````````````````````````````` example
+::: info
+This is an info box.
+:::
+.
+<info>
+<p>This is an info box.</p>
+</info>
+````````````````````````````````
+
+## Space between colons and name with title
+
+```````````````````````````````` example
+::: danger STOP
+Danger zone, do not proceed
+:::
+.
+<danger title="STOP">
+<p>Danger zone, do not proceed</p>
+</danger>
+````````````````````````````````
+
+## Space between colons and name with title and props
+
+```````````````````````````````` example
+::: details Click me to toggle {open}
+Some content here
+:::
+.
+<details title="Click me to toggle" open>
+<p>Some content here</p>
+</details>
+````````````````````````````````
+
+## Space between colons and name with props
+
+```````````````````````````````` example
+::: card {type="info"}
+Content
+:::
+.
+<card type="info">
+<p>Content</p>
+</card>
+````````````````````````````````

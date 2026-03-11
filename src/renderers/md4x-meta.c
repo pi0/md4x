@@ -62,6 +62,9 @@ typedef struct {
     MD_SIZE heading_buf_size;
     MD_SIZE heading_buf_cap;
 
+    /* Component nesting depth (to ignore component frontmatter). */
+    int comp_depth;
+
     int error;
 } META_CTX;
 
@@ -177,8 +180,12 @@ meta_enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
 {
     META_CTX* ctx = (META_CTX*) userdata;
 
-    if(type == MD_BLOCK_FRONTMATTER) {
-        ctx->in_frontmatter = 1;
+    if(type == MD_BLOCK_COMPONENT) {
+        ctx->comp_depth++;
+    } else if(type == MD_BLOCK_FRONTMATTER) {
+        /* Only capture document-level frontmatter, not component frontmatter. */
+        if(ctx->comp_depth == 0)
+            ctx->in_frontmatter = 1;
     } else if(type == MD_BLOCK_H) {
         const MD_BLOCK_H_DETAIL* d = (const MD_BLOCK_H_DETAIL*) detail;
         ctx->in_heading = 1;
@@ -196,7 +203,9 @@ meta_leave_block(MD_BLOCKTYPE type, void* detail, void* userdata)
 
     (void) detail;
 
-    if(type == MD_BLOCK_FRONTMATTER) {
+    if(type == MD_BLOCK_COMPONENT) {
+        ctx->comp_depth--;
+    } else if(type == MD_BLOCK_FRONTMATTER) {
         ctx->in_frontmatter = 0;
     } else if(type == MD_BLOCK_H) {
         /* Store the completed heading. */

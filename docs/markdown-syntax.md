@@ -106,22 +106,42 @@ This is **important** content.
 
 - **Basic**: `::name\ncontent\n::` — content is parsed as markdown blocks
 - **With props**: `::name{key="value" bool #id .class}\ncontent\n::`
+- **With title**: `:::name Title text\ncontent\n:::` — VitePress-style custom container with title
+- **With title and props**: `:::name Title text {key="value"}\ncontent\n:::`
 - **Empty**: `::divider\n::` — no content between open/close
 - **Nested**: Use more colons for outer containers: `:::outer\n::inner\n::\n:::`
 - **Deep nesting**: `::::` > `:::` > `::` (outer must have more colons than inner)
 
+VitePress-style custom containers are supported via the title syntax:
+
+```
+:::info
+This is an info box.
+:::
+
+:::danger STOP
+Danger zone, do not proceed
+:::
+
+:::details Click me to toggle
+Hidden content here
+:::
+```
+
+The title text appears after the component name, separated by a space. It is passed to renderers as a `title` attribute/prop. Props in `{...}` can follow the title.
+
 Constraints:
 
 - Block components **cannot interrupt paragraphs** (require blank line before)
-- Opening line: `::name` or `::name{props}` (2+ colons, component name, optional props)
+- Opening line: `::name`, `::name{props}`, or `::name Title {props}` (2+ colons, component name, optional title, optional props)
 - Closing line: `::` (2+ colons only, no name)
 - A closer with N colons closes the innermost open component with ≤N colons
 - Component name: `[a-zA-Z][a-zA-Z0-9-]*` (same as inline components)
 - Content is always treated as loose (paragraphs wrapped in `<p>`)
 
-Implementation: Block components use the container mechanism (`MD_CONTAINER` with `ch = ':'`). Component info (name/props source offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field.
+Implementation: Block components use the container mechanism (`MD_CONTAINER` with `ch = ':'`). Component info (name/props/title source offsets) is stored in a growing array on `MD_CTX`, indexed by the block's `data` field.
 
-HTML renderer: `<component-name ...attrs>content</component-name>`. JSON renderer: `["component-name", {props}, ...children]`. ANSI renderer: cyan-colored text.
+HTML renderer: `<component-name title="..." ...attrs>content</component-name>`. JSON renderer: `["component-name", {"title": "...", ...props}, ...children]`. ANSI renderer: title used as display label for alert-style components.
 
 ## Component Frontmatter (`MD_FLAG_COMPONENTS`)
 

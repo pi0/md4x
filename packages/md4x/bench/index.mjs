@@ -23,31 +23,30 @@ const inputs = {
 for (const [name, input] of Object.entries(inputs)) {
   compact(() => {
     summary(() => {
-      bench(`md4x-napi`, () => napi.renderToHtml(input));
-      bench(`md4x-wasm`, () => wasm.renderToHtml(input));
-      bench(`md4w`, () => md4w.mdToHtml(input));
-      bench(`markdown-it`, () => markdownIt.render(input));
-      bench(`markdown-exit`, () => markdownExit.render(input));
-
+      bench(`md4x.napi (renderToHtml)`, () => napi.renderToHtml(input));
+      bench(`md4x.wasm (renderToHtml)`, () => wasm.renderToHtml(input));
+      bench(`md4w (renderToHtml)`, () => md4w.mdToHtml(input));
+      bench(`markdown-it (renderToHtml)`, () => markdownIt.render(input));
+      bench(`markdown-exit (renderToHtml)`, () => markdownExit.render(input));
       // const bunToHTML = global.Bun.markdown.html;
       // if (bunToHTML) {
       //   bench(`Bun.markdown.html`, () => bunToHTML(input));
       // }
     });
 
-    summary(() => {
-      bench(`md4x (napi) ast (${name})`, () => napi.renderToAST(input));
-      bench(`md4x (wasm) ast (${name})`, () => wasm.renderToAST(input));
-    });
+    // summary(() => {
+    //   bench(`md4x.napi (ast) (${name})`, () => napi.renderToAST(input));
+    //   bench(`md4x.wasm (ast) (${name})`, () => wasm.renderToAST(input));
+    // });
 
     summary(() => {
-      bench(`md4x (napi) parseAST (${name})`, () => napi.parseAST(input));
-      bench(`md4x (wasm) parseAST (${name})`, () => wasm.parseAST(input));
-      bench(`md4w parseAST (${name})`, () => md4w.mdToJSON(input));
-      bench(`markdown-it parseAST (${name})`, () =>
+      bench(`md4x.napi (parseAST) (${name})`, () => napi.parseAST(input));
+      bench(`md4x.wasm (parseAST) (${name})`, () => wasm.parseAST(input));
+      bench(`md4w (parseAST) (${name})`, () => md4w.mdToJSON(input));
+      bench(`markdown-it (parseAST) (${name})`, () =>
         markdownIt.parse(input, {}),
       );
-      bench(`markdown-exit parseAST (${name})`, () =>
+      bench(`markdown-exit (parseAST) (${name})`, () =>
         markdownExit.parse(input, {}),
       );
     });

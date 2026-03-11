@@ -405,6 +405,11 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             RENDER_VERBATIM(r, "<");
             if(comp->tag_name.text != NULL && comp->tag_name.size > 0)
                 render_attribute(r, &comp->tag_name, render_verbatim);
+            if(comp->title != NULL && comp->title_size > 0) {
+                RENDER_VERBATIM(r, " title=\"");
+                render_verbatim(r, comp->title, comp->title_size);
+                RENDER_VERBATIM(r, "\"");
+            }
             RENDER_VERBATIM(r, ">");
             render_newline(r);
             render_newline(r);

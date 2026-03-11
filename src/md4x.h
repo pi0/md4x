@@ -365,6 +365,8 @@ typedef char MD_CHAR;
         MD_ATTRIBUTE tag_name;    /* Component name (e.g. "alert", "card"). */
         const MD_CHAR *raw_props; /* Raw props string from {...}, or NULL. Not null-terminated. */
         MD_SIZE raw_props_size;   /* Size of raw_props. */
+        const MD_CHAR *title;     /* Title text after name (e.g. "STOP" in :::danger STOP), or NULL. */
+        MD_SIZE title_size;       /* Size of title. */
     } MD_BLOCK_COMPONENT_DETAIL;
 
     /* Detailed info for MD_BLOCK_TEMPLATE (component slot). */

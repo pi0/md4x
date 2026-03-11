@@ -703,6 +703,12 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
             const MD_CHAR* title = comp->tag_name.text;
             MD_SIZE title_size = comp->tag_name.size;
 
+            /* Use explicit title if provided (e.g. :::danger STOP). */
+            if(comp->title != NULL && comp->title_size > 0) {
+                title = comp->title;
+                title_size = comp->title_size;
+            }
+
             /* For ::alert{type="..."}, resolve color from the type prop. */
             if(color == NULL && ci_eq(comp->tag_name.text, comp->tag_name.size, "alert")) {
                 MD_PARSED_PROPS parsed;
@@ -713,8 +719,10 @@ enter_block_callback(MD_BLOCKTYPE type, void* detail, void* userdata)
                         && ci_eq(parsed.props[pi].key, parsed.props[pi].key_size, "type"))
                     {
                         color = alert_type_color(parsed.props[pi].value, parsed.props[pi].value_size);
-                        title = parsed.props[pi].value;
-                        title_size = parsed.props[pi].value_size;
+                        if(comp->title == NULL || comp->title_size == 0) {
+                            title = parsed.props[pi].value;
+                            title_size = parsed.props[pi].value_size;
+                        }
                         break;
                     }
                 }

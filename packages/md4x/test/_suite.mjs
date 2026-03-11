@@ -666,6 +666,57 @@ export function defineSuite({
     });
   });
 
+  describe("block component title (VitePress-style)", () => {
+    it("renders block component with title HTML", async () => {
+      const html = await renderToHtml(":::danger STOP\nDanger zone\n:::");
+      expect(html).toContain('<danger title="STOP">');
+      expect(html).toContain("<p>Danger zone</p>");
+      expect(html).toContain("</danger>");
+    });
+
+    it("parses block component with title AST", async () => {
+      const ast = await parseAST(":::danger STOP\nDanger zone\n:::");
+      const comp = ast.nodes[0];
+      expect(comp[0]).toBe("danger");
+      expect(comp[1].title).toBe("STOP");
+      expect(comp[2][2]).toBe("Danger zone");
+    });
+
+    it("parses block component with multi-word title AST", async () => {
+      const ast = await parseAST(":::details Click me to toggle\nContent\n:::");
+      const comp = ast.nodes[0];
+      expect(comp[0]).toBe("details");
+      expect(comp[1].title).toBe("Click me to toggle");
+    });
+
+    it("parses block component with title and props AST", async () => {
+      const ast = await parseAST(":::warning Be careful {open}\nContent\n:::");
+      const comp = ast.nodes[0];
+      expect(comp[0]).toBe("warning");
+      expect(comp[1].title).toBe("Be careful");
+      expect(comp[1][":open"]).toBe("true");
+    });
+
+    it("block component without title has no title prop", async () => {
+      const ast = await parseAST("::alert\nContent\n::");
+      const comp = ast.nodes[0];
+      expect(comp[1].title).toBeUndefined();
+    });
+
+    it("supports space between colons and name", async () => {
+      const ast = await parseAST("::: info\nContent\n:::");
+      const comp = ast.nodes[0];
+      expect(comp[0]).toBe("info");
+    });
+
+    it("supports space between colons and name with title", async () => {
+      const ast = await parseAST("::: danger STOP\nContent\n:::");
+      const comp = ast.nodes[0];
+      expect(comp[0]).toBe("danger");
+      expect(comp[1].title).toBe("STOP");
+    });
+  });
+
   describe("component frontmatter", () => {
     it("parses YAML frontmatter as component props in AST", async () => {
       const ast = await parseAST(
@@ -1448,6 +1499,19 @@ export function defineSuite({
     it("handles heading with inline code", async () => {
       const meta = await parseMeta("# Using `parseMeta` API");
       expect(meta.headings[0].text).toBe("Using parseMeta API");
+    });
+
+    it("ignores component frontmatter", async () => {
+      const meta = await parseMeta(
+        "---\ntitle: Installation\ndescription: How to install.\n---\n\n" +
+          "## Try it online\n\n" +
+          "::card\n---\ntitle: Stackblitz\nicon: simple-icons:stackblitz\n---\nContent.\n::\n",
+      );
+      expect(meta.title).toBe("Installation");
+      expect(meta.description).toBe("How to install.");
+      expect(meta.icon).toBeUndefined();
+      expect(meta.headings).toHaveLength(1);
+      expect(meta.headings[0].text).toBe("Try it online");
     });
   });
 

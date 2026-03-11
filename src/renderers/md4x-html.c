@@ -684,6 +684,21 @@ render_open_block_component(MD_HTML* r, const MD_BLOCK_COMPONENT_DETAIL* det)
         }
     }
 
+    /* Append title as attribute if present. */
+    if(det->title != NULL && det->title_size > 0) {
+        comp_fm_tag_append(r, " title=\"", 8);
+        {
+            void (*saved_output)(const MD_CHAR*, MD_SIZE, void*) = r->process_output;
+            void* saved_ud = r->userdata;
+            r->process_output = comp_fm_tag_capture;
+            r->userdata = r;
+            render_html_escaped(r, det->title, det->title_size);
+            r->process_output = saved_output;
+            r->userdata = saved_ud;
+        }
+        comp_fm_tag_append(r, "\"", 1);
+    }
+
     /* Append {props} if present. */
     if(det->raw_props != NULL && det->raw_props_size > 0) {
         /* Render props to a temp buffer by capturing output. */

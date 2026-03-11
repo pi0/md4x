@@ -27,9 +27,17 @@ export function _getExports() {
 export const _imports = {
   wasi_snapshot_preview1: {
     fd_close: () => 0,
+    fd_filestat_get: () => 0,
+    fd_pwrite: () => 0,
+    fd_read: () => 0,
     fd_seek: () => 0,
     fd_write: () => 0,
-    proc_exit: () => { },
+    proc_exit: () => {},
+    random_get: (buf, len) => {
+      const bytes = new Uint8Array(_instance.exports.memory.buffer, buf, len);
+      crypto.getRandomValues(bytes);
+      return 0;
+    },
   },
 };
 

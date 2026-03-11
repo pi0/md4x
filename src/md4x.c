@@ -276,6 +276,8 @@ struct MD_CTX_tag {
         OFF name_end;
         OFF props_beg;          /* Offset of raw props content (after '{'), or 0. */
         OFF props_end;          /* Offset of '}', or 0. */
+        OFF title_beg;          /* Offset of title text after name, or 0. */
+        OFF title_end;          /* End offset of title text, or 0. */
     } *block_component_info;
     int n_block_components;         /* Number of entries used. */
     int alloc_block_components;     /* Allocated capacity. */
@@ -5863,6 +5865,8 @@ md_process_all_blocks(MD_CTX* ctx)
                     OFF name_end = ctx->block_component_info[comp_idx].name_end;
                     OFF props_beg = ctx->block_component_info[comp_idx].props_beg;
                     OFF props_end = ctx->block_component_info[comp_idx].props_end;
+                    OFF t_beg = ctx->block_component_info[comp_idx].title_beg;
+                    OFF t_end = ctx->block_component_info[comp_idx].title_end;
 
                     memset(&comp_name_build, 0, sizeof(comp_name_build));
                     MD_CHECK(md_build_attribute(ctx, STR(name_beg), name_end - name_beg,
@@ -5872,6 +5876,10 @@ md_process_all_blocks(MD_CTX* ctx)
                     if(props_beg > 0 && props_end > props_beg) {
                         det.component.raw_props = STR(props_beg);
                         det.component.raw_props_size = props_end - props_beg;
+                    }
+                    if(t_beg > 0 && t_end > t_beg) {
+                        det.component.title = STR(t_beg);
+                        det.component.title_size = t_end - t_beg;
                     }
                 }
                 break;
@@ -6209,7 +6217,8 @@ abort:
 static int
 md_push_block_component_info(MD_CTX* ctx, unsigned colon_count,
                              OFF name_beg, OFF name_end,
-                             OFF props_beg, OFF props_end)
+                             OFF props_beg, OFF props_end,
+                             OFF title_beg, OFF title_end)
 {
     if(ctx->n_block_components >= ctx->alloc_block_components) {
         int new_alloc = (ctx->alloc_block_components > 0
@@ -6231,6 +6240,8 @@ md_push_block_component_info(MD_CTX* ctx, unsigned colon_count,
         ctx->block_component_info[idx].name_end = name_end;
         ctx->block_component_info[idx].props_beg = props_beg;
         ctx->block_component_info[idx].props_end = props_end;
+        ctx->block_component_info[idx].title_beg = title_beg;
+        ctx->block_component_info[idx].title_end = title_end;
         return idx;
     }
 }
@@ -6690,12 +6701,15 @@ md_is_html_block_end_condition(MD_CTX* ctx, OFF beg, OFF* p_end)
 }
 
 
-/* Check if line at 'off' is a block component opener: ::name or ::name{props}
+/* Check if line at 'off' is a block component opener: ::name, ::name{props},
+ * or ::name Title text {props} (VitePress-style custom containers).
  * Returns the colon count (>= 2) on success, 0 on failure.
- * Sets *p_name_beg, *p_name_end, *p_props_beg, *p_props_end, *p_end. */
+ * Sets *p_name_beg, *p_name_end, *p_props_beg, *p_props_end,
+ * *p_title_beg, *p_title_end, *p_end. */
 static unsigned
 md_is_block_component_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_end,
-                             OFF* p_props_beg, OFF* p_props_end, OFF* p_end)
+                             OFF* p_props_beg, OFF* p_props_end,
+                             OFF* p_title_beg, OFF* p_title_end, OFF* p_end)
 {
     OFF start = off;
     unsigned colon_count;
@@ -6706,6 +6720,10 @@ md_is_block_component_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_
     colon_count = off - start;
     if(colon_count < 2)
         return 0;
+
+    /* Optional whitespace between colons and name (VitePress: `::: info`). */
+    while(off < ctx->size && ISBLANK(off))
+        off++;
 
     /* Component name must start with a letter. */
     if(off >= ctx->size || !ISALPHA(off))
@@ -6719,9 +6737,17 @@ md_is_block_component_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_
     if(*p_name_end == *p_name_beg)
         return 0;
 
-    /* Optional {props}. */
+    /* Optional title text and/or {props}. */
     *p_props_beg = 0;
     *p_props_end = 0;
+    *p_title_beg = 0;
+    *p_title_end = 0;
+
+    /* Skip whitespace after name. */
+    while(off < ctx->size && ISBLANK(off))
+        off++;
+
+    /* Check for {props} immediately after name. */
     if(off < ctx->size && CH(off) == _T('{')) {
         OFF brace_start = off + 1;
         OFF j = brace_start;
@@ -6731,6 +6757,35 @@ md_is_block_component_opener(MD_CTX* ctx, OFF off, OFF* p_name_beg, OFF* p_name_
             *p_props_beg = brace_start;
             *p_props_end = j;
             off = j + 1;
+        }
+    } else if(off < ctx->size && !ISNEWLINE(off)) {
+        /* Title text: everything until '{' or end of line. */
+        OFF title_start = off;
+        while(off < ctx->size && !ISNEWLINE(off) && CH(off) != _T('{'))
+            off++;
+
+        /* Trim trailing whitespace from title. */
+        {
+            OFF title_end = off;
+            while(title_end > title_start && ISBLANK_(CH(title_end - 1)))
+                title_end--;
+            if(title_end > title_start) {
+                *p_title_beg = title_start;
+                *p_title_end = title_end;
+            }
+        }
+
+        /* Check for {props} after title. */
+        if(off < ctx->size && CH(off) == _T('{')) {
+            OFF brace_start = off + 1;
+            OFF j = brace_start;
+            while(j < ctx->size && !ISNEWLINE(j) && CH(j) != _T('}'))
+                j++;
+            if(j < ctx->size && CH(j) == _T('}')) {
+                *p_props_beg = brace_start;
+                *p_props_end = j;
+                off = j + 1;
+            }
         }
     }
 
@@ -7530,13 +7585,15 @@ md_analyze_line(MD_CTX* ctx, OFF beg, OFF* p_end,
            pivot_line->type != MD_LINE_TEXT  &&
            off < ctx->size  &&  CH(off) == _T(':'))
         {
-            OFF name_beg, name_end, props_beg, props_end, comp_end;
+            OFF name_beg, name_end, props_beg, props_end, title_beg, title_end, comp_end;
             unsigned colon_count = md_is_block_component_opener(ctx, off, &name_beg, &name_end,
-                                                                &props_beg, &props_end, &comp_end);
+                                                                &props_beg, &props_end,
+                                                                &title_beg, &title_end, &comp_end);
             if(colon_count > 0) {
                 int comp_idx = md_push_block_component_info(ctx, colon_count,
                                                             name_beg, name_end,
-                                                            props_beg, props_end);
+                                                            props_beg, props_end,
+                                                            title_beg, title_end);
                 if(comp_idx < 0) { ret = -1; goto abort; }
 
                 container.ch = _T(':');
