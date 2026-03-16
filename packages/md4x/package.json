@@ -13,6 +13,7 @@
     "./napi": "./lib/napi.mjs",
     "./build/md4x.wasm": "./build/md4x.wasm",
     ".": {
+      "types": "./lib/types.d.mts",
       "node": "./lib/napi.mjs",
       "default": {
         "unwasm": "./lib/wasm/unwasm.mjs",
